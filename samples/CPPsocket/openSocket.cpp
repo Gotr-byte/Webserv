@@ -22,7 +22,7 @@ static int	init_socket_from_address_list(struct addrinfo *socket_addr_list)
 		socket_addr_list_node = socket_addr_list_node->ai_next;
 	}
 	freeaddrinfo(socket_addr_list);
-    if (socket_addr_list_node == NULL)
+    // if (socket_addr_list_node == NULL)
 		// throw BindFailure();
 	return (socket_fd);
 }
@@ -68,6 +68,7 @@ static int bind_kernel_socket(const struct addrinfo *desired_TCP_service_info, c
 		std::cerr << "cannot bind" << std::endl;
 		// throw BindFailure();
 	}
+	return (0);
 }
 
 // static int	learn_mtu_size(const int sockfd)
