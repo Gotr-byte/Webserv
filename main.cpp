@@ -2,104 +2,135 @@
 #include <fstream>
 #include "./includes/Configuration.hpp"
 
-#include <cstdio>
+#include <iostream>
 #include <cstdlib>
+#include <cstdio>
 #include <cstring>
+#include <vector>
+#include <poll.h>
 #include <unistd.h>
-#include <arpa/inet.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
-#include <poll.h>
+#include <arpa/inet.h>
 
-#define MAX_CLIENTS 5
+#define PORT 8080
+#define MAX_CLIENTS 10
+#define BUF_SIZE 1024
 
 int handleRequest(int port) {
-      // Create socket
-      int server_fd = socket(AF_INET, SOCK_STREAM, 0);
-      if (server_fd < 0) {
-          std::cerr << "Failed to create socket\n";
-          exit(EXIT_FAILURE);
-      }
 
-      // Bind socket to address
-      struct sockaddr_in address;
-      memset(&address, 0, sizeof(address));
-      address.sin_family = AF_INET;
-      address.sin_addr.s_addr = INADDR_ANY;
-      address.sin_port = htons(port);
-      if (bind(server_fd, (struct sockaddr*)&address, sizeof(address)) < 0) {
-          std::cerr << "Failed to bind socket to address\n";
-          exit(EXIT_FAILURE);
-      }
+    // Create a socket for the server
+    int server_fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (server_fd < 0) {
+        perror("Error creating server socket");
+        exit(EXIT_FAILURE);
+    }
 
-      // Listen for incoming connections
-      if (listen(server_fd, MAX_CLIENTS) < 0) {
-          std::cerr << "Failed to listen for incoming connections\n";
-          exit(EXIT_FAILURE);
-      }
+    // Set the server socket options
+    int opt = 1;
+    if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt))) {
+        perror("Error setting server socket options");
+        exit(EXIT_FAILURE);
+    }
 
-      // Create array of pollfd structs for monitoring sockets
-      struct pollfd poll_fds[MAX_CLIENTS + 1];
-      memset(poll_fds, 0, sizeof(poll_fds));
-      poll_fds[0].fd = server_fd;
-      poll_fds[0].events = POLLIN;
+    // Bind the server socket to a specific port
+    struct sockaddr_in server_addr;
+    memset(&server_addr, 0, sizeof(server_addr));
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_addr.s_addr = INADDR_ANY;
+    server_addr.sin_port = htons(port);
+    if (bind(server_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
+        perror("Error binding server socket");
+        exit(EXIT_FAILURE);
+    }
 
-      // Loop and wait for incoming connections or data
-      int num_fds = 1;
-      while (true) {
-          // Use poll to monitor sockets for incoming data or connections
-          if (poll(poll_fds, num_fds, -1) < 0) {
-              std::cerr << "Failed to poll sockets\n";
-              exit(EXIT_FAILURE);
-          }
+    // Listen for incoming connections on the server socket
+    if (listen(server_fd, MAX_CLIENTS) < 0) {
+        perror("Error listening on server socket");
+        exit(EXIT_FAILURE);
+    }
 
-          // Check for incoming connections on the server socket
-          if (poll_fds[0].revents & POLLIN) {
-              int client_fd = accept(server_fd, NULL, NULL);
-              if (client_fd < 0) {
-                  std::cerr << "Failed to accept incoming connection\n";
-                  exit(EXIT_FAILURE);
-              }
+    // Initialize the pollfd struct for the server socket
+    struct pollfd fds[MAX_CLIENTS + 1];
+    memset(fds, 0, sizeof(fds));
+    fds[0].fd = server_fd;
+    fds[0].events = POLLIN;
 
-              // Add client socket to pollfd array
-              poll_fds[num_fds].fd = client_fd;
-              poll_fds[num_fds].events = POLLIN;
-              num_fds++;
+    // Initialize the list of connected client sockets
+    std::vector<int> clients;
 
-              std::cout << "New client connected\n";
-          }
+    // Start the main loop
+    while (true) {
 
-          // Check for incoming data on client sockets
-          for (int i = 1; i < num_fds; i++) {
-              if (poll_fds[i].revents & POLLIN) {
-                  char buffer[1024] = {0};
-                  if (recv(poll_fds[i].fd, buffer, sizeof(buffer), 0) <= 0) {
-                      // Client disconnected
-                      close(poll_fds[i].fd);
-                      poll_fds[i].fd = -1;
-                  } else {
-                      // Print received data
-                      std::cout << "Received data: " << buffer << std::endl;
-                  }
-              }
-          }
+        // Wait for events on any of the sockets
+        int nfds = clients.size() + 1;
+        int res = poll(fds, nfds, -1);
+        if (res < 0) {
+            perror("Error polling sockets");
+            exit(EXIT_FAILURE);
+        }
 
-          // Remove disconnected clients from pollfd array
-          int i = 1;
-          while (i < num_fds) {
-              if (poll_fds[i].fd == -1) {
-                  for (int j = i; j < num_fds - 1; j++) {
-                      poll_fds[j].fd = poll_fds[j + 1].fd;
-                  }
-                  num_fds--;
-              } else {
-                  i++;
-              }
-          }
-      }
-      return 0;
-  }
+        // Check for events on the server socket
+        if (fds[0].revents & POLLIN) {
+
+            // Accept a new connection from a client
+            struct sockaddr_in client_addr;
+            socklen_t client_len = sizeof(client_addr);
+            int client_fd = accept(server_fd, (struct sockaddr *)&client_addr, &client_len);
+            if (client_fd < 0) {
+                perror("Error accepting client connection");
+                exit(EXIT_FAILURE);
+            }
+
+            // Add the client socket to the list of connected clients
+            clients.push_back(client_fd);
+
+            // Initialize the pollfd struct for the client socket
+            fds[clients.size()].fd = client_fd;
+            fds[clients.size()].events = POLLIN;
+            fds[clients.size()].revents = 0;
+
+            std::cout << "New client connected\n";
+        }
+
+        // Check for events on any of the connected client sockets
+        for (unsigned long i = 0; i < clients.size(); i++) {
+            if (fds[i+1].revents & POLLIN) {
+
+                // Receive data from the client
+                char buf[BUF_SIZE];
+                memset(buf, 0, BUF_SIZE);
+                int n = recv(clients[i], buf, BUF_SIZE, 0);
+                if (n < 0) {
+                    perror("Error receiving data from client");
+                    exit(EXIT_FAILURE);
+                }
+
+                // Print the received message
+                std::cout << "Received message from client: " << buf << std::endl;
+
+                // Send a response message back to the client
+                std::string message = "Hello from server!";
+                n = send(clients[i], message.c_str(), message.length(), 0);
+                if (n < 0) {
+                    perror("Error sending data to client");
+                    exit(EXIT_FAILURE);
+                }
+            }
+        }
+    }
+
+    // Close all connected client sockets
+    for (int i = 0; i < clients.size(); i++) {
+        close(clients[i]);
+    }
+
+    // Close the server socket
+    close(server_fd);
+
+    return 0;
+}
 
 int main (int argc, char **argv)
 {
