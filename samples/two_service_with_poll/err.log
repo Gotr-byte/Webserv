@@ -1,0 +1,48 @@
+two_service_with_poll.c:103:44: error: use of undeclared identifier 'udp_server_address'
+    if (bind(udp_sock, (struct sockaddr *)&udp_server_address, sizeof(udp_server_address)) < 0) {
+                                           ^
+two_service_with_poll.c:103:71: error: use of undeclared identifier 'udp_server_address'
+    if (bind(udp_sock, (struct sockaddr *)&udp_server_address, sizeof(udp_server_address)) < 0) {
+                                                                      ^
+two_service_with_poll.c:103:14: error: use of undeclared identifier 'udp_sock'; did you mean 'udp_sockfd'?
+    if (bind(udp_sock, (struct sockaddr *)&udp_server_address, sizeof(udp_server_address)) < 0) {
+             ^~~~~~~~
+             udp_sockfd
+two_service_with_poll.c:69:22: note: 'udp_sockfd' declared here
+    int http_sockfd, udp_sockfd;
+                     ^
+two_service_with_poll.c:110:5: error: implicit declaration of function 'listen_for_connections' is invalid in C99 [-Werror,-Wimplicit-function-declaration]
+    listen_for_connections(tcp_sock, udp_sock);
+    ^
+two_service_with_poll.c:110:28: error: use of undeclared identifier 'tcp_sock'
+    listen_for_connections(tcp_sock, udp_sock);
+                           ^
+two_service_with_poll.c:110:38: error: use of undeclared identifier 'udp_sock'
+    listen_for_connections(tcp_sock, udp_sock);
+                                     ^
+two_service_with_poll.c:113:11: error: use of undeclared identifier 'tcp_sock'
+    close(tcp_sock);
+          ^
+two_service_with_poll.c:114:11: error: use of undeclared identifier 'udp_sock'; did you mean 'udp_sockfd'?
+    close(udp_sock);
+          ^~~~~~~~
+          udp_sockfd
+two_service_with_poll.c:69:22: note: 'udp_sockfd' declared here
+    int http_sockfd, udp_sockfd;
+                     ^
+two_service_with_poll.c:119:6: error: conflicting types for 'listen_for_connections'
+void listen_for_connections(int tcp_sock, int udp_sock) {
+     ^
+two_service_with_poll.c:110:5: note: previous implicit declaration is here
+    listen_for_connections(tcp_sock, udp_sock);
+    ^
+two_service_with_poll.c:157:29: error: use of undeclared identifier 'BUF_SIZE'
+                char buffer[BUF_SIZE];
+                            ^
+two_service_with_poll.c:158:35: error: use of undeclared identifier 'BUF_SIZE'
+                memset(buffer, 0, BUF_SIZE);
+                                  ^
+two_service_with_poll.c:159:64: error: use of undeclared identifier 'BUF_SIZE'
+                ssize_t num_bytes = recvfrom(udp_sock, buffer, BUF_SIZE, 0, (struct sockaddr *)&client_address, &client_address_len);
+                                                               ^
+12 errors generated.
