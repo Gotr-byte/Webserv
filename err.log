@@ -1,0 +1,105 @@
+In file included from main.cpp:22:
+In file included from /Library/Developer/CommandLineTools/SDKs/MacOSX10.15.sdk/usr/include/unistd.h:72:
+/Library/Developer/CommandLineTools/SDKs/MacOSX10.15.sdk/usr/include/sys/unistd.h:185:1: error: expected unqualified-id
+__BEGIN_DECLS
+^
+/Library/Developer/CommandLineTools/SDKs/MacOSX10.15.sdk/usr/include/sys/cdefs.h:71:32: note: expanded from macro '__BEGIN_DECLS'
+#define __BEGIN_DECLS   extern "C" {
+                               ^
+In file included from main.cpp:22:
+In file included from /Library/Developer/CommandLineTools/SDKs/MacOSX10.15.sdk/usr/include/unistd.h:72:
+/Library/Developer/CommandLineTools/SDKs/MacOSX10.15.sdk/usr/include/sys/unistd.h:205:1: error: expected unqualified-id
+__BEGIN_DECLS
+^
+/Library/Developer/CommandLineTools/SDKs/MacOSX10.15.sdk/usr/include/sys/cdefs.h:71:32: note: expanded from macro '__BEGIN_DECLS'
+#define __BEGIN_DECLS   extern "C" {
+                               ^
+In file included from main.cpp:22:
+/Library/Developer/CommandLineTools/SDKs/MacOSX10.15.sdk/usr/include/unistd.h:429:1: error: expected unqualified-id
+__BEGIN_DECLS
+^
+/Library/Developer/CommandLineTools/SDKs/MacOSX10.15.sdk/usr/include/sys/cdefs.h:71:32: note: expanded from macro '__BEGIN_DECLS'
+#define __BEGIN_DECLS   extern "C" {
+                               ^
+In file included from main.cpp:22:
+/Library/Developer/CommandLineTools/SDKs/MacOSX10.15.sdk/usr/include/unistd.h:506:1: error: expected unqualified-id
+__BEGIN_DECLS
+^
+/Library/Developer/CommandLineTools/SDKs/MacOSX10.15.sdk/usr/include/sys/cdefs.h:71:32: note: expanded from macro '__BEGIN_DECLS'
+#define __BEGIN_DECLS   extern "C" {
+                               ^
+In file included from main.cpp:22:
+/Library/Developer/CommandLineTools/SDKs/MacOSX10.15.sdk/usr/include/unistd.h:532:2: error: expected unqualified-id
+ __BEGIN_DECLS
+ ^
+/Library/Developer/CommandLineTools/SDKs/MacOSX10.15.sdk/usr/include/sys/cdefs.h:71:32: note: expanded from macro '__BEGIN_DECLS'
+#define __BEGIN_DECLS   extern "C" {
+                               ^
+In file included from main.cpp:22:
+/Library/Developer/CommandLineTools/SDKs/MacOSX10.15.sdk/usr/include/unistd.h:620:1: error: expected unqualified-id
+__BEGIN_DECLS
+^
+/Library/Developer/CommandLineTools/SDKs/MacOSX10.15.sdk/usr/include/sys/cdefs.h:71:32: note: expanded from macro '__BEGIN_DECLS'
+#define __BEGIN_DECLS   extern "C" {
+                               ^
+In file included from main.cpp:22:
+In file included from /Library/Developer/CommandLineTools/SDKs/MacOSX10.15.sdk/usr/include/unistd.h:635:
+/Library/Developer/CommandLineTools/SDKs/MacOSX10.15.sdk/usr/include/sys/select.h:111:1: error: expected unqualified-id
+__BEGIN_DECLS
+^
+/Library/Developer/CommandLineTools/SDKs/MacOSX10.15.sdk/usr/include/sys/cdefs.h:71:32: note: expanded from macro '__BEGIN_DECLS'
+#define __BEGIN_DECLS   extern "C" {
+                               ^
+In file included from main.cpp:22:
+/Library/Developer/CommandLineTools/SDKs/MacOSX10.15.sdk/usr/include/unistd.h:641:1: error: expected unqualified-id
+__BEGIN_DECLS
+^
+/Library/Developer/CommandLineTools/SDKs/MacOSX10.15.sdk/usr/include/sys/cdefs.h:71:32: note: expanded from macro '__BEGIN_DECLS'
+#define __BEGIN_DECLS   extern "C" {
+                               ^
+In file included from main.cpp:23:
+In file included from /Library/Developer/CommandLineTools/SDKs/MacOSX10.15.sdk/usr/include/arpa/inet.h:71:
+In file included from /Library/Developer/CommandLineTools/SDKs/MacOSX10.15.sdk/usr/include/netinet/in.h:81:
+/Library/Developer/CommandLineTools/SDKs/MacOSX10.15.sdk/usr/include/sys/socket.h:689:1: error: expected unqualified-id
+__BEGIN_DECLS
+^
+/Library/Developer/CommandLineTools/SDKs/MacOSX10.15.sdk/usr/include/sys/cdefs.h:71:32: note: expanded from macro '__BEGIN_DECLS'
+#define __BEGIN_DECLS   extern "C" {
+                               ^
+In file included from main.cpp:23:
+In file included from /Library/Developer/CommandLineTools/SDKs/MacOSX10.15.sdk/usr/include/arpa/inet.h:71:
+In file included from /Library/Developer/CommandLineTools/SDKs/MacOSX10.15.sdk/usr/include/netinet/in.h:659:
+/Library/Developer/CommandLineTools/SDKs/MacOSX10.15.sdk/usr/include/netinet6/in6.h:625:1: error: expected unqualified-id
+__BEGIN_DECLS
+^
+/Library/Developer/CommandLineTools/SDKs/MacOSX10.15.sdk/usr/include/sys/cdefs.h:71:32: note: expanded from macro '__BEGIN_DECLS'
+#define __BEGIN_DECLS   extern "C" {
+                               ^
+In file included from main.cpp:23:
+In file included from /Library/Developer/CommandLineTools/SDKs/MacOSX10.15.sdk/usr/include/arpa/inet.h:71:
+/Library/Developer/CommandLineTools/SDKs/MacOSX10.15.sdk/usr/include/netinet/in.h:665:1: error: expected unqualified-id
+__BEGIN_DECLS
+^
+/Library/Developer/CommandLineTools/SDKs/MacOSX10.15.sdk/usr/include/sys/cdefs.h:71:32: note: expanded from macro '__BEGIN_DECLS'
+#define __BEGIN_DECLS   extern "C" {
+                               ^
+In file included from main.cpp:23:
+/Library/Developer/CommandLineTools/SDKs/MacOSX10.15.sdk/usr/include/arpa/inet.h:73:1: error: expected unqualified-id
+__BEGIN_DECLS
+^
+/Library/Developer/CommandLineTools/SDKs/MacOSX10.15.sdk/usr/include/sys/cdefs.h:71:32: note: expanded from macro '__BEGIN_DECLS'
+#define __BEGIN_DECLS   extern "C" {
+                               ^
+In file included from main.cpp:27:
+In file included from /Library/Developer/CommandLineTools/SDKs/MacOSX10.15.sdk/usr/include/poll.h:23:
+/Library/Developer/CommandLineTools/SDKs/MacOSX10.15.sdk/usr/include/sys/poll.h:107:1: error: expected unqualified-id
+__BEGIN_DECLS
+^
+/Library/Developer/CommandLineTools/SDKs/MacOSX10.15.sdk/usr/include/sys/cdefs.h:71:32: note: expanded from macro '__BEGIN_DECLS'
+#define __BEGIN_DECLS   extern "C" {
+                               ^
+main.cpp:32:12: error: function definition is not allowed here
+int main() {
+           ^
+14 errors generated.
+make: *** [main.o] Error 1

@@ -1,5 +1,5 @@
 NAME := Webserv
-SRCFILES := main.cpp
+SRCFILES := main.cpp Configuration.cpp
 
 CC = c++
 CFLAGS = -std=c++98 -Wextra -Werror -Wall
