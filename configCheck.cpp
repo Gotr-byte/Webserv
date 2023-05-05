@@ -39,13 +39,13 @@ void	checkServerBlock(std::fstream	&istream, std::string	&line)
 	}
 }
 
-int	checkConfig(std::string PATH)
+int	checkConfig(std::string path)
 {
 	std::fstream	istream;
 	std::string		line;
 	int				server_counter;
 
-	istream.open(PATH, std::fstream::in);
+	istream.open(path, std::fstream::in);
 
 	while (!getline(istream, line).eof())
 	{
