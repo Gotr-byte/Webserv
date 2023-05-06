@@ -21,6 +21,29 @@
 #define LISTENING_SOCKETS_NUMBER 2
 #define ETC_PORT 4003
 
+#include <fstream>
+#include <string>
+
+std::string read_file(const std::string& filename) {
+    std::ifstream file(filename.c_str());
+
+    if (!file) {
+        std::cerr << "Error opening file " << filename << std::endl;
+        return "";
+    }
+
+    std::string content;
+    char c;
+
+    while (file.get(c)) {
+        content += c;
+    }
+
+    file.close();
+
+    return content;
+}
+
 static int handleRequest(int port) {
 
     //for single socket
@@ -117,7 +140,6 @@ static int handleRequest(int port) {
             perror("Error polling sockets");
             exit(EXIT_FAILURE);
         }
-        // printf("err check\n");
         // Check for events on the server socket
         if (fds[0].revents & POLLIN) {
 
@@ -135,7 +157,7 @@ static int handleRequest(int port) {
 
             // Initialize the pollfd struct for the client socket
             fds[clients.size() + LISTENING_SOCKETS_NUMBER - 1].fd = client_fd;
-            fds[clients.size() + LISTENING_SOCKETS_NUMBER - 1].events = POLLIN;
+            fds[clients.size() + LISTENING_SOCKETS_NUMBER - 1].events = POLLOUT;
             fds[clients.size() + LISTENING_SOCKETS_NUMBER - 1].revents = 0;
 
             std::cout << "New client connected on server fd\n";
@@ -162,28 +184,6 @@ static int handleRequest(int port) {
 
             std::cout << "New client connected on etc fd\n";
         }
-        // if (fds[2].revents & POLLOUT)
-        // {
-        //     // Accept a new connection from a client
-        //     struct sockaddr_in client_addr;
-        //     socklen_t client_len = sizeof(client_addr);
-        //     int client_fd = accept(etc_fd, (struct sockaddr *)&client_addr, &client_len);
-        //     if (client_fd < 0)
-        //     {
-        //         perror("Error accepting client connection on etc");
-        //         exit(EXIT_FAILURE);
-        //     }
-
-        //     // Add the client socket to the list of connected clients
-        //     clients.push_back(client_fd);
-
-        //     // Initialize the pollfd struct for the client socket
-        //     fds[clients.size() + LISTENING_SOCKETS_NUMBER - 1].fd = client_fd;
-        //     fds[clients.size() + LISTENING_SOCKETS_NUMBER - 1].events = POLLOUT;
-        //     fds[clients.size() + LISTENING_SOCKETS_NUMBER - 1].revents = 0;
-
-        //     std::cout << "New client connected on etc fd\n";
-        // }
         // Check for events on any of the connected client sockets
         for (unsigned long i = 0; i < clients.size(); i++) 
         {
@@ -204,14 +204,17 @@ static int handleRequest(int port) {
             if (fds[i + LISTENING_SOCKETS_NUMBER].revents & POLLOUT)
             {
             //Send data to client
-                std::string message = "HTTP/1.1 200 OK\nContent-Type: text/plain\nContent-Length: 14\n\nGoodbye World!";
+                std::string http_response = "HTTP/1.1 200 OK\nContent-Type: text/html\nContent-Length: 159\n\n";
+                std::string filename = "prototype.html";
+                std::string content = read_file(filename);
+                std::string message = http_response + content;
                 int s = send(clients[i], message.c_str(), message.length(), 0);
                 if (s < 0)
                 {
                     perror("Error sending data to client");
                     exit(EXIT_FAILURE);
                 }
-                sleep(60);
+                sleep(10); // this is temporary
             }
 
         }
