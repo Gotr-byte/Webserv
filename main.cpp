@@ -24,7 +24,28 @@
 #include <fstream>
 #include <string>
 
-std::string read_file(const std::string& filename) {
+
+// static void handle_root(int connfd) {
+//     char* response = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n<h1>Welcome to the root page</h1>";
+//     write(connfd, response, strlen(response));
+// }
+
+// static void handle_page1(int connfd) {
+//     char* response = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n<h1>Welcome to page 1</h1>";
+//     write(connfd, response, strlen(response));
+// }
+
+// static void handle_page2(int connfd) {
+//     char* response = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n<h1>Welcome to page 2</h1>";
+//     write(connfd, response, strlen(response));
+// }
+
+// static void handle_not_found(int connfd) {
+//     char* response = "HTTP/1.1 404 Not Found\r\nContent-Type: text/html\r\n\r\n<h1>404 Not Found</h1>";
+//     write(connfd, response, strlen(response));
+// }
+
+static std::string read_file(const std::string& filename) {
     std::ifstream file(filename.c_str());
 
     if (!file) {
@@ -45,9 +66,6 @@ std::string read_file(const std::string& filename) {
 }
 
 static int handleRequest(int port) {
-
-    //for single socket
-    // etc_port = 0;
 
     // Create a socket for the server
     int server_fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -135,7 +153,7 @@ static int handleRequest(int port) {
 
         // Wait for events on any of the sockets
         int nfds = clients.size() + LISTENING_SOCKETS_NUMBER;
-        int res = poll(fds, nfds, -1);
+        int res = poll(fds, nfds, 200);
         if (res < 0) {
             perror("Error polling sockets");
             exit(EXIT_FAILURE);
@@ -214,7 +232,10 @@ static int handleRequest(int port) {
                     perror("Error sending data to client");
                     exit(EXIT_FAILURE);
                 }
-                sleep(10); // this is temporary
+
+
+
+                sleep(1); // this is temporary
             }
 
         }
