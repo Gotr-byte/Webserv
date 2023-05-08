@@ -1,0 +1,8 @@
+POST / HTTP/1.1
+Host: localhost:8000
+User-Agent: curl/7.64.1
+Accept: */*
+Content-Type: application/octet-stream
+Content-Length: 35
+
+curl -X GET localhost:8080/test.txt
