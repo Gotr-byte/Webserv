@@ -21,7 +21,6 @@ static void	checkLocationBlock(std::fstream &istream, std::string &line)
 
 static void	checkServerBlock(std::fstream	&istream, std::string	&line)
 {
-	// int ret = 0;
 	if (line != "<server>")
 		throw std::logic_error("ServerBlock has to start with <server>");
 	while (line != "</server>")
@@ -29,10 +28,8 @@ static void	checkServerBlock(std::fstream	&istream, std::string	&line)
 		if (istream.eof())
 			throw std::logic_error("Unexpected end of ServerBlock");
 		getline(istream, line);
-			std::cout << line << std::endl;
-		if (line.find("<location>") != std::string::npos){
+		if (line.find("<location>") != std::string::npos)
 			checkLocationBlock(istream, line);
-		}
 		else if (line.find("</location>") != std::string::npos)
 			throw std::logic_error("Incorrect LocationBlock format");
 		if (line.find("<server>") != std::string::npos)
@@ -56,12 +53,6 @@ int	ConfigCheck::checkConfig(std::string path)
 			server_counter++;
 		}
 	}
-	std::cout << server_counter << std::endl;
 	return server_counter;
 }
 
-// int main()
-// {
-// 	checkConfig("./config_files/sample.config");
-// 	return 1;
-// }
