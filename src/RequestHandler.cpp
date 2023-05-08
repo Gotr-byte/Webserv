@@ -1,49 +1,9 @@
-#include <iostream>
-#include <fstream>
-#include "./includes/Configuration.hpp"
+#include "../includes/RequestHandler.hpp"
 
-#include <iostream>
-#include <cstdlib>
-#include <cstdio>
-#include <cstring>
-#include <vector>
-#include <poll.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <fcntl.h>
-#include <stdio.h>
-
-#define MAX_CLIENTS 10
 #define BUF_SIZE 4096
 #define LISTENING_SOCKETS_NUMBER 2
-#define ETC_PORT 4003
-
-#include <fstream>
-#include <string>
-
-
-// static void handle_root(int connfd) {
-//     char* response = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n<h1>Welcome to the root page</h1>";
-//     write(connfd, response, strlen(response));
-// }
-
-// static void handle_page1(int connfd) {
-//     char* response = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n<h1>Welcome to page 1</h1>";
-//     write(connfd, response, strlen(response));
-// }
-
-// static void handle_page2(int connfd) {
-//     char* response = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n<h1>Welcome to page 2</h1>";
-//     write(connfd, response, strlen(response));
-// }
-
-// static void handle_not_found(int connfd) {
-//     char* response = "HTTP/1.1 404 Not Found\r\nContent-Type: text/html\r\n\r\n<h1>404 Not Found</h1>";
-//     write(connfd, response, strlen(response));
-// }
+#define ETC_PORT 4005
+#define BUFSIZE 1024
 
 static std::string read_file(const std::string& filename) {
     std::ifstream file(filename.c_str());
@@ -65,20 +25,34 @@ static std::string read_file(const std::string& filename) {
     return content;
 }
 
-static int handleRequest(int port) {
+int RequestHandler::handleRequest(int port) {
+    // int server_fd;
+    // int etc_fd;
+    // int opt;
+    // struct sockaddr_in server_addr;
+    // struct sockaddr_in server_addr_etc;
+    // struct sockaddr_in client_addr;
+    // std::vector<int> clients;
+    // struct pollfd fds[MAX_CLIENTS];
+    // socklen_t client_len;
+    // std::string http_response;
+    // std::string filename;
+    // std::string content;
+    // std::string message;
+
 
     // Create a socket for the server
-    int server_fd = socket(AF_INET, SOCK_STREAM, 0);
+    server_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (server_fd < 0) {
         perror("Error creating server socket");
         exit(EXIT_FAILURE);
     }
 
-    //set the socket to non blocking
-    // fcntl(server_fd, F_SETFL, O_NONBLOCK);
+    // set the socket to non blocking
+    fcntl(server_fd, F_SETFL, O_NONBLOCK);
 
     // Set the server socket options
-    int opt = 1;
+    opt = 1;
     if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt))) {
         perror("Error setting server socket options");
         exit(EXIT_FAILURE);
@@ -86,7 +60,7 @@ static int handleRequest(int port) {
 
 
     // Bind the server socket to a specific port
-    struct sockaddr_in server_addr;
+    
     memset(&server_addr, 0, sizeof(server_addr));
     server_addr.sin_family = AF_INET;
     server_addr.sin_addr.s_addr = INADDR_ANY;
@@ -103,8 +77,7 @@ static int handleRequest(int port) {
     }
 
     // int etc_fd = create_socket(etc_port, &server_addr);
-
-   int etc_fd = socket(AF_INET, SOCK_STREAM, 0);
+   etc_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (etc_fd < 0) {
         perror("Error creating server socket");
         exit(EXIT_FAILURE);
@@ -121,7 +94,6 @@ static int handleRequest(int port) {
     }
 
     // Bind the server socket to a specific port
-    struct sockaddr_in server_addr_etc;
     memset(&server_addr, 0, sizeof(server_addr));
     server_addr_etc.sin_family = AF_INET;
     server_addr_etc.sin_addr.s_addr = INADDR_ANY;
@@ -138,7 +110,6 @@ static int handleRequest(int port) {
     }
 
     // Initialize the pollfd struct for the server socket
-    struct pollfd fds[MAX_CLIENTS];
     memset(fds, 0, sizeof(fds));
     fds[0].fd = server_fd;
     fds[0].events = POLLIN;
@@ -146,7 +117,6 @@ static int handleRequest(int port) {
     fds[1].events = POLLIN;
 
     // Initialize the list of connected client sockets
-    std::vector<int> clients;
 
     // Start the main loop
     while (true) {
@@ -162,8 +132,7 @@ static int handleRequest(int port) {
         if (fds[0].revents & POLLIN) {
 
             // Accept a new connection from a client
-            struct sockaddr_in client_addr;
-            socklen_t client_len = sizeof(client_addr);
+            client_len = sizeof(client_addr);
             int client_fd = accept(server_fd, (struct sockaddr *)&client_addr, &client_len);
             if (client_fd < 0) {
                 perror("Error accepting client connection on addr");
@@ -183,8 +152,7 @@ static int handleRequest(int port) {
         if (fds[1].revents & POLLIN)
         {
             // Accept a new connection from a client
-            struct sockaddr_in client_addr;
-            socklen_t client_len = sizeof(client_addr);
+            client_len = sizeof(client_addr);
             int client_fd = accept(etc_fd, (struct sockaddr *)&client_addr, &client_len);
             if (client_fd < 0)
             {
@@ -197,9 +165,13 @@ static int handleRequest(int port) {
 
             // Initialize the pollfd struct for the client socket
             fds[clients.size() + LISTENING_SOCKETS_NUMBER - 1].fd = client_fd;
-            fds[clients.size() + LISTENING_SOCKETS_NUMBER - 1].events = POLLIN | POLLOUT;
+            fds[clients.size() + LISTENING_SOCKETS_NUMBER - 1].events = POLLOUT;
             fds[clients.size() + LISTENING_SOCKETS_NUMBER - 1].revents = 0;
 
+            char buffer[BUFSIZE] = {0};
+            read(client_fd, buffer, BUFSIZE);
+            char path[BUFSIZE] = {0};
+            sscanf(buffer, "GET %s", path);
             std::cout << "New client connected on etc fd\n";
         }
         // Check for events on any of the connected client sockets
@@ -217,23 +189,23 @@ static int handleRequest(int port) {
                     perror("Error receiving data from client");
                     exit(EXIT_FAILURE);
                 }
-                  std::cout << "Received message from client: " << buf << std::endl;
+                std::cout << "Received message from client: " << buf << std::endl;
+                // Find the requested path
+              
             }
             if (fds[i + LISTENING_SOCKETS_NUMBER].revents & POLLOUT)
             {
             //Send data to client
-                std::string http_response = "HTTP/1.1 200 OK\nContent-Type: text/html\nContent-Length: 159\n\n";
-                std::string filename = "prototype.html";
-                std::string content = read_file(filename);
-                std::string message = http_response + content;
+                http_response = "HTTP/1.1 200 OK\nContent-Type: text/html\nContent-Length: 159\n\n";
+                filename = "../HTML/prototype.html";
+                content = read_file(filename);
+                message = http_response + content;
                 int s = send(clients[i], message.c_str(), message.length(), 0);
                 if (s < 0)
                 {
                     perror("Error sending data to client");
                     exit(EXIT_FAILURE);
                 }
-
-
 
                 sleep(1); // this is temporary
             }
@@ -252,18 +224,4 @@ static int handleRequest(int port) {
     close(server_fd);
 
     return 0;
-}
-
-int main (int argc, char **argv)
-{
-  if (argc != 2)
-  {
-      std::cerr << "Error: invalid number of arguments, please enter one argument\n";
-      return 1;
-  }
-  Configuration conf;
-  if (conf.parseSetListen(argv[1], "listen"))
-    return 2;
-  std::cout << conf.listen << "\n";
-  handleRequest(conf.listen);
 }

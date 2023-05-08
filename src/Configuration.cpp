@@ -1,4 +1,4 @@
-#include "./includes/Configuration.hpp"
+#include "../includes/Configuration.hpp"
 
 int Configuration::parseSetListen(std::string filename, std::string parameter){
     std::ifstream file(filename.c_str());

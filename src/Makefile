@@ -1,12 +1,14 @@
 NAME := Webserv
-SRCFILES := main.cpp Configuration.cpp
-
+INC_DIR = ../includes
 CC = c++
-CFLAGS = -std=c++98 -Wextra -Werror -Wall
+CFLAGS = -std=c++98 -Wextra -Werror -Wall -I$(INC_DIR)
+SRCFILES := $(shell find . -iname "*.cpp")
 OBJS = $(SRCFILES:.cpp=.o)
+
 %o: %cpp
 	$(CC) $(CFLAGS) -c $(SRCFILES)
 all: $(NAME)
+
 
 $(NAME): $(OBJS)
 	$(CC) $(CFLAGS) $(OBJS) -o $(NAME)

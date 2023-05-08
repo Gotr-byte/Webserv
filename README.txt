@@ -1,3 +1,5 @@
+//Refactored code to OOP
+
 A project recreating the works of HTTP Webserver.
 
 //TODO make a page

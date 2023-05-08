@@ -1,10 +1,11 @@
-#include <iostream>
-#include <fcntl.h>
-#include <string>
-#include <fstream>
-#include <stdexcept>
+// #include <iostream>
+// #include <fcntl.h>
+// #include <string>
+// #include <fstream>
+// #include <stdexcept>
+#include "../includes/ConfigCheck.hpp"
 
-void	checkLocationBlock(std::fstream &istream, std::string &line)
+static void	checkLocationBlock(std::fstream &istream, std::string &line)
 {
 	while (line.find("</location>") == std::string::npos)
 	{
@@ -18,9 +19,9 @@ void	checkLocationBlock(std::fstream &istream, std::string &line)
 	}
 }
 
-void	checkServerBlock(std::fstream	&istream, std::string	&line)
+static void	checkServerBlock(std::fstream	&istream, std::string	&line)
 {
-	int ret = 0;
+	// int ret = 0;
 	if (line != "<server>")
 		throw std::logic_error("ServerBlock has to start with <server>");
 	while (line != "</server>")
@@ -39,11 +40,11 @@ void	checkServerBlock(std::fstream	&istream, std::string	&line)
 	}
 }
 
-int	checkConfig(std::string path)
+int	ConfigCheck::checkConfig(std::string path)
 {
 	std::fstream	istream;
 	std::string		line;
-	int				server_counter;
+	int				server_counter = 0;
 
 	istream.open(path, std::fstream::in);
 
@@ -59,8 +60,8 @@ int	checkConfig(std::string path)
 	return server_counter;
 }
 
-int main()
-{
-	checkConfig("./sample.config");
-	return 1;
-}
+// int main()
+// {
+// 	checkConfig("./config_files/sample.config");
+// 	return 1;
+// }
