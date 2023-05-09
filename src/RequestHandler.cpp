@@ -5,7 +5,8 @@
 #define ETC_PORT 4005
 #define BUFSIZE 1024
 
-static std::string read_file(const std::string& filename) {
+static std::string read_file(const std::string& filename)
+{
     std::ifstream file(filename.c_str());
 
     if (!file) {
@@ -26,20 +27,6 @@ static std::string read_file(const std::string& filename) {
 }
 
 int RequestHandler::handleRequest(int port) {
-    // int server_fd;
-    // int etc_fd;
-    // int opt;
-    // struct sockaddr_in server_addr;
-    // struct sockaddr_in server_addr_etc;
-    // struct sockaddr_in client_addr;
-    // std::vector<int> clients;
-    // struct pollfd fds[MAX_CLIENTS];
-    // socklen_t client_len;
-    // std::string http_response;
-    // std::string filename;
-    // std::string content;
-    // std::string message;
-
 
     // Create a socket for the server
     server_fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -144,7 +131,7 @@ int RequestHandler::handleRequest(int port) {
 
             // Initialize the pollfd struct for the client socket
             fds[clients.size() + LISTENING_SOCKETS_NUMBER - 1].fd = client_fd;
-            fds[clients.size() + LISTENING_SOCKETS_NUMBER - 1].events = POLLOUT;
+            fds[clients.size() + LISTENING_SOCKETS_NUMBER - 1].events = POLLIN;
             fds[clients.size() + LISTENING_SOCKETS_NUMBER - 1].revents = 0;
 
             std::cout << "New client connected on server fd\n";
@@ -184,14 +171,25 @@ int RequestHandler::handleRequest(int port) {
                 char buf[BUF_SIZE];
                 memset(buf, 0, BUF_SIZE);
                 int n = recv(clients[i], buf, BUF_SIZE, 0);
+                std::string HTTP_request(buf);
+                request["method"] = std::strtok(&HTTP_request[0], " ");
                 if (n < 0)
                 {
                     perror("Error receiving data from client");
                     exit(EXIT_FAILURE);
                 }
-                std::cout << "Received message from client: " << buf << std::endl;
+
+                std::map<std::string, char*>::iterator it = request.find("method");
+                for (it = request.begin(); it != request.end(); it++) {
+                    std::cout << "Key: " << it->first << ", Value: " << it->second << std::endl;
+                }
+
+                // std::cout << "Received message from client:\n" << token << std::endl;
+                
+                
                 // Find the requested path
-              
+                //buf is our whole request
+                
             }
             if (fds[i + LISTENING_SOCKETS_NUMBER].revents & POLLOUT)
             {
