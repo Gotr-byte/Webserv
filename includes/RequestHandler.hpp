@@ -15,6 +15,11 @@
 #include <string>
 #include <stdio.h>
 #include <map>
+#include <deque>
+#include <stdio.h>
+#include <string>
+#include <unistd.h>
+#include <sstream>
 
 #define MAX_CLIENTS 10
 
@@ -38,5 +43,10 @@ class RequestHandler
         std::string                     filename;
         std::string                     content;
         std::string                     message;
-        std::map<std::string, char*>    request;
+        std::map<std::string, std::string>    request;
+        char*                           line;
+        std::deque<std::string>         lines;
+        std::string                     HTTP_line;
+
+
 };

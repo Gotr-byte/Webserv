@@ -1,8 +1,9 @@
 #include "../includes/RequestHandler.hpp"
+#include <cstddef>
 
 #define BUF_SIZE 4096
 #define LISTENING_SOCKETS_NUMBER 2
-#define ETC_PORT 4005
+#define ETC_PORT 4008
 #define BUFSIZE 1024
 
 static std::string read_file(const std::string& filename)
@@ -24,6 +25,17 @@ static std::string read_file(const std::string& filename)
     file.close();
 
     return content;
+}
+
+// void tokenizing(std::deque<std::string>& lines)
+void tokenizing( std::map<std::string, std::string>& request, std::string line_to_tokenize)
+{
+    std::stringstream   tokenize_stream(line_to_tokenize);
+    std::string         value;
+    std::string         key;
+    std::getline(tokenize_stream, key, ' ');
+    std::getline(tokenize_stream, value, ' ');
+    request[key] = value;
 }
 
 int RequestHandler::handleRequest(int port) {
@@ -106,7 +118,8 @@ int RequestHandler::handleRequest(int port) {
     // Initialize the list of connected client sockets
 
     // Start the main loop
-    while (true) {
+    while (true)
+    {
 
         // Wait for events on any of the sockets
         int nfds = clients.size() + LISTENING_SOCKETS_NUMBER;
@@ -167,28 +180,49 @@ int RequestHandler::handleRequest(int port) {
             // printf("i equals %lu\n",i);
             if (fds[i + LISTENING_SOCKETS_NUMBER].revents & POLLIN) 
             {
+                std::string key;
                 // Receive data from the client
                 char buf[BUF_SIZE];
                 memset(buf, 0, BUF_SIZE);
                 int n = recv(clients[i], buf, BUF_SIZE, 0);
-                std::string HTTP_request(buf);
-                request["method"] = std::strtok(&HTTP_request[0], " ");
                 if (n < 0)
                 {
                     perror("Error receiving data from client");
                     exit(EXIT_FAILURE);
                 }
-
-                std::map<std::string, char*>::iterator it = request.find("method");
-                for (it = request.begin(); it != request.end(); it++) {
-                    std::cout << "Key: " << it->first << ", Value: " << it->second << std::endl;
+                std::string HTTP_request(buf);
+                // HTTP_requests.find()
+                // char *line = strtok(&HTTP_request[0], "\n");
+                line = std::strtok(&HTTP_request[0], "\n");
+                // request["method"] = get_method(&line);
+                while (line != NULL) {
+                    std::string strLine(line);
+                    lines.push_back(strLine);
+                    line = strtok(NULL, "\n");
                 }
-
-                // std::cout << "Received message from client:\n" << token << std::endl;
-                
-                
-                // Find the requested path
+                // std::cout << line;
+                if(!lines.empty())
+                    request["method:"] = std::strtok(&lines.front()[0], " ");
+                if(!lines.empty())
+                    request["location:"] = std::strtok(NULL, " ");
+                if(!lines.empty())
+                    request["HTTP_version:"] = std::strtok(NULL, " ");
+                if(!lines.empty())
+                    lines.pop_front();
+                while(!lines.empty())
+                {
+                    if(!lines.empty())
+                        tokenizing(request, lines.front());
+                    lines.pop_front();
+                }
+                // std::map<std::string, std::string>::iterator it = request.begin();
+                // for (it = request.begin(); it != request.end(); it++) {
+                //     std::cout << "Key: " << it->first << ", Value: " << it->second <<std::endl;
+                // }
                 //buf is our whole request
+                request.clear();
+                lines.clear();
+                sleep(1);
                 
             }
             if (fds[i + LISTENING_SOCKETS_NUMBER].revents & POLLOUT)
@@ -205,7 +239,7 @@ int RequestHandler::handleRequest(int port) {
                     exit(EXIT_FAILURE);
                 }
 
-                sleep(1); // this is temporary
+                sleep(10); // this is temporary
             }
 
         }
