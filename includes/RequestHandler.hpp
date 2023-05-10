@@ -14,25 +14,39 @@
 #include <fstream>
 #include <string>
 #include <stdio.h>
+#include <map>
+#include <deque>
+#include <stdio.h>
+#include <string>
+#include <unistd.h>
+#include <sstream>
 
 #define MAX_CLIENTS 10
+
 
 class RequestHandler
 {
     public:
         int                 handleRequest(int port);
     private:
-        int                 server_fd;
-        int                 etc_fd;
-        int                 opt;
-        struct sockaddr_in  server_addr;
-        struct sockaddr_in  server_addr_etc;
-        struct sockaddr_in  client_addr;
-        std::vector<int>    clients;
-        struct pollfd       fds[MAX_CLIENTS];
-        socklen_t           client_len;
-        std::string         http_response;
-        std::string         filename;
-        std::string         content;
-        std::string         message;
+        int                             server_fd;
+        int                             etc_fd;
+        int                             opt;
+        struct sockaddr_in              server_addr;
+        struct sockaddr_in              server_addr_etc;
+        struct sockaddr_in              client_addr;
+        std::vector<int>                clients;
+        std::vector<char*>              HTTP_requests;
+        struct pollfd                   fds[MAX_CLIENTS];
+        socklen_t                       client_len;
+        std::string                     http_response;
+        std::string                     filename;
+        std::string                     content;
+        std::string                     message;
+        std::map<std::string, std::string>    request;
+        char*                           line;
+        std::deque<std::string>         lines;
+        std::string                     HTTP_line;
+
+
 };

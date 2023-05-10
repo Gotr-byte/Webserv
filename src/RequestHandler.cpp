@@ -1,11 +1,13 @@
 #include "../includes/RequestHandler.hpp"
+#include <cstddef>
 
 #define BUF_SIZE 4096
 #define LISTENING_SOCKETS_NUMBER 2
-#define ETC_PORT 4005
+#define ETC_PORT 4008
 #define BUFSIZE 1024
 
-static std::string read_file(const std::string& filename) {
+static std::string read_file(const std::string& filename)
+{
     std::ifstream file(filename.c_str());
 
     if (!file) {
@@ -25,21 +27,18 @@ static std::string read_file(const std::string& filename) {
     return content;
 }
 
-int RequestHandler::handleRequest(int port) {
-    // int server_fd;
-    // int etc_fd;
-    // int opt;
-    // struct sockaddr_in server_addr;
-    // struct sockaddr_in server_addr_etc;
-    // struct sockaddr_in client_addr;
-    // std::vector<int> clients;
-    // struct pollfd fds[MAX_CLIENTS];
-    // socklen_t client_len;
-    // std::string http_response;
-    // std::string filename;
-    // std::string content;
-    // std::string message;
+// void tokenizing(std::deque<std::string>& lines)
+void tokenizing( std::map<std::string, std::string>& request, std::string line_to_tokenize)
+{
+    std::stringstream   tokenize_stream(line_to_tokenize);
+    std::string         value;
+    std::string         key;
+    std::getline(tokenize_stream, key, ' ');
+    std::getline(tokenize_stream, value, ' ');
+    request[key] = value;
+}
 
+int RequestHandler::handleRequest(int port) {
 
     // Create a socket for the server
     server_fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -119,7 +118,8 @@ int RequestHandler::handleRequest(int port) {
     // Initialize the list of connected client sockets
 
     // Start the main loop
-    while (true) {
+    while (true)
+    {
 
         // Wait for events on any of the sockets
         int nfds = clients.size() + LISTENING_SOCKETS_NUMBER;
@@ -144,7 +144,7 @@ int RequestHandler::handleRequest(int port) {
 
             // Initialize the pollfd struct for the client socket
             fds[clients.size() + LISTENING_SOCKETS_NUMBER - 1].fd = client_fd;
-            fds[clients.size() + LISTENING_SOCKETS_NUMBER - 1].events = POLLOUT;
+            fds[clients.size() + LISTENING_SOCKETS_NUMBER - 1].events = POLLIN;
             fds[clients.size() + LISTENING_SOCKETS_NUMBER - 1].revents = 0;
 
             std::cout << "New client connected on server fd\n";
@@ -180,6 +180,7 @@ int RequestHandler::handleRequest(int port) {
             // printf("i equals %lu\n",i);
             if (fds[i + LISTENING_SOCKETS_NUMBER].revents & POLLIN) 
             {
+                std::string key;
                 // Receive data from the client
                 char buf[BUF_SIZE];
                 memset(buf, 0, BUF_SIZE);
@@ -189,9 +190,40 @@ int RequestHandler::handleRequest(int port) {
                     perror("Error receiving data from client");
                     exit(EXIT_FAILURE);
                 }
-                std::cout << "Received message from client: " << buf << std::endl;
-                // Find the requested path
-              
+                std::string HTTP_request(buf);
+                // HTTP_requests.find()
+                // char *line = strtok(&HTTP_request[0], "\n");
+                line = std::strtok(&HTTP_request[0], "\n");
+                // request["method"] = get_method(&line);
+                while (line != NULL) {
+                    std::string strLine(line);
+                    lines.push_back(strLine);
+                    line = strtok(NULL, "\n");
+                }
+                // std::cout << line;
+                if(!lines.empty())
+                    request["method:"] = std::strtok(&lines.front()[0], " ");
+                if(!lines.empty())
+                    request["location:"] = std::strtok(NULL, " ");
+                if(!lines.empty())
+                    request["HTTP_version:"] = std::strtok(NULL, " ");
+                if(!lines.empty())
+                    lines.pop_front();
+                while(!lines.empty())
+                {
+                    if(!lines.empty())
+                        tokenizing(request, lines.front());
+                    lines.pop_front();
+                }
+                // std::map<std::string, std::string>::iterator it = request.begin();
+                // for (it = request.begin(); it != request.end(); it++) {
+                //     std::cout << "Key: " << it->first << ", Value: " << it->second <<std::endl;
+                // }
+                //buf is our whole request
+                request.clear();
+                lines.clear();
+                sleep(1);
+                
             }
             if (fds[i + LISTENING_SOCKETS_NUMBER].revents & POLLOUT)
             {
@@ -207,7 +239,7 @@ int RequestHandler::handleRequest(int port) {
                     exit(EXIT_FAILURE);
                 }
 
-                sleep(1); // this is temporary
+                sleep(10); // this is temporary
             }
 
         }
