@@ -27,13 +27,16 @@
 class RequestHandler
 {
     public:
-        int                 handleRequest(int port);
+        int                             handleRequest(int port);
+        void                            create_listening_sock(int port);
+        void                            create_pollfd_struct();
+        void                            server_loop();
     private:
+        int                             nfds;
+        int                             res;
         int                             server_fd;
-        int                             etc_fd;
         int                             opt;
         struct sockaddr_in              server_addr;
-        struct sockaddr_in              server_addr_etc;
         struct sockaddr_in              client_addr;
         std::vector<int>                clients;
         std::vector<char*>              HTTP_requests;
@@ -47,6 +50,6 @@ class RequestHandler
         char*                           line;
         std::deque<std::string>         lines;
         std::string                     HTTP_line;
-
-
+        //listening socket fd
+        std::vector<int>                listening_socket_fd;
 };

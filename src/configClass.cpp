@@ -75,7 +75,7 @@ void configClass::setConfProps(std::string path, int socket_no)
 	}
 	config.close();
 	std::map<std::string, std::string>::iterator it1;
-	int i = 0;
+	// int i = 0;
 
 	// std::cout << "PROPERTIES:\n";
 	// for (it1 = properties.begin(); it1 != properties.end(); it1++)
