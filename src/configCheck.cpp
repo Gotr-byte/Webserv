@@ -53,6 +53,7 @@ int	ConfigCheck::checkConfig(std::string path)
 			server_counter++;
 		}
 	}
+	istream.close();
 	return server_counter;
 }
 
