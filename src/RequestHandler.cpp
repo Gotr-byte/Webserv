@@ -144,7 +144,7 @@ int RequestHandler::handleRequest(int port) {
 
             // Initialize the pollfd struct for the client socket
             fds[clients.size() + LISTENING_SOCKETS_NUMBER - 1].fd = client_fd;
-            fds[clients.size() + LISTENING_SOCKETS_NUMBER - 1].events = POLLIN;
+            fds[clients.size() + LISTENING_SOCKETS_NUMBER - 1].events = POLLIN|POLLOUT;
             fds[clients.size() + LISTENING_SOCKETS_NUMBER - 1].revents = 0;
 
             std::cout << "New client connected on server fd\n";
@@ -178,7 +178,7 @@ int RequestHandler::handleRequest(int port) {
         for (unsigned long i = 0; i < clients.size(); i++) 
         {
             // printf("i equals %lu\n",i);
-            if (fds[i + LISTENING_SOCKETS_NUMBER].revents & POLLIN) 
+            if (fds[i + LISTENING_SOCKETS_NUMBER].revents & POLLIN|POLLOUT) 
             {
                 std::string key;
                 // Receive data from the client
@@ -215,22 +215,25 @@ int RequestHandler::handleRequest(int port) {
                         tokenizing(request, lines.front());
                     lines.pop_front();
                 }
-                // std::map<std::string, std::string>::iterator it = request.begin();
-                // for (it = request.begin(); it != request.end(); it++) {
-                //     std::cout << "Key: " << it->first << ", Value: " << it->second <<std::endl;
-                // }
-                //buf is our whole request
-                request.clear();
-                lines.clear();
-                sleep(1);
+                //TODO check request validity
                 
-            }
-            if (fds[i + LISTENING_SOCKETS_NUMBER].revents & POLLOUT)
-            {
-            //Send data to client
-                http_response = "HTTP/1.1 200 OK\nContent-Type: text/html\nContent-Length: 159\n\n";
-                filename = "../HTML/prototype.html";
+                std::cout << ".." << request["location:"] << "\n";
+
+                std::map<std::string, std::string>::iterator it = request.begin();
+                for (it = request.begin(); it != request.end(); it++) {
+                    std::cout << "Key: " << it->first << ", Value: " << it->second <<std::endl;
+                }
+                //buf is our whole request
+
+                // filename = "../HTML/prototype.html";
+                filename = ".." + request["location:"];
+                std::cout << filename << "\n";
                 content = read_file(filename);
+                std::stringstream int_to_string;
+                int_to_string << content.length();
+                std::string content_length = int_to_string.str();
+                http_response = "HTTP/1.1 200 OK\nContent-Type: text/html\nContent-Length:" + content_length;
+                http_response = http_response + "\n\n";
                 message = http_response + content;
                 int s = send(clients[i], message.c_str(), message.length(), 0);
                 if (s < 0)
@@ -239,8 +242,27 @@ int RequestHandler::handleRequest(int port) {
                     exit(EXIT_FAILURE);
                 }
 
-                sleep(10); // this is temporary
+                request.clear();
+                lines.clear();
+                sleep(1);
+                
             }
+            // if (fds[i + LISTENING_SOCKETS_NUMBER].revents & POLLOUT)
+            // {
+            // //Send data to client
+            //     http_response = "HTTP/1.1 200 OK\nContent-Type: text/html\nContent-Length: 159\n\n";
+            //     filename = "../HTML/prototype.html";
+            //     content = read_file(filename);
+            //     message = http_response + content;
+            //     int s = send(clients[i], message.c_str(), message.length(), 0);
+            //     if (s < 0)
+            //     {
+            //         perror("Error sending data to client");
+            //         exit(EXIT_FAILURE);
+            //     }
+
+            //     sleep(10); // this is temporary
+            // }
 
         }
         //TODO add usleep here for performance?
