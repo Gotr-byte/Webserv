@@ -50,6 +50,7 @@ class RequestHandler
         char*                           line;
         std::deque<std::string>         lines;
         std::string                     HTTP_line;
+        std::string content_type;
         //listening socket fd
         std::vector<int>                listening_socket_fd;
 };

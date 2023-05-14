@@ -80,9 +80,9 @@ void RequestHandler::create_pollfd_struct(void)
 {
     memset(fds, 0, sizeof(fds));
     fds[0].fd = listening_socket_fd[0];
-    fds[0].events = POLLIN;
+    fds[0].events = POLLIN|POLLOUT;
     fds[1].fd = listening_socket_fd[1];
-    fds[1].events = POLLIN;
+    fds[1].events = POLLIN|POLLOUT;
 }
 
 void RequestHandler::server_loop()
@@ -187,13 +187,28 @@ void RequestHandler::server_loop()
                     std::cout << "Key: " << it->first << ", Value: " << it->second <<std::endl;
                 }
                 //buf is our whole request
+                std::cout << request["location:"] << "\n";
+                std::cout << "LOOK BELOW\n";
+                std::cout << request["location:"].substr(0, 6) << "\n";
+                if (request["location:"].substr(0, 6) =="/file/")
+                {
+                    content_type = " text/txt";
+                    std::cout << "WE FOUND THE files folder SIRE!\n"; 
+
+                }
+                if (request["location:"].substr(0, 6) == "/HTML/")
+                {
+                    content_type = " text/html";
+                    std::cout << "WE FOUND THE HTML SIRE!\n"; 
+                }
                 filename = ".." + request["location:"];
                 std::cout << filename << "\n";
                 content = read_file(filename);
                 std::stringstream int_to_string;
                 int_to_string << content.length();
                 std::string content_length = int_to_string.str();
-                http_response = "HTTP/1.1 200 OK\nContent-Type: text/html\nContent-Length:" + content_length;
+                //the content type is dependant on the folder
+                http_response = "HTTP/1.1 200 OK\nContent-Type:" + content_type + "\nContent-Length:" + content_length;
                 http_response = http_response + "\n\n";
                 message = http_response + content;
                 int s = send(clients[i], message.c_str(), message.length(), 0);
