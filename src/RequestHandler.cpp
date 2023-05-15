@@ -6,7 +6,7 @@
 #define ETC_PORT 4008
 #define BUFSIZE 1024
 
-static std::string read_file(const std::string& filename)
+std::string RequestHandler::read_file(const std::string& filename)
 {
     std::ifstream file(filename.c_str());
 
@@ -27,8 +27,7 @@ static std::string read_file(const std::string& filename)
     return content;
 }
 
-// void tokenizing(std::deque<std::string>& lines)
-void tokenizing( std::map<std::string, std::string>& request, std::string line_to_tokenize)
+void RequestHandler::tokenizing( std::map<std::string, std::string>& request, std::string line_to_tokenize)
 {
     std::stringstream   tokenize_stream(line_to_tokenize);
     std::string         value;
@@ -135,13 +134,15 @@ void RequestHandler::server_loop()
 
             // Initialize the pollfd struct for the client socket
             fds[clients.size() + LISTENING_SOCKETS_NUMBER - 1].fd = client_fd;
-            fds[clients.size() + LISTENING_SOCKETS_NUMBER - 1].events = POLLOUT;
+            fds[clients.size() + LISTENING_SOCKETS_NUMBER - 1].events = POLLIN|POLLOUT;
             fds[clients.size() + LISTENING_SOCKETS_NUMBER - 1].revents = 0;
 
             char buffer[BUFSIZE] = {0};
             read(client_fd, buffer, BUFSIZE);
-            char path[BUFSIZE] = {0};
-            sscanf(buffer, "GET %s", path);
+            // char path[BUFSIZE] = {0};
+            // sscanf(buffer, "GET %s", path);
+            //Here we can actually state wich methods are granted use from this perticular listening port
+            std::cout << buffer << "\n";
             std::cout << "New client connected on etc fd\n";
         }
         // Check for events on any of the connected client sockets
@@ -181,45 +182,67 @@ void RequestHandler::server_loop()
                 }
                 //TODO check request validity
                 // if(request["location:"] == "../HTML/")
-                std::cout << ".." << request["location:"] << "\n";
+                // std::cout << ".." << request["location:"] << "\n";
                 std::map<std::string, std::string>::iterator it = request.begin();
                 for (it = request.begin(); it != request.end(); it++) {
                     std::cout << "Key: " << it->first << ", Value: " << it->second <<std::endl;
                 }
-                //buf is our whole request
-                std::cout << request["location:"] << "\n";
-                std::cout << "LOOK BELOW\n";
-                std::cout << request["location:"].substr(0, 6) << "\n";
-                if (request["location:"].substr(0, 6) =="/file/")
+                // Work in progress
+                // if(request["method:"].substr(0,4) == "POST")
+                // {
+                //     if(request["location"].substr(0, 6) == "/upload")
+                //     {
+                //         int num_bytes = read(fds[i].fd, buffer, sizeof(buffer));
+                //         if (num_bytes < 0) {
+                //             perror("read");
+                //             close(fds[i].fd);
+                //             fds[i].fd = 0;
+                //         }
+                //         else if (num_bytes == 0) {
+                //             std::cout << "Client disconnected" << std::endl;
+                //             close(fds[i].fd);
+                //             fds[i].fd = 0;
+                //         }
+                //         else {
+                //             std::cout << "Received " << num_bytes << " bytes from client" << std::endl;
+                //             // Write incoming data to file
+                //             FILE *fp = fopen("received_file", "wb");
+                //             fwrite(buffer, 1, num_bytes, fp);
+                //             fclose(fp);
+                //         }
+                //     }
+                // }
+                if(request["method:"].substr(0,3) == "GET")
                 {
-                    content_type = " text/txt";
-                    std::cout << "WE FOUND THE files folder SIRE!\n"; 
+                    if (request["location:"].substr(0, 6) =="/file/")
+                    {
+                        content_type = " image/jpeg";
+                    }
+                    if (request["location:"].substr(0, 6) == "/HTML/")
+                    {
+                        content_type = " text/html";
+                    }
+                    filename = ".." + request["location:"];
+                    std::cout << filename << "\n";
+                    content = read_file(filename);
+                    std::stringstream int_to_string;
+                    int_to_string << content.length();
+                    std::string content_length = int_to_string.str();
+                    http_response = "HTTP/1.1 200 OK\nContent-Type:" + content_type + "\nContent-Length:" + content_length;
+                    http_response = http_response + "\n\n";
+                    message = http_response + content;
+                    int s = send(clients[i], message.c_str(), message.length(), 0);
+                    if (s < 0)
+                    {
+                        perror("Error sending data to client");
+                        exit(EXIT_FAILURE);
+                    }
 
                 }
-                if (request["location:"].substr(0, 6) == "/HTML/")
-                {
-                    content_type = " text/html";
-                    std::cout << "WE FOUND THE HTML SIRE!\n"; 
-                }
-                filename = ".." + request["location:"];
-                std::cout << filename << "\n";
-                content = read_file(filename);
-                std::stringstream int_to_string;
-                int_to_string << content.length();
-                std::string content_length = int_to_string.str();
-                //the content type is dependant on the folder
-                http_response = "HTTP/1.1 200 OK\nContent-Type:" + content_type + "\nContent-Length:" + content_length;
-                http_response = http_response + "\n\n";
-                message = http_response + content;
-                int s = send(clients[i], message.c_str(), message.length(), 0);
-                if (s < 0)
-                {
-                    perror("Error sending data to client");
-                    exit(EXIT_FAILURE);
-                }
+                // close(clients[i]);
                 request.clear();
                 lines.clear();
-                sleep(1);
+                // sleep(1);
             }
         }
         //TODO add usleep here for performance?

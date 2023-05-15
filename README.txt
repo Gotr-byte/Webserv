@@ -1,3 +1,5 @@
+/Users/pbiederm/piottr/Webserv/Webserv/images/DD-Cosmos.jpeg
+
 //Refactored code to OOP
 
 A project recreating the works of HTTP Webserver.

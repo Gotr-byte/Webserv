@@ -31,6 +31,8 @@ class RequestHandler
         void                            create_listening_sock(int port);
         void                            create_pollfd_struct();
         void                            server_loop();
+        std::string                     read_file(const std::string& filename);
+        void                            tokenizing( std::map<std::string, std::string>& request, std::string line_to_tokenize);
     private:
         int                             nfds;
         int                             res;
@@ -51,6 +53,6 @@ class RequestHandler
         std::deque<std::string>         lines;
         std::string                     HTTP_line;
         std::string content_type;
-        //listening socket fd
         std::vector<int>                listening_socket_fd;
+        // char buffer[1024];
 };
