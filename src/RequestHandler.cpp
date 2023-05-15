@@ -214,21 +214,23 @@ void RequestHandler::server_loop()
                 // }
                 if(request["method:"].substr(0,3) == "GET")
                 {
-                    if (request["location:"].substr(0, 6) =="/file/")
-                    {
-                        content_type = " image/jpeg";
-                    }
-                    if (request["location:"].substr(0, 6) == "/HTML/")
-                    {
-                        content_type = " text/html";
-                    }
+                    // if (request["location:"].substr(0, 6) =="/file/")
+                    // {
+                    //     content_type = " image/txt";
+                    // }
+                    // if (request["location:"].substr(0, 6) == "/HTML/")
+                    // {
+                    //     content_type = " text/html";
+                    // }
                     filename = ".." + request["location:"];
                     std::cout << filename << "\n";
                     content = read_file(filename);
                     std::stringstream int_to_string;
                     int_to_string << content.length();
                     std::string content_length = int_to_string.str();
-                    http_response = "HTTP/1.1 200 OK\nContent-Type:" + content_type + "\nContent-Length:" + content_length;
+                    //can use sizeof instead
+                    // http_response = "HTTP/1.1 200 OK\nContent-Type:" + content_type + "\nContent-Length:" + content_length;
+                      http_response = "HTTP/1.1 200 OK\nContent-Length:" + content_length;
                     http_response = http_response + "\n\n";
                     message = http_response + content;
                     int s = send(clients[i], message.c_str(), message.length(), 0);
