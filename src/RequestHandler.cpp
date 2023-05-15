@@ -3,7 +3,7 @@
 
 #define BUF_SIZE 4096
 #define LISTENING_SOCKETS_NUMBER 2
-#define ETC_PORT 4008
+#define ETC_PORT 4007
 #define BUFSIZE 1024
 
 std::string RequestHandler::read_file(const std::string& filename)
@@ -183,10 +183,10 @@ void RequestHandler::server_loop()
                 //TODO check request validity
                 // if(request["location:"] == "../HTML/")
                 // std::cout << ".." << request["location:"] << "\n";
-                std::map<std::string, std::string>::iterator it = request.begin();
-                for (it = request.begin(); it != request.end(); it++) {
-                    std::cout << "Key: " << it->first << ", Value: " << it->second <<std::endl;
-                }
+                // std::map<std::string, std::string>::iterator it = request.begin();
+                // for (it = request.begin(); it != request.end(); it++) {
+                //     std::cout << "Key: " << it->first << ", Value: " << it->second <<std::endl;
+                // }
                 // Work in progress
                 // if(request["method:"].substr(0,4) == "POST")
                 // {
@@ -214,33 +214,128 @@ void RequestHandler::server_loop()
                 // }
                 if(request["method:"].substr(0,3) == "GET")
                 {
-                    // if (request["location:"].substr(0, 6) =="/file/")
-                    // {
-                    //     content_type = " image/txt";
-                    // }
-                    // if (request["location:"].substr(0, 6) == "/HTML/")
-                    // {
-                    //     content_type = " text/html";
-                    // }
-                    filename = ".." + request["location:"];
-                    std::cout << filename << "\n";
-                    content = read_file(filename);
-                    std::stringstream int_to_string;
-                    int_to_string << content.length();
-                    std::string content_length = int_to_string.str();
-                    //can use sizeof instead
-                    // http_response = "HTTP/1.1 200 OK\nContent-Type:" + content_type + "\nContent-Length:" + content_length;
-                      http_response = "HTTP/1.1 200 OK\nContent-Length:" + content_length;
-                    http_response = http_response + "\n\n";
-                    message = http_response + content;
-                    int s = send(clients[i], message.c_str(), message.length(), 0);
-                    if (s < 0)
+                    if(request["location:"].substr(0, 6) =="/file/")
                     {
-                        perror("Error sending data to client");
-                        exit(EXIT_FAILURE);
+                        filename = ".." + request["location:"];
+                        std::cout << filename << "\n";
+                        content = read_file(filename);
+                        std::stringstream int_to_string;
+                        int_to_string << content.length();
+                        std::string content_length = int_to_string.str();
+                        http_response = "HTTP/1.1 200 OK\nContent-Length:" + content_length;
+                        http_response = http_response + "\n\n";
+                        message = http_response + content;
+                        int s = send(clients[i], message.c_str(), message.length(), 0);
+                        if (s < 0)
+                        {
+                            perror("Error sending data to client");
+                            exit(EXIT_FAILURE);
+                        }    
                     }
-
+                    else if((request["location:"].substr(0, 6) == "/HTML/"))
+                    {
+                        filename = ".." + request["location:"];
+                        std::cout << filename << "\n";
+                        content = read_file(filename);
+                        std::stringstream int_to_string;
+                        int_to_string << content.length();
+                        std::string content_length = int_to_string.str();
+                        http_response = "HTTP/1.1 200 OK\nContent-Length:" + content_length;
+                        http_response = http_response + "\n\n";
+                        message = http_response + content;
+                        int s = send(clients[i], message.c_str(), message.length(), 0);
+                        if (s < 0)
+                        {
+                            perror("Error sending data to client");
+                            exit(EXIT_FAILURE);
+                        }    
+                    }
+                    if(strcmp(request["location:"].c_str(), "/cgi-bin/create_file.py") == 0)
+                    {
+                        pid_t pid = fork();
+                        if (pid == 0)
+                        {
+                            // Child process
+                            // std::cout << "***2***\n";
+                            // Execute the Python script using exec
+                            std::string cgi_to_run =  ".." + request["location:"];
+                            std::cout << cgi_to_run << "\n";
+                            execlp("python", "python", cgi_to_run.c_str(), NULL);
+                            
+                            // If exec returns, an error occurred
+                            perror("exec");
+                            exit(1);
+                        }
+                        else if (pid > 0)
+                        {
+                            // Parent process
+                            
+                            // Wait for the child process to finish
+                            int status;
+                            waitpid(pid, &status, 0);
+                            
+                            // Check the exit status of the child process
+                            if (WIFEXITED(status))
+                            {
+                                int exit_status = WEXITSTATUS(status);
+                                printf("Child process exited with status: %d\n", exit_status);
+                            }
+                            else
+                            {
+                                printf("Child process terminated abnormally.\n");
+                            }
+                        }
+                        else
+                        {
+                            // Fork failed
+                            perror("fork");
+                            exit(1);
+                        }
+                    }
+                    if(strcmp(request["location:"].c_str(), "/cgi-bin/remove_file.py") == 0)
+                    {
+                        pid_t pid = fork();
+                        if (pid == 0)
+                        {
+                            // Child process
+                            // std::cout << "***2***\n";
+                            // Execute the Python script using exec
+                            std::string cgi_to_run =  ".." + request["location:"];
+                            std::cout << cgi_to_run << "\n";
+                            execlp("python3", "python3", cgi_to_run.c_str(), NULL);
+                            
+                            // If exec returns, an error occurred
+                            perror("exec");
+                            exit(1);
+                        }
+                        else if (pid > 0)
+                        {
+                            // Parent process
+                            
+                            // Wait for the child process to finish
+                            int status;
+                            waitpid(pid, &status, 0);
+                            
+                            // Check the exit status of the child process
+                            if (WIFEXITED(status))
+                            {
+                                int exit_status = WEXITSTATUS(status);
+                                printf("Child process exited with status: %d\n", exit_status);
+                            }
+                            else
+                            {
+                                printf("Child process terminated abnormally.\n");
+                            }
+                        }
+                        else
+                        {
+                            // Fork failed
+                            perror("fork");
+                            exit(1);
+                        }
+                    }
                 }
+              
                 // close(clients[i]);
                 request.clear();
                 lines.clear();
