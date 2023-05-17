@@ -1,5 +1,13 @@
 #include "../includes/RequestHandler.hpp"
 #include <cstddef>
+#include <cstdlib>
+#include <limits>
+
+//TODO add usleep here for performance?
+//TODO closing client sockets that disconected?
+//TODO check request validity
+//TODO work on the structure of the poll request
+
 
 #define BUF_SIZE 4096
 #define LISTENING_SOCKETS_NUMBER 2
@@ -35,6 +43,23 @@ void RequestHandler::tokenizing( std::map<std::string, std::string>& request, st
     std::getline(tokenize_stream, key, ' ');
     std::getline(tokenize_stream, value, ' ');
     request[key] = value;
+}
+
+void RequestHandler::place_in_file(std::string line_to_file) {
+    FILE* fp = fopen("received_file", "wb");
+    if (fp == NULL) {
+        fprintf(stderr, "Failed to open the file.\n");
+        return;
+    }
+
+    size_t length = strlen(line_to_file.c_str());
+    std::cout << length << "\n";
+    // size_t bytesWritten = fwrite(line_to_file.c_str(), 1, length, fp);
+    // if (bytesWritten != length) {
+    //     fprintf(stderr, "Failed to write the entire string to the file.\n");
+    // }
+
+    fclose(fp);
 }
 
 void RequestHandler::create_listening_sock(int port)
@@ -84,9 +109,18 @@ void RequestHandler::create_pollfd_struct(void)
     fds[1].events = POLLIN|POLLOUT;
 }
 
+void RequestHandler::print_map()
+{
+    std::map<std::string, std::string>::const_iterator it;
+    for (it = request.begin(); it != request.end(); ++it) {
+        std::cout << "Key: " << it->first << ", Value: " << it->second << std::endl;
+    }
+}
+
 void RequestHandler::server_loop()
 {
     // Start the main loop
+    int number_of_clients = 0;
     while (true)
     {
 
@@ -141,7 +175,7 @@ void RequestHandler::server_loop()
             read(client_fd, buffer, BUFSIZE);
             // char path[BUFSIZE] = {0};
             // sscanf(buffer, "GET %s", path);
-            //Here we can actually state wich methods are granted use from this perticular listening port
+            // Here we can actually state wich methods are granted use from this perticular listening port
             std::cout << buffer << "\n";
             std::cout << "New client connected on etc fd\n";
         }
@@ -151,6 +185,8 @@ void RequestHandler::server_loop()
             // printf("i equals %lu\n",i);
             if (fds[i + LISTENING_SOCKETS_NUMBER].revents & POLLIN) 
             {
+                std::cout <<"Number of poll clients"<< number_of_clients << "\n";
+                number_of_clients++;
                 std::string key;
                 // Receive data from the client
                 char buf[BUF_SIZE];
@@ -163,8 +199,10 @@ void RequestHandler::server_loop()
                 }
                 std::string HTTP_request(buf);
                 line = std::strtok(&HTTP_request[0], "\n");
-                while (line != NULL) {
+                while (line != NULL)
+                {
                     std::string strLine(line);
+                    std::cout << strLine << "\n";
                     lines.push_back(strLine);
                     line = strtok(NULL, "\n");
                 }
@@ -174,43 +212,60 @@ void RequestHandler::server_loop()
                     request["location:"] = std::strtok(NULL, " ");
                 if(!lines.empty())
                     request["HTTP_version:"] = std::strtok(NULL, " ");
+                int new_line_count = 0;
                 while(!lines.empty())
                 {
                     if(!lines.empty())
-                        tokenizing(request, lines.front());
+                    {
+                        if(lines.front() == "\n" && new_line_count == 1)
+                        {
+                            lines.pop_front();
+                            break;
+                        }
+                        if(lines.front() == "\r")
+                        {
+                            new_line_count++;
+                        }
+                        else
+                        {
+                            tokenizing(request, lines.front());
+                        }
+                    }
                     lines.pop_front();
                 }
-                //TODO check request validity
-                // if(request["location:"] == "../HTML/")
-                // std::cout << ".." << request["location:"] << "\n";
-                // std::map<std::string, std::string>::iterator it = request.begin();
-                // for (it = request.begin(); it != request.end(); it++) {
-                //     std::cout << "Key: " << it->first << ", Value: " << it->second <<std::endl;
-                // }
-                // Work in progress
+                print_map();
+
                 // if(request["method:"].substr(0,4) == "POST")
                 // {
-                //     if(request["location"].substr(0, 6) == "/upload")
+                //     std::cout << "post is reached" << "\n";
+                //     while(!lines.empty())
                 //     {
-                //         int num_bytes = read(fds[i].fd, buffer, sizeof(buffer));
-                //         if (num_bytes < 0) {
-                //             perror("read");
-                //             close(fds[i].fd);
-                //             fds[i].fd = 0;
-                //         }
-                //         else if (num_bytes == 0) {
-                //             std::cout << "Client disconnected" << std::endl;
-                //             close(fds[i].fd);
-                //             fds[i].fd = 0;
-                //         }
-                //         else {
-                //             std::cout << "Received " << num_bytes << " bytes from client" << std::endl;
-                //             // Write incoming data to file
-                //             FILE *fp = fopen("received_file", "wb");
-                //             fwrite(buffer, 1, num_bytes, fp);
-                //             fclose(fp);
-                //         }
+                //         std::cout << lines.front() << "\n";
+                //         lines.pop_front();
                 //     }
+                //     // place_in_file(lines.front().c_str());
+                //     const char* httpFileSentResponse =
+                //                         "HTTP/1.1 200 OK\r\n"
+                //                         "Content-Type: text/html\r\n"
+                //                         "Content-Length: 135\r\n"
+                //                         "\r\n"
+                //                         "<!DOCTYPE html>\r\n"
+                //                         "<html>\r\n"
+                //                         "<head>\r\n"
+                //                         "    <title>File Upload</title>\r\n"
+                //                         "</head>\r\n"
+                //                         "<body>\r\n"
+                //                         "    <h1>File Upload Successful</h1>\r\n"
+                //                         "    <p>Your file has been successfully uploaded to the server.</p>\r\n"
+                //                         "</body>\r\n"
+                //                         "</html>\r\n";
+                //     int s = send(clients[i], httpFileSentResponse, strlen(httpFileSentResponse), 0);
+                //     if (s < 0)
+                //     {
+                //         perror("Error sending data to client");
+                //         exit(EXIT_FAILURE);
+                //     }
+                //     exit(EXIT_SUCCESS);
                 // }
                 if(request["method:"].substr(0,3) == "GET")
                 {
@@ -256,13 +311,11 @@ void RequestHandler::server_loop()
                         if (pid == 0)
                         {
                             // Child process
-                            // std::cout << "***2***\n";
                             // Execute the Python script using exec
                             std::string cgi_to_run =  ".." + request["location:"];
                             std::cout << cgi_to_run << "\n";
                             execlp("python", "python", cgi_to_run.c_str(), NULL);
                             
-                            // If exec returns, an error occurred
                             perror("exec");
                             exit(1);
                         }
@@ -298,7 +351,6 @@ void RequestHandler::server_loop()
                         if (pid == 0)
                         {
                             // Child process
-                            // std::cout << "***2***\n";
                             // Execute the Python script using exec
                             std::string cgi_to_run =  ".." + request["location:"];
                             std::cout << cgi_to_run << "\n";
@@ -342,8 +394,7 @@ void RequestHandler::server_loop()
                 // sleep(1);
             }
         }
-        //TODO add usleep here for performance?
-        //TODO closing client sockets that disconected?
+
     }
     // Close all connected client sockets
     for (unsigned long i = 0; i < clients.size(); i++) {

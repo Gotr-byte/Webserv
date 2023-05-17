@@ -18,6 +18,7 @@
 #include <deque>
 #include <stdio.h>
 #include <string>
+#include <string.h>
 #include <unistd.h>
 #include <sstream>
 
@@ -33,6 +34,9 @@ class RequestHandler
         void                            server_loop();
         std::string                     read_file(const std::string& filename);
         void                            tokenizing( std::map<std::string, std::string>& request, std::string line_to_tokenize);
+        void                            print_map();
+        void                            place_in_file(std::string line_to_file);
+        // void                            place_in_file(char* line_to_file);
     private:
         int                             nfds;
         int                             res;
@@ -54,5 +58,5 @@ class RequestHandler
         std::string                     HTTP_line;
         std::string content_type;
         std::vector<int>                listening_socket_fd;
-        // char buffer[1024];
+        // char                            HTTP_body[1024];
 };

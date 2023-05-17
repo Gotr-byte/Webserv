@@ -1,8 +1,3 @@
-// #include <iostream>
-// #include <fcntl.h>
-// #include <string>
-// #include <fstream>
-// #include <stdexcept>
 #include "../includes/ConfigCheck.hpp"
 
 static void	checkLocationBlock(std::fstream &config, std::string &line)
