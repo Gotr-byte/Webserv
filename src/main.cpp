@@ -1,7 +1,6 @@
 #include "../includes/Configuration.hpp"
-#include "../includes/RequestHandler.hpp"
+#include "../includes/HTTP_server.hpp"
 #include "../includes/ConfigCheck.hpp"
-
 
 int main (int argc, char **argv)
 {
@@ -12,7 +11,7 @@ int main (int argc, char **argv)
     }
     ConfigCheck config_checker;
     Configuration conf;
-    RequestHandler serverLoop;
+    HTTP_server serverLoop;
 
     config_checker.checkConfig(argv[1]);
     if (conf.parseSetListen(argv[1], "port:"))

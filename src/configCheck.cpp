@@ -51,4 +51,3 @@ int	ConfigCheck::checkConfig(std::string path)
 	config.close();
 	return server_counter;
 }
-

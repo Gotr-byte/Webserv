@@ -13,3 +13,31 @@ Sec-Fetch-Mode: navigate
 Sec-Fetch-User: ?1
 Sec-Fetch-Dest: document
 Accept-Encoding: gzip, deflate, br
+
+
+	void	Server::checkConnections(void)
+	{
+		int	newSocket;
+		int	numEvent;
+
+		while (69)
+		{
+			//printf("...WAITING FOR NEW CONNECTION...\n");
+			newSocket = accept(serverSocket, (struct sockaddr *) &address, (socklen_t *) &addressLen);
+			if (newSocket > 0)
+				addNewConnection(newSocket);
+			numEvent = poll(pollFds.data(), pollFds.size(), 300);
+			if (numEvent > 0)
+			{
+				for (size_t i = 0; i < pollFds.size(); i++)
+				{
+					if (pollFds[i].revents & POLLIN)
+						getRequest(pollFds[i].fd);
+					else if (pollFds[i].revents & POLLOUT)
+						postResponse(pollFds[i].fd, i);
+					else if (pollFds[i].revents & POLLERR)
+						error_handle("Error occured with a connection");
+				}
+			}
+		}
+	}
