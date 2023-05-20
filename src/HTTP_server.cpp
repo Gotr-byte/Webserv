@@ -10,7 +10,7 @@
 //Notes - should the requests be limited to bufsize 1024?
 
 #define BUF_SIZE 4096
-#define LISTENING_SOCKETS_NUMBER 2
+#define LISTENING_SOCKETS_NUMBER 1
 #define ETC_PORT 4013
 #define BUFSIZE 1024
 
@@ -52,16 +52,11 @@ void HTTP_server::create_listening_sock(int port){
 
     // set the socket to non blocking
     fcntl(server_fd, F_SETFL, O_NONBLOCK);
-
-    // Set the server socket options
     opt = 1;
     if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt))) {
         perror("Error setting server socket options");
         exit(EXIT_FAILURE);
     }
-
-    // Bind the server socket to a specific port
-    
     memset(&server_addr, 0, sizeof(server_addr));
     server_addr.sin_family = AF_INET;
     server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
@@ -295,7 +290,7 @@ void HTTP_server::server_loop()
     {
         server_conducts_poll();
         server_port_listening(listening_socket_fd[0], 0);
-        server_port_listening(listening_socket_fd[1], 1);
+        // server_port_listening(listening_socket_fd[1], 1);
         for (unsigned long i = 0; i < clients.size(); i++) 
         {
             if (fds[i + LISTENING_SOCKETS_NUMBER].revents & POLLIN)
