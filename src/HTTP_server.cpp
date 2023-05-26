@@ -10,8 +10,8 @@
 //Notes - should the requests be limited to bufsize 1024?
 
 #define BUF_SIZE 4096
-#define LISTENING_SOCKETS_NUMBER 1
-#define ETC_PORT 4013
+#define LISTENING_SOCKETS_NUMBER 2
+#define ETC_PORT 4012
 #define BUFSIZE 1024
 
 std::string HTTP_server::read_file(const std::string& filename){
@@ -82,12 +82,12 @@ void HTTP_server::create_pollfd_struct(void){
     fds[1].events = POLLIN|POLLOUT;
 }
 
-void HTTP_server::print_map(){
-    std::map<std::string, std::string>::const_iterator it;
-    for (it = request.begin(); it != request.end(); ++it) {
-        std::cout << "Key: " << it->first << ", Value: " << it->second << std::endl;
-    }
-}
+// void HTTP_server::print_map(){
+//     std::map<std::string, std::string>::const_iterator it;
+//     for (it = request.begin(); it != request.end(); ++it) {
+//         std::cout << "Key: " << it->first << ", Value: " << it->second << std::endl;
+//     }
+// }
 
 void HTTP_server::server_port_listening(int client_fd, int i){
     if (fds[i].revents & POLLIN)
@@ -138,16 +138,16 @@ void HTTP_server::server_mapping_request(int i){
     while (line != NULL)
     {
         std::string strLine(line);
-        std::cout << strLine << "\n";
+        // std::cout << strLine << "\n";
         lines.push_back(strLine);
         line = strtok(NULL, "\n");
     }
     if(!lines.empty())
-        request["method:"] = std::strtok(&lines.front()[0], " ");
+        request[i]["method:"] = std::strtok(&lines.front()[0], " ");
     if(!lines.empty())
-        request["location:"] = std::strtok(NULL, " ");
+        request[i]["location:"] = std::strtok(NULL, " ");
     if(!lines.empty())
-        request["HTTP_version:"] = std::strtok(NULL, " ");
+        request[i]["HTTP_version:"] = std::strtok(NULL, " ");
     int new_line_count = 0;
     while(!lines.empty())
     {
@@ -164,7 +164,7 @@ void HTTP_server::server_mapping_request(int i){
             }
             else
             {
-                tokenizing(request, lines.front());
+                tokenizing(request[i], lines.front());
             }
         }
         lines.pop_front();
@@ -173,9 +173,9 @@ void HTTP_server::server_mapping_request(int i){
 
 void HTTP_server::perform_get_request(int i)
 {
-    if(request["location:"].substr(0, 6) =="/file/")
+    if(request[i]["location:"].substr(0, 6) =="/file/")
     {
-        filename = ".." + request["location:"];
+        filename = ".." + request[i]["location:"];
         std::cout << filename << "\n";
         content = read_file(filename);
         std::stringstream int_to_string;
@@ -184,19 +184,26 @@ void HTTP_server::perform_get_request(int i)
         http_response = "HTTP/1.1 200 OK\nContent-Length:" + content_length;
         http_response = http_response + "\n\n";
         message = http_response + content;
-        int s = send(clients[i], message.c_str(), message.length(), 0);
-        if (s < 0)
+        sentBytes[i] = send(clients[i], message.c_str(), content.length(), 0);
+        if (sentBytes[i] < 0)
         {
             perror("Error sending data to client");
             exit(EXIT_FAILURE);
         }
-        close(clients[i]);
+        if (sentBytes[i] ==  0)
+        {
+            close(clients[i]);
+            clients.erase(clients.begin() + i);
+            request.erase(i);
+        }
+        // close(clients[i]);
         clients.erase(clients.begin() + i);
     }
-    else if((request["location:"].substr(0, 6) == "/HTML/"))
+    else if((request[i]["location:"].substr(0, 6) == "/HTML/"))
     {
-        filename = ".." + request["location:"];
-        std::cout << filename << "\n";
+        filename = ".." + request[i]["location:"];
+        // std::cout << filename << "\n";
+        //todo enter buffer here
         content = read_file(filename);
         std::stringstream int_to_string;
         int_to_string << content.length();
@@ -204,21 +211,26 @@ void HTTP_server::perform_get_request(int i)
         http_response = "HTTP/1.1 200 OK\nContent-Length:" + content_length;
         http_response = http_response + "\n\n";
         message = http_response + content;
-        int s = send(clients[i], message.c_str(), message.length(), 0);
-        if (s < 0)
+        sentBytes[i] = send(clients[i], message.c_str(), content.length(), 0);
+        if (sentBytes[i] < 0)
         {
             perror("Error sending data to client");
             exit(EXIT_FAILURE);
         }
-        close(clients[i]);
-        clients.erase(clients.begin() + i);
+        if (sentBytes[i] ==  0)
+        {
+            close(clients[i]);
+            clients.erase(clients.begin() + i);
+            request.erase(i);
+        }
+
     }
-    else if(strcmp(request["location:"].c_str(), "/cgi-bin/create_file.py") == 0)
+    else if(strcmp(request[i]["location:"].c_str(), "/cgi-bin/create_file.py") == 0)
     {
         pid_t pid = fork();
         if (pid == 0)
         {
-            std::string cgi_to_run =  ".." + request["location:"];
+            std::string cgi_to_run =  ".." + request[i]["location:"];
             std::cout << cgi_to_run << "\n";
             execlp("python", "python", cgi_to_run.c_str(), NULL);
             
@@ -248,12 +260,12 @@ void HTTP_server::perform_get_request(int i)
         }
         
     }
-        if(strcmp(request["location:"].c_str(), "/cgi-bin/remove_file.py") == 0)
+        if(strcmp(request[i]["location:"].c_str(), "/cgi-bin/remove_file.py") == 0)
         {
             pid_t pid = fork();
             if (pid == 0)
             {
-                std::string cgi_to_run =  ".." + request["location:"];
+                std::string cgi_to_run =  ".." + request[i]["location:"];
                 std::cout << cgi_to_run << "\n";
                 execlp("python3", "python3", cgi_to_run.c_str(), NULL);
                 perror("exec");
@@ -290,13 +302,13 @@ void HTTP_server::server_loop()
     {
         server_conducts_poll();
         server_port_listening(listening_socket_fd[0], 0);
-        // server_port_listening(listening_socket_fd[1], 1);
+        server_port_listening(listening_socket_fd[1], 1);
         for (unsigned long i = 0; i < clients.size(); i++) 
         {
             if (fds[i + LISTENING_SOCKETS_NUMBER].revents & POLLIN)
             {
                 server_mapping_request(i);
-                if(request["method:"].substr(0,4) == "POST")
+                if(request[i]["method:"].substr(0,4) == "POST")
                 {
                     std::cout << "post is reached" << "\n";
 
@@ -337,7 +349,7 @@ void HTTP_server::server_loop()
             }
             if(fds[i + LISTENING_SOCKETS_NUMBER].revents & POLLOUT)
             {
-                if(request["method:"].substr(0,3) == "GET")
+                if(request[i]["method:"].substr(0,3) == "GET")
                     perform_get_request(i);
             }
             request.clear();
@@ -357,6 +369,7 @@ void HTTP_server::server_loop()
 }
 
 int HTTP_server::handleRequest(int port) {
+    //take the listening sockets in here, config class with everything here
     create_listening_sock(port);
     create_listening_sock(ETC_PORT);
     create_pollfd_struct();
