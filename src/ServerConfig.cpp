@@ -1,9 +1,9 @@
-#include "../includes/configClass.hpp"
+#include "../includes/ServerConfig.hpp"
 
 /* CONSTRUCTOR SETS CONFIG FILE CONFIGURATIONS TO THE OBJECT AND THEN
 IF PROPERTIES ARE MISSING, DEFAULT CONFIGURATIONS WILL BE ADDED */
 
-configClass::configClass(std::string path, int socket_no)
+ServerConfig::ServerConfig(std::string path, int socket_no)
 {
 	this->setConfProps(path, socket_no);
 	this->setDefaultProps();
@@ -11,11 +11,11 @@ configClass::configClass(std::string path, int socket_no)
 		this->setDefaultLocation();
 }
 
-configClass::~configClass()
+ServerConfig::~ServerConfig()
 {
 }
 
-void configClass::setDefaultProps()
+void ServerConfig::setDefaultProps()
 {
 	this->properties.insert(std::make_pair("port", "1896"));
 	this->properties.insert(std::make_pair("host", "localhost"));
@@ -25,7 +25,7 @@ void configClass::setDefaultProps()
 	this->properties.insert(std::make_pair("allowed_methods", "GET"));
 }
 
-void configClass::setDefaultLocation()
+void ServerConfig::setDefaultLocation()
 {
 	std::map<std::string, std::string> l_props;
 
@@ -38,7 +38,7 @@ void configClass::setDefaultLocation()
 	this->locations.insert(std::make_pair("/", l_props));
 }
 
-void configClass::setConfProps(std::string path, int socket_no)
+void ServerConfig::setConfProps(std::string path, int socket_no)
 {
 	std::fstream config;
 	std::string line;
@@ -85,7 +85,7 @@ void configClass::setConfProps(std::string path, int socket_no)
 	// i++;
 }
 
-void configClass::accessServerBlock(std::fstream &config, int socket_no)
+void ServerConfig::accessServerBlock(std::fstream &config, int socket_no)
 {
 	std::string tmp;
 
@@ -97,7 +97,7 @@ void configClass::accessServerBlock(std::fstream &config, int socket_no)
 	}
 }
 
-bool configClass::setLocations(std::string path, int socket_no)
+bool ServerConfig::setLocations(std::string path, int socket_no)
 {
 	std::fstream config;
 	std::string line;
@@ -168,7 +168,7 @@ bool configClass::setLocations(std::string path, int socket_no)
 	return true;
 }
 
-void configClass::checkLocationBlock(std::map<std::string, std::string> & block, std::string dir)
+void ServerConfig::checkLocationBlock(std::map<std::string, std::string> & block, std::string dir)
 {
 		if (dir == "")
 		{
@@ -191,18 +191,18 @@ void configClass::checkLocationBlock(std::map<std::string, std::string> & block,
 		}
 }
 
-std::string	configClass::getConfProps(std::string key)
+std::string	ServerConfig::getConfProps(std::string key)
 {
 	return this->properties[key];
 }
 
-std::string	configClass::getLocation(std::string location, std::string key)
+std::string	ServerConfig::getLocation(std::string location, std::string key)
 {
 	return this->locations[location][key];
 }
 
 
-void configClass::removeWhitespaces(std::string &string)
+void ServerConfig::removeWhitespaces(std::string &string)
 {
 	string.erase(0, string.find_first_not_of(" \t"));
 	string.erase(string.find_last_not_of(" \t") + 1);

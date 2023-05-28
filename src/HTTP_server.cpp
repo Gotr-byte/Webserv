@@ -1,4 +1,6 @@
 #include "../includes/HTTP_server.hpp"
+#include "../includes/ServerConfig.hpp"
+#include "../includes/ConfigCheck.hpp"
 #include <cstddef>
 #include <cstdlib>
 #include <limits>
@@ -368,10 +370,19 @@ void HTTP_server::server_loop()
     }
 }
 
-int HTTP_server::handleRequest(int port) {
-    //take the listening sockets in here, config class with everything here
-    create_listening_sock(port);
-    create_listening_sock(ETC_PORT);
+int HTTP_server::handleRequest(std::string path) {
+    std::vector<ServerConfig> configVec;
+
+    ConfigCheck check;
+
+    int port_amount = check.checkConfig(path);
+
+    for (int i = 0; i < port_amount; i++)
+    {
+        ServerConfig tmp(path, i);
+        configVec.push_back(tmp);
+        create_listening_sock(atoi(configVec[i].getConfProps("port:").c_str()));
+    }
     create_pollfd_struct();
     server_loop();
     return 0;
