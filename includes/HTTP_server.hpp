@@ -50,6 +50,7 @@ class HTTP_server
         void                            tokenizing( std::map<std::string, std::string>& request, std::string line_to_tokenize);
         // void                            print_map();
         void                            place_in_file(std::string line_to_file);
+        std::string                     toHex(int value);
     private:
         int                             nfds;
         int                             res;
