@@ -173,126 +173,146 @@ void HTTP_server::server_mapping_request(int i){
 
 void HTTP_server::perform_get_request(int i)
 {
-    if(request[i]["location:"].substr(0, 6) =="/file/")
+    if (request[i]["location:"].substr(0, 6) == "/file/")
     {
         filename = ".." + request[i]["location:"];
         std::cout << filename << "\n";
         content = read_file(filename);
+
+        // Calculate the content length
         std::stringstream int_to_string;
         int_to_string << content.length();
         std::string content_length = int_to_string.str();
-        http_response = "HTTP/1.1 200 OK\nContent-Length:" + content_length;
-        http_response = http_response + "\n\n";
-        message = http_response + content;
-        sentBytes[i] = send(clients[i], message.c_str(), content.length(), 0);
-        if (sentBytes[i] < 0)
+
+        // Construct the initial chunked response headers
+        http_response = "HTTP/1.1 200 OK\r\n"
+                        "Transfer-Encoding: chunked\r\n"
+                        "Content-Type: application/octet-stream\r\n"
+                        "\r\n";
+
+        // Send the initial headers
+        if (send(clients[i], http_response.c_str(), http_response.length(), 0) < 0)
         {
-            perror("Error sending data to client");
+            perror("Error sending initial response headers");
             exit(EXIT_FAILURE);
-        }
-        if (sentBytes[i] ==  0)
-        {
-            close(clients[i]);
-            clients.erase(clients.begin() + i);
-            request.erase(i);
-        }
-        // close(clients[i]);
-        clients.erase(clients.begin() + i);
-    }
-    else if((request[i]["location:"].substr(0, 6) == "/HTML/"))
-    {
-        filename = ".." + request[i]["location:"];
-        // std::cout << filename << "\n";
-        //todo enter buffer here
-        content = read_file(filename);
-        std::stringstream int_to_string;
-        int_to_string << content.length();
-        std::string content_length = int_to_string.str();
-        http_response = "HTTP/1.1 200 OK\nContent-Length:" + content_length;
-        http_response = http_response + "\n\n";
-        message = http_response + content;
-        sentBytes[i] = send(clients[i], message.c_str(), content.length(), 0);
-        if (sentBytes[i] < 0)
-        {
-            perror("Error sending data to client");
-            exit(EXIT_FAILURE);
-        }
-        if (sentBytes[i] ==  0)
-        {
-            close(clients[i]);
-            clients.erase(clients.begin() + i);
-            request.erase(i);
         }
 
+        // Send the file content in chunks
+        const int chunkSize = 1024;  // Chunk size for each chunk
+        std::string chunk;
+        for (size_t pos = 0; pos < content.length(); pos += chunkSize)
+        {
+            chunk = content.substr(pos, chunkSize);
+
+            // Prepare the chunk size and chunk data
+            std::string chunkHeader = std::to_string(chunk.size()) + "\r\n";
+            std::string chunkData = chunk + "\r\n";
+
+            // Send the chunk header
+            if (send(clients[i], chunkHeader.c_str(), chunkHeader.length(), 0) < 0)
+            {
+                perror("Error sending chunk header");
+                exit(EXIT_FAILURE);
+            }
+
+            // Send the chunk data
+            if (send(clients[i], chunkData.c_str(), chunkData.length(), 0) < 0)
+            {
+                perror("Error sending chunk data");
+                exit(EXIT_FAILURE);
+            }
+        }
+
+        // Send the last chunk to indicate the end of the response
+        std::string lastChunk = "0\r\n\r\n";
+        if (send(clients[i], lastChunk.c_str(), lastChunk.length(), 0) < 0)
+        {
+            perror("Error sending last chunk");
+            exit(EXIT_FAILURE);
+        }
+
+        // Close the client connection
+        close(clients[i]);
+
+        // Remove the client from the list
+        clients.erase(clients.begin() + i);
+
+        // Remove the processed request
+        request.erase(i);
     }
-    else if(strcmp(request[i]["location:"].c_str(), "/cgi-bin/create_file.py") == 0)
+    else if (request[i]["location:"].substr(0, 6) == "/HTML/")
     {
-        pid_t pid = fork();
-        if (pid == 0)
+        filename = ".." + request[i]["location:"];
+        content = read_file(filename);
+
+        // Calculate the content length
+        std::stringstream int_to_string;
+        int_to_string << content.length();
+        std::string content_length = int_to_string.str();
+
+        // Construct the initial chunked response headers
+        http_response = "HTTP/1.1 200 OK\r\n"
+                        "Transfer-Encoding: chunked\r\n"
+                        "Content-Type: text/html\r\n"
+                        "\r\n";
+
+        // Send the initial headers
+        if (send(clients[i], http_response.c_str(), http_response.length(), 0) < 0)
         {
-            std::string cgi_to_run =  ".." + request[i]["location:"];
-            std::cout << cgi_to_run << "\n";
-            execlp("python", "python", cgi_to_run.c_str(), NULL);
-            
-            perror("exec");
-            exit(1);
+            perror("Error sending initial response headers");
+            exit(EXIT_FAILURE);
         }
-        else if (pid > 0)
+
+        // Send the HTML content in chunks
+        const int chunkSize = 1024;  // Chunk size for each chunk
+        std::string chunk;
+        for (size_t pos = 0; pos < content.length(); pos += chunkSize)
         {
-            int status;
-            waitpid(pid, &status, 0);
-            if (WIFEXITED(status))
+            chunk = content.substr(pos, chunkSize);
+
+            // Prepare the chunk size and chunk data
+            std::string chunkSizeHex = toHex(chunk.size()) + "\r\n";
+            std::string chunkData = chunk + "\r\n";
+
+            // Send the chunk size in hexadecimal format
+            if (send(clients[i], chunkSizeHex.c_str(), chunkSizeHex.length(), 0) < 0)
             {
-                int exit_status = WEXITSTATUS(status);
-                printf("Child process exited with status: %d\n", exit_status);
+                perror("Error sending chunk size");
+                exit(EXIT_FAILURE);
             }
-            else
+
+            // Send the chunk data
+            if (send(clients[i], chunkData.c_str(), chunkData.length(), 0) < 0)
             {
-                printf("Child process terminated abnormally.\n");
+                perror("Error sending chunk data");
+                exit(EXIT_FAILURE);
             }
-            close(clients[i]);
-            clients.erase(clients.begin() + i);
         }
-        else
+
+        // Send the last chunk to indicate the end of the response
+        std::string lastChunk = "0\r\n\r\n";
+        if (send(clients[i], lastChunk.c_str(), lastChunk.length(), 0) < 0)
         {
-            perror("fork");
-            exit(1);
+            perror("Error sending last chunk");
+            exit(EXIT_FAILURE);
         }
-        
+
+        // Close the client connection
+        close(clients[i]);
+
+        // Remove the client from the list
+        clients.erase(clients.begin() + i);
+
+        // Remove the processed request
+        request.erase(i);
     }
-        if(strcmp(request[i]["location:"].c_str(), "/cgi-bin/remove_file.py") == 0)
-        {
-            pid_t pid = fork();
-            if (pid == 0)
-            {
-                std::string cgi_to_run =  ".." + request[i]["location:"];
-                std::cout << cgi_to_run << "\n";
-                execlp("python3", "python3", cgi_to_run.c_str(), NULL);
-                perror("exec");
-                exit(1);
-            }
-            else if (pid > 0)
-            {
-                int status;
-                waitpid(pid, &status, 0);
-                if (WIFEXITED(status))
-                {
-                    int exit_status = WEXITSTATUS(status);
-                    printf("Child process exited with status: %d\n", exit_status);
-                }
-                else
-                {
-                    printf("Child process terminated abnormally.\n");
-                }
-                close(clients[i]);
-                clients.erase(clients.begin() + i);
-            }
-            else
-            {
-                perror("fork");
-                exit(1);
-            }
-    }
+}
+
+std::string HTTP_server::toHex(int value)
+{
+    std::stringstream stream;
+    stream << std::hex << value;
+    return stream.str();
 }
 
 void HTTP_server::server_loop()
