@@ -1,5 +1,5 @@
-#ifndef CONFIGCLASS_H
-#define CONFIGCLASS_H
+#ifndef SERVERCONFIG_H
+#define SERVERCONFIG_H
 
 # include <map>
 # include <vector>
@@ -9,11 +9,11 @@
 # include <fstream>
 # include <iostream>
 
-class configClass
+class ServerConfig
 {
 	public:
-		configClass(std::string path, int socket_no);
-		~configClass();
+		ServerConfig(std::string path, int socket_no);
+		~ServerConfig();
 
 		std::string	getConfProps(std::string key);
 		std::string	getLocation(std::string location, std::string key);

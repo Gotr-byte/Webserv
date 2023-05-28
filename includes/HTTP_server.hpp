@@ -38,7 +38,7 @@ class HTTP_server
 {
     public:
 		void							server_conducts_poll();
-		void							perform_get_request(int i);
+		void							perform_get_request(std::string path);
 		void							server_port_listening(int client_fd, int i);
 		void							server_mapping_request(int i);
         int                             handleRequest(int port);
