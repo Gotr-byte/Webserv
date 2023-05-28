@@ -197,7 +197,7 @@ void HTTP_server::perform_get_request(int i)
             exit(EXIT_FAILURE);
         }
 
-        // Send the file content in chunks
+        // Send the HTML content in chunks
         const int chunkSize = 1024;  // Chunk size for each chunk
         std::string chunk;
         for (size_t pos = 0; pos < content.length(); pos += chunkSize)
@@ -205,13 +205,13 @@ void HTTP_server::perform_get_request(int i)
             chunk = content.substr(pos, chunkSize);
 
             // Prepare the chunk size and chunk data
-            std::string chunkHeader = std::to_string(chunk.size()) + "\r\n";
+            std::string chunkSizeHex = toHex(chunk.size()) + "\r\n";
             std::string chunkData = chunk + "\r\n";
 
-            // Send the chunk header
-            if (send(clients[i], chunkHeader.c_str(), chunkHeader.length(), 0) < 0)
+            // Send the chunk size in hexadecimal format
+            if (send(clients[i], chunkSizeHex.c_str(), chunkSizeHex.length(), 0) < 0)
             {
-                perror("Error sending chunk header");
+                perror("Error sending chunk size");
                 exit(EXIT_FAILURE);
             }
 
@@ -222,7 +222,6 @@ void HTTP_server::perform_get_request(int i)
                 exit(EXIT_FAILURE);
             }
         }
-
         // Send the last chunk to indicate the end of the response
         std::string lastChunk = "0\r\n\r\n";
         if (send(clients[i], lastChunk.c_str(), lastChunk.length(), 0) < 0)
@@ -230,15 +229,6 @@ void HTTP_server::perform_get_request(int i)
             perror("Error sending last chunk");
             exit(EXIT_FAILURE);
         }
-
-        // Close the client connection
-        close(clients[i]);
-
-        // Remove the client from the list
-        clients.erase(clients.begin() + i);
-
-        // Remove the processed request
-        request.erase(i);
     }
     else if (request[i]["location:"].substr(0, 6) == "/HTML/")
     {
@@ -296,16 +286,13 @@ void HTTP_server::perform_get_request(int i)
             perror("Error sending last chunk");
             exit(EXIT_FAILURE);
         }
-
-        // Close the client connection
-        close(clients[i]);
-
-        // Remove the client from the list
-        clients.erase(clients.begin() + i);
-
-        // Remove the processed request
-        request.erase(i);
     }
+    // Close the client connection
+    close(clients[i]);
+    // Remove the processed request
+    request.erase(i);
+    // Remove the client from the list
+    clients.erase(clients.begin() + i);
 }
 
 std::string HTTP_server::toHex(int value)
