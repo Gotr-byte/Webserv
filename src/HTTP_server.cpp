@@ -179,10 +179,16 @@ void HTTP_server::perform_get_request(int i)
         std::cout << filename << "\n";
         content = read_file(filename);
 
-        // Calculate the content length
-        std::stringstream int_to_string;
-        int_to_string << content.length();
-        std::string content_length = int_to_string.str();
+        std::ifstream file(filename, std::ios::binary);
+        if (!file)
+        {
+            perror("File could not be opened");
+        }
+
+        file.seekg(0, std::ios::end);
+        std::streampos fileSize = file.tellg();
+        file.seekg(0, std::ios::beg);
+        std::cout << fileSize << std::endl;
 
         // Construct the initial chunked response headers
         http_response = "HTTP/1.1 200 OK\r\n"
@@ -235,10 +241,15 @@ void HTTP_server::perform_get_request(int i)
         filename = ".." + request[i]["location:"];
         content = read_file(filename);
 
-        // Calculate the content length
-        std::stringstream int_to_string;
-        int_to_string << content.length();
-        std::string content_length = int_to_string.str();
+         std::ifstream file(filename.c_str(), std::ios::binary);
+        if (!file)
+        {
+            perror("ERROR");
+        }
+        // Calculate the file size
+        file.seekg(0, std::ios::end);
+        std::streampos fileSize = file.tellg();
+        file.seekg(0, std::ios::beg);
 
         // Construct the initial chunked response headers
         http_response = "HTTP/1.1 200 OK\r\n"
@@ -246,24 +257,28 @@ void HTTP_server::perform_get_request(int i)
                         "Content-Type: text/html\r\n"
                         "\r\n";
 
-        // Send the initial headers
+        write(1, http_response.c_str(), http_response.length());
         if (send(clients[i], http_response.c_str(), http_response.length(), 0) < 0)
         {
             perror("Error sending initial response headers");
             exit(EXIT_FAILURE);
         }
 
-        // Send the HTML content in chunks
+        // Send the file in chunks
         const int chunkSize = 1024;  // Chunk size for each chunk
-        std::string chunk;
-        for (size_t pos = 0; pos < content.length(); pos += chunkSize)
+        char chunk[chunkSize];
+        std::streampos bytesRead = 0;
+        while (bytesRead < fileSize)
         {
-            chunk = content.substr(pos, chunkSize);
+
+            // Read a chunk from the file
+            file.read(chunk, chunkSize);
+            std::streamsize bytesReadInChunk = file.gcount();
 
             // Prepare the chunk size and chunk data
-            std::string chunkSizeHex = toHex(chunk.size()) + "\r\n";
-            std::string chunkData = chunk + "\r\n";
+            std::string chunkSizeHex = toHex(bytesReadInChunk) + "\r\n";
 
+            write(1, chunkSizeHex.c_str(), chunkSizeHex.length());
             // Send the chunk size in hexadecimal format
             if (send(clients[i], chunkSizeHex.c_str(), chunkSizeHex.length(), 0) < 0)
             {
@@ -272,11 +287,15 @@ void HTTP_server::perform_get_request(int i)
             }
 
             // Send the chunk data
-            if (send(clients[i], chunkData.c_str(), chunkData.length(), 0) < 0)
+            write(1, chunk, bytesReadInChunk);
+            if (send(clients[i], chunk, bytesReadInChunk, 0) < 0)
             {
                 perror("Error sending chunk data");
                 exit(EXIT_FAILURE);
             }
+
+            bytesRead += bytesReadInChunk;
+            // std::cout << bytesRead << " read of " << fileSize << std::endl;
         }
 
         // Send the last chunk to indicate the end of the response
@@ -286,7 +305,11 @@ void HTTP_server::perform_get_request(int i)
             perror("Error sending last chunk");
             exit(EXIT_FAILURE);
         }
+
+        // Close the file
+        file.close();
     }
+
     // Close the client connection
     close(clients[i]);
     // Remove the processed request
