@@ -30,6 +30,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <sstream>
+#include "ServerConfig.hpp"
 
 #define MAX_CLIENTS 10
 
@@ -38,10 +39,10 @@ class HTTP_server
 {
     public:
 		void							server_conducts_poll();
-		void							perform_get_request(std::string path);
+		void							perform_get_request(int i);
 		void							server_port_listening(int client_fd, int i);
 		void							server_mapping_request(int i);
-        int                             handleRequest(int port);
+        int                             handleRequest(std::string path);
         void                            create_listening_sock(int port);
         void                            create_pollfd_struct();
         void                            server_loop();
@@ -71,4 +72,6 @@ class HTTP_server
         std::string content_type;
         std::vector<int>                listening_socket_fd;
         int sentBytes[20];
+        std::vector<ServerConfig>       configVec;
+        int                             listening_port_no;
 };

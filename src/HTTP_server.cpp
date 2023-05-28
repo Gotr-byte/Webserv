@@ -11,10 +11,7 @@
 //TODO work on the structure of the poll request
 //Notes - should the requests be limited to bufsize 1024?
 
-#define BUF_SIZE 4096
-#define LISTENING_SOCKETS_NUMBER 2
-#define ETC_PORT 4012
-#define BUFSIZE 1024
+#define BUF_SIZE 1024
 
 std::string HTTP_server::read_file(const std::string& filename){
     std::ifstream file(filename.c_str());
@@ -78,10 +75,11 @@ void HTTP_server::create_listening_sock(int port){
 
 void HTTP_server::create_pollfd_struct(void){
     memset(fds, 0, sizeof(fds));
-    fds[0].fd = listening_socket_fd[0];
-    fds[0].events = POLLIN|POLLOUT;
-    fds[1].fd = listening_socket_fd[1];
-    fds[1].events = POLLIN|POLLOUT;
+    for (int i = 0; i < listening_port_no; i++)
+    {
+        fds[i].fd = listening_socket_fd[i];
+        fds[i].events = POLLIN|POLLOUT;
+    }
 }
 
 // void HTTP_server::print_map(){
@@ -107,16 +105,16 @@ void HTTP_server::server_port_listening(int client_fd, int i){
         clients.push_back(client_fd);
 
         // Initialize the pollfd struct for the client socket
-        fds[clients.size() + LISTENING_SOCKETS_NUMBER - 1].fd = client_fd;
-        fds[clients.size() + LISTENING_SOCKETS_NUMBER - 1].events = POLLIN|POLLOUT;
-        fds[clients.size() + LISTENING_SOCKETS_NUMBER - 1].revents = 0;
+        fds[clients.size() + listening_port_no - 1].fd = client_fd;
+        fds[clients.size() + listening_port_no - 1].events = POLLIN|POLLOUT;
+        fds[clients.size() + listening_port_no - 1].revents = 0;
 
         std::cout << "New client connected on etc fd\n";
     }
 }
 
 void HTTP_server::server_conducts_poll(){
-    nfds = clients.size() + LISTENING_SOCKETS_NUMBER;
+    nfds = clients.size() + listening_port_no;
     res = poll(fds, nfds, 10);
     if (res < 0)
     {
@@ -303,11 +301,11 @@ void HTTP_server::server_loop()
     while (true)
     {
         server_conducts_poll();
-        server_port_listening(listening_socket_fd[0], 0);
-        server_port_listening(listening_socket_fd[1], 1);
+        for (int i = 0; i < listening_port_no; i++)
+            server_port_listening(listening_socket_fd[i], i);
         for (unsigned long i = 0; i < clients.size(); i++) 
         {
-            if (fds[i + LISTENING_SOCKETS_NUMBER].revents & POLLIN)
+            if (fds[i + listening_port_no].revents & POLLIN)
             {
                 server_mapping_request(i);
                 if(request[i]["method:"].substr(0,4) == "POST")
@@ -349,7 +347,7 @@ void HTTP_server::server_loop()
                     clients.erase(clients.begin() + i);
                 }
             }
-            if(fds[i + LISTENING_SOCKETS_NUMBER].revents & POLLOUT)
+            if(fds[i + listening_port_no].revents & POLLOUT)
             {
                 if(request[i]["method:"].substr(0,3) == "GET")
                     perform_get_request(i);
@@ -371,17 +369,18 @@ void HTTP_server::server_loop()
 }
 
 int HTTP_server::handleRequest(std::string path) {
-    std::vector<ServerConfig> configVec;
 
     ConfigCheck check;
 
-    int port_amount = check.checkConfig(path);
+    listening_port_no = check.checkConfig(path);
 
-    for (int i = 0; i < port_amount; i++)
+    for (int i = 0; i < listening_port_no; i++)
     {
         ServerConfig tmp(path, i);
         configVec.push_back(tmp);
         create_listening_sock(atoi(configVec[i].getConfProps("port:").c_str()));
+        std::cout << " Socket "<< (i + 1) << " (FD " << listening_socket_fd[i] \
+            << ") is listening on port: " << configVec[i].getConfProps("port:") << std::endl;
     }
     create_pollfd_struct();
     server_loop();
