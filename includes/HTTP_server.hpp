@@ -47,9 +47,8 @@ class HTTP_server
         void                            server_loop();
         std::string                     read_file(const std::string& filename);
         void                            tokenizing( std::map<std::string, std::string>& request, std::string line_to_tokenize);
-        void                            print_map();
+        // void                            print_map();
         void                            place_in_file(std::string line_to_file);
-        // void                            place_in_file(char* line_to_file);
     private:
         int                             nfds;
         int                             res;
@@ -65,11 +64,11 @@ class HTTP_server
         std::string                     filename;
         std::string                     content;
         std::string                     message;
-        std::map<std::string, std::string>    request;
+        std::map <int, std::map<std::string, std::string> >   request;
         char*                           line;
         std::deque<std::string>         lines;
         std::string                     HTTP_line;
         std::string content_type;
         std::vector<int>                listening_socket_fd;
-        // char                            HTTP_body[1024];
+        int sentBytes[20];
 };
