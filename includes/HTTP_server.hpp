@@ -66,7 +66,7 @@ private:
     std::string filename;
     std::string content;
     std::string message;
-    std::map<int, std::map<std::string, std::string>> request;
+    std::map< int, std::map<std::string, std::string> > request;
     char *line;
     std::deque<std::string> lines;
     std::string HTTP_line;
