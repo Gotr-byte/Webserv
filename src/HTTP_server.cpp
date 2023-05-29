@@ -100,7 +100,7 @@ void HTTP_server::create_pollfd_struct(void)
 //     }
 // }
 
-void HTTP_server::server_port_listening(int client_fd, int i)
+void HTTP_server::server_port_listening(int i)
 {
     if (fds[i].revents & POLLIN)
     {
@@ -344,7 +344,7 @@ void HTTP_server::server_loop()
     {
         server_conducts_poll();
         for (int i = 0; i < listening_port_no; i++)
-            server_port_listening(listening_socket_fd[i], i);
+            server_port_listening(i);
         for (unsigned long i = 0; i < clients.size(); i++)
         {
             if (fds[i + listening_port_no].revents & POLLIN)
