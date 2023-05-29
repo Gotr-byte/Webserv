@@ -189,17 +189,25 @@ void HTTP_server::perform_get_request(int i)
         {
             filename = ".." + request[i]["location:"];
             std::cout << filename << "\n";
-
+            // test
+            int file_fd_err = open(filename.c_str(), O_RDONLY);
+            if (file_fd_err < 0)
+            {
+                perror("Error opening file");
+                exit(EXIT_FAILURE);
+            }
+            //err
             int file_fd = open(filename.c_str(), O_RDONLY);
             if (file_fd < 0)
             {
                 perror("Error opening file");
                 exit(EXIT_FAILURE);
             }
+            clients[i].file_fd = dup(file_fd);
 
             // Calculate the content length
-            off_t content_length = lseek(file_fd, 0, SEEK_END);
-            lseek(file_fd, 0, SEEK_SET);
+            off_t content_length = lseek(clients[i].file_fd, 0, SEEK_END);
+            lseek(clients[i].file_fd, 0, SEEK_SET);
 
             // Construct the initial response headers
             std::stringstream response_headers;
@@ -221,7 +229,7 @@ void HTTP_server::perform_get_request(int i)
             clients[i].initialResponseSent = true;
 
             // Store the file descriptor and content length for subsequent chunked transfers
-            clients[i].file_fd = file_fd;
+            // clients[i].file_fd = dup(file_fd);
             clients[i].content_length = content_length;
         }
 
