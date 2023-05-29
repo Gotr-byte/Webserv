@@ -204,7 +204,7 @@ void HTTP_server::perform_get_request(int i)
                 exit(EXIT_FAILURE);
             }
             clients[i].file_fd = dup(file_fd);
-
+            close(file_fd);
             // Calculate the content length
             off_t content_length = lseek(clients[i].file_fd, 0, SEEK_END);
             lseek(clients[i].file_fd, 0, SEEK_SET);
