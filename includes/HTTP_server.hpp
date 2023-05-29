@@ -39,7 +39,7 @@ class HTTP_server
 public:
     void server_conducts_poll();
     void perform_get_request(int i);
-    void server_port_listening(int client_fd, int i);
+    void server_port_listening(int i);
     void server_mapping_request(int i);
     int handleRequest(std::string path);
     void create_listening_sock(int port);
@@ -66,7 +66,7 @@ private:
     std::string filename;
     std::string content;
     std::string message;
-    std::map<int, std::map<std::string, std::string>> request;
+    std::map< int, std::map<std::string, std::string> > request;
     char *line;
     std::deque<std::string> lines;
     std::string HTTP_line;
