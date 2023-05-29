@@ -1,3 +1,5 @@
+#pragma once
+
 class Client {
     public:
         Client():fd(-1), initialResponseSent(false), content_length(0){};
