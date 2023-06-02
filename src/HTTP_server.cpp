@@ -140,9 +140,9 @@ void HTTP_server::server_mapping_request(int i)
     }
     if (!lines.empty())
     {
-        request[i]["method:"] = std::strtok(&lines.front()[0], " ");
-        request[i]["location:"] = std::strtok(NULL, " ");
-        request[i]["HTTP_version:"] = std::strtok(NULL, " ");
+        clients[i].request["method:"] = std::strtok(&lines.front()[0], " ");
+        clients[i].request["location:"] = std::strtok(NULL, " ");
+        clients[i].request["HTTP_version:"] = std::strtok(NULL, " ");
     }
     int new_line_count = 0;
     while (!lines.empty())
@@ -160,7 +160,7 @@ void HTTP_server::server_mapping_request(int i)
             }
             else
             {
-                tokenizing(request[i], lines.front());
+                tokenizing(clients[i].request, lines.front());
             }
         }
         lines.pop_front();
@@ -169,12 +169,12 @@ void HTTP_server::server_mapping_request(int i)
 
 void HTTP_server::perform_get_request(int i)
 {
-    if (request[i]["location:"].substr(0, 6) == "/file/")
+    if (clients[i].request["location:"].substr(0, 6) == "/file/")
     {
         // Check if the initial response headers have been sent for this client
         if (!clients[i].initialResponseSent)
         {
-            filename = ".." + request[i]["location:"];
+            filename = ".." + clients[i].request["location:"];
             std::cout << filename << "\n";
             // test
             int file_fd_err = open(filename.c_str(), O_RDONLY);
@@ -260,9 +260,9 @@ void HTTP_server::perform_get_request(int i)
             clients.erase(clients.begin() + i);
         }
     }
-    else if (request[i]["location:"].substr(0, 6) == "/HTML/")
+    else if (clients[i].request["location:"].substr(0, 6) == "/HTML/")
     {
-        filename = ".." + request[i]["location:"];
+        filename = ".." + clients[i].request["location:"];
         content = read_file(filename);
 
         // Calculate the content length
@@ -345,7 +345,7 @@ void HTTP_server::server_loop()
             if (fds[i + listening_port_no].revents & POLLIN)
             {
                 server_mapping_request(i);
-                if (request[i]["method:"].substr(0, 4) == "POST")
+                if (clients[i].request["method:"].substr(0, 4) == "POST")
                 {
                     std::cout << "post is reached"
                               << "\n";
@@ -387,7 +387,7 @@ void HTTP_server::server_loop()
             }
             if (fds[i + listening_port_no].revents & POLLOUT)
             {
-                if (request[i]["method:"].substr(0, 3) == "GET")
+                if (clients[i].request["method:"].substr(0, 3) == "GET")
                     perform_get_request(i);
             }
         }
@@ -415,10 +415,11 @@ int HTTP_server::handle_request(std::string path)
     for (int i = 0; i < listening_port_no; i++)
     {
         ServerConfig tmp(path, i);
-        configVec.push_back(tmp);
-        create_listening_sock(atoi(configVec[i].getConfProps("port:").c_str()));
+        std::string port = tmp.getConfProps("port:");
+        configVec.insert(std::make_pair(port, tmp));
+        create_listening_sock(atoi(port.c_str()));
         std::cout << " Socket " << (i + 1) << " (FD " << listening_socket_fd[i]
-                  << ") is listening on port: " << configVec[i].getConfProps("port:") << std::endl;
+                  << ") is listening on port: " << port << std::endl;
     }
     create_pollfd_struct();
     server_loop();
