@@ -9,6 +9,19 @@
 #define BUF_SIZE 1024
 
 /**
+ * Constructor of HTTP server, creates an array of client
+ * 
+ * @param filename The name of the file to read.
+ * @return The contents of the file as a string.
+ */
+HTTP_server::HTTP_server()
+{
+    
+}
+
+HTTP_server::~HTTP_server(){}
+
+/**
  * Reads the contents of a file and returns it as a string.
  * 
  * @param filename The name of the file to read.
@@ -55,38 +68,8 @@ void HTTP_server::tokenizing(std::map<std::string, std::string> &request, std::s
  */
 void HTTP_server::create_listening_sock(int port)
 {
-    server_fd = socket(AF_INET, SOCK_STREAM, 0);
-    if (server_fd < 0)
-    {
-        perror("Error creating server socket");
-        exit(EXIT_FAILURE);
-    }
-
-    // set the socket to non blocking
-    fcntl(server_fd, F_SETFL, O_NONBLOCK);
-    opt = 1;
-    if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)))
-    {
-        perror("Error setting server socket options");
-        exit(EXIT_FAILURE);
-    }
-    memset(&server_addr, 0, sizeof(server_addr));
-    server_addr.sin_family = AF_INET;
-    server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-    server_addr.sin_port = htons(port);
-    if (bind(server_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
-    {
-        perror("Error binding server socket port");
-        exit(EXIT_FAILURE);
-    }
-
-    // Listen for incoming connections on the server socket
-    if (listen(server_fd, MAX_CLIENTS) < 0)
-    {
-        perror("Error listening on server socket");
-        exit(EXIT_FAILURE);
-    }
-    listening_socket_fd.push_back(server_fd);
+    Socket socket(port);
+    listening_socket_fd.push_back(socket.server_fd);
 }
 
 /**
@@ -156,11 +139,11 @@ void HTTP_server::server_mapping_request(int i)
         line = strtok(NULL, "\n");
     }
     if (!lines.empty())
+    {
         request[i]["method:"] = std::strtok(&lines.front()[0], " ");
-    if (!lines.empty())
         request[i]["location:"] = std::strtok(NULL, " ");
-    if (!lines.empty())
         request[i]["HTTP_version:"] = std::strtok(NULL, " ");
+    }
     int new_line_count = 0;
     while (!lines.empty())
     {

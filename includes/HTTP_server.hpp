@@ -7,11 +7,11 @@
 #include <unistd.h>
 #endif
 
+#include <vector>
 #include <iostream>
 #include <cstdlib>
 #include <cstdio>
 #include <cstring>
-#include <vector>
 #include <poll.h>
 
 #include <sys/wait.h>
@@ -31,12 +31,16 @@
 #include <sstream>
 #include "ServerConfig.hpp"
 #include "Client.hpp"
+#include "Socket.hpp"
 
-#define MAX_CLIENTS 3
+#define MAX_CLIENTS 300
+#define LISTENING_SOCKET
 
 class HTTP_server
 {
 public:
+    HTTP_server();
+    ~HTTP_server();
     void server_conducts_poll();
     void perform_get_request(int i);
     void server_port_listening(int i);
@@ -52,15 +56,19 @@ public:
     std::string toHex(int value);
 
 private:
+    HTTP_server(const HTTP_server &other);
+    HTTP_server& operator = (const HTTP_server & other);
     int nfds;
     int res;
-    int server_fd;
-    int opt;
-    struct sockaddr_in server_addr;
+    // int server_fd; // move to socket
+    // int opt; // move to socket
+    // struct sockaddr_in server_addr; // move to socket
+
     struct sockaddr_in client_addr;
     std::vector<Client> clients;
-    std::vector<char *> HTTP_requests;
+    // Client clients[MAX_CLIENTS - 3];
     struct pollfd fds[MAX_CLIENTS];
+    std::vector<char *> HTTP_requests;
     socklen_t client_len;
     std::string http_response;
     std::string filename;

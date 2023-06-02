@@ -1,5 +1,6 @@
 #include "../includes/HTTP_server.hpp"
 
+
 int main (int argc, char **argv)
 {
     if (argc != 2)
@@ -10,5 +11,5 @@ int main (int argc, char **argv)
 
     HTTP_server serverLoop;
 
-    serverLoop.handleRequest(argv[1]);
+    serverLoop.handle_request(argv[1]);
 }
