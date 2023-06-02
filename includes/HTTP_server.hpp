@@ -32,7 +32,7 @@
 #include "ServerConfig.hpp"
 #include "Client.hpp"
 
-#define MAX_CLIENTS 10
+#define MAX_CLIENTS 3
 
 class HTTP_server
 {
@@ -41,7 +41,7 @@ public:
     void perform_get_request(int i);
     void server_port_listening(int i);
     void server_mapping_request(int i);
-    int handleRequest(std::string path);
+    int handle_request(std::string path);
     void create_listening_sock(int port);
     void create_pollfd_struct();
     void server_loop();

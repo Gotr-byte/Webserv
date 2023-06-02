@@ -5,38 +5,39 @@
 #include <cstdlib>
 #include <limits>
 #include <fstream>
-// #include "../includes/Client.hpp"
-
-// TODO closing client sockets that disconected?
-// TODO check request validity
-// TODO work on the structure of the poll request
-// Notes - should the requests be limited to bufsize 1024?
 
 #define BUF_SIZE 1024
 
+/**
+ * Reads the contents of a file and returns it as a string.
+ * 
+ * @param filename The name of the file to read.
+ * @return The contents of the file as a string.
+ */
 std::string HTTP_server::read_file(const std::string &filename)
 {
     std::ifstream file(filename.c_str());
-
+    std::string content;
+    char c;
     if (!file)
     {
         std::cerr << "Error opening file " << filename << std::endl;
         return "";
     }
-
-    std::string content;
-    char c;
-
     while (file.get(c))
     {
         content += c;
     }
-
     file.close();
-
     return content;
 }
 
+/**
+ * Tokenizes a line of text and stores the key-value pair in a map.
+ * 
+ * @param request The map to store the key-value pair.
+ * @param line_to_tokenize The line of text to tokenize.
+ */
 void HTTP_server::tokenizing(std::map<std::string, std::string> &request, std::string line_to_tokenize)
 {
     std::stringstream tokenize_stream(line_to_tokenize);
@@ -47,6 +48,11 @@ void HTTP_server::tokenizing(std::map<std::string, std::string> &request, std::s
     request[key] = value;
 }
 
+/**
+ * Creates a listening socket for the server on the specified port.
+ * 
+ * @param port The port on which the server should listen for incoming connections.
+ */
 void HTTP_server::create_listening_sock(int port)
 {
     server_fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -83,6 +89,11 @@ void HTTP_server::create_listening_sock(int port)
     listening_socket_fd.push_back(server_fd);
 }
 
+/**
+ * Creates the pollfd structures for polling file descriptors.
+ * 
+ * The function initializes the `fds` array with the listening socket file descriptors and sets the events to poll for.
+ */
 void HTTP_server::create_pollfd_struct(void)
 {
     memset(fds, 0, sizeof(fds));
@@ -92,13 +103,6 @@ void HTTP_server::create_pollfd_struct(void)
         fds[i].events = POLLIN | POLLOUT;
     }
 }
-
-// void HTTP_server::print_map(){
-//     std::map<std::string, std::string>::const_iterator it;
-//     for (it = request.begin(); it != request.end(); ++it) {
-//         std::cout << "Key: " << it->first << ", Value: " << it->second << std::endl;
-//     }
-// }
 
 void HTTP_server::server_port_listening(int i)
 {
@@ -418,7 +422,7 @@ void HTTP_server::server_loop()
     }
 }
 
-int HTTP_server::handleRequest(std::string path)
+int HTTP_server::handle_request(std::string path)
 {
 
     ConfigCheck check;
