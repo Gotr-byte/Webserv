@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Error 414 - Request URI Too Long</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: url(http://i.jeuxactus.com/datas/jeux/c/r/crazy-frog-racer/xl/crazy-frog-racer-4e2647bb7576d.jpg) no-repeat center center fixed;
+            background-size: cover;
+        }
+
+        .overlay {
+            background-color: rgba(157, 146, 146, 0.6);
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 36px;
+            color: #ffffff;
+            margin-bottom: 20px;
+        }
+
+        p {
+            font-size: 18px;
+            color: #ffffff;
+            margin-bottom: 10px;
+        }
+
+        .error-code {
+            font-size: 80px;
+            color: #dc3545;
+            margin-bottom: 20px;
+        }
+
+        .error-description {
+            font-size: 20px;
+            color: #ffffff;
+        }
+
+        .home-link {
+            margin-top: 20px;
+        }
+
+        .home-link a {
+            color: #007bff;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="overlay">
+        <h1>Error 414 - Request URI Too Long</h1>
+        <p class="error-code">414</p>
+        <p class="error-description">Oops! The URI of the request is too long for the server to process.</p>
+        <p>Possible reasons for this error include:</p>
+        <ul>
+            <li>The URL or URI exceeds the maximum length allowed by the server.</li>
+            <li>The server's configuration does not allow URIs of this length.</li>
+        </ul>
+        <p>Please try the following:</p>
+        <ul>
+            <li>Shorten the URL or URI by removing unnecessary parameters or segments.</li>
+            <li>Contact the website administrator to inquire about the maximum allowed length for URIs.</li>
+        </ul>
+        <p class="home-link">Go back to <a href="/">Homepage</a></p>
+    </div>
+</body>
+</html>

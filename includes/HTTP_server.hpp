@@ -81,6 +81,6 @@ private:
     std::string content_type;
     std::vector<int> listening_socket_fd;
     int sentBytes[20];
-    std::vector<ServerConfig> configVec;
+    std::map<std::string, ServerConfig> configVec;
     int listening_port_no;
 };

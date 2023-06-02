@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Error 415 - Unsupported Media Type</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: url(http://i.jeuxactus.com/datas/jeux/c/r/crazy-frog-racer/xl/crazy-frog-racer-4e2647bb7576d.jpg) no-repeat center center fixed;
+            background-size: cover;
+        }
+
+        .overlay {
+            background-color: rgba(157, 146, 146, 0.6);
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 36px;
+            color: #ffffff;
+            margin-bottom: 20px;
+        }
+
+        p {
+            font-size: 18px;
+            color: #ffffff;
+            margin-bottom: 10px;
+        }
+
+        .error-code {
+            font-size: 80px;
+            color: #dc3545;
+            margin-bottom: 20px;
+        }
+
+        .error-description {
+            font-size: 20px;
+            color: #ffffff;
+        }
+
+        .home-link {
+            margin-top: 20px;
+        }
+
+        .home-link a {
+            color: #007bff;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="overlay">
+        <h1>Error 415 - Unsupported Media Type</h1>
+        <p class="error-code">415</p>
+        <p class="error-description">Oops! The server does not support the media type of the requested resource.</p>
+        <p>Possible reasons for this error include:</p>
+        <ul>
+            <li>The server does not have the necessary functionality or configuration to handle the requested media type.</li>
+            <li>The client may have sent a request with an unsupported media type in the 'Content-Type' header.</li>
+        </ul>
+        <p>Please try the following:</p>
+        <ul>
+            <li>Check the 'Content-Type' header in your request and ensure it matches a supported media type.</li>
+            <li>Contact the website administrator for assistance or try a different media type.</li>
+        </ul>
+        <p class="home-link">Go back to <a href="/">Homepage</a></p>
+    </div>
+</body>
+</html>
