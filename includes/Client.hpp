@@ -13,7 +13,6 @@ class Client {
         int file_fd;                 // File descriptor for the requested file
         off_t content_length;        // Content length of the requested file
         std::map<std::string, std::string> request;
-
 };
 
 #endif

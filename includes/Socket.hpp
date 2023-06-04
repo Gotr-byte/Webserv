@@ -14,7 +14,7 @@
 #include <fcntl.h>
 #include <cstdlib>
 #include <stdio.h>
-#include <string.h>
+#include <string>
 
 #define MAX_CLIENTS 300
 
@@ -22,7 +22,7 @@ class Socket{
     public:
         Socket();
         ~Socket();
-		Socket(int port);
+		Socket(int port, std::string ip);
         int server_fd;
 		int opt;
 		struct sockaddr_in server_addr;

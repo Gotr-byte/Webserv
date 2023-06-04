@@ -29,6 +29,9 @@ class ServerConfig
 		void	removeWhitespaces(std::string	& string);
 
 		std::string									server_name;
+		bool										primary_server;
+		std::string									port;
+		std::string									ip;
 		std::map<std::string, std::string>			properties;
 		std::map<std::string, \
 			std::map<std::string, std::string> >	locations;

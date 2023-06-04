@@ -54,6 +54,7 @@ public:
     // void                            print_map();
     void place_in_file(std::string line_to_file);
     std::string toHex(int value);
+    void    removeWhitespaces(std::string &string);
 
 private:
     HTTP_server(const HTTP_server &other);
