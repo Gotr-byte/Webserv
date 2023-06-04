@@ -57,19 +57,16 @@ void HTTP_server::tokenizing(std::map<std::string, std::string> &request, std::s
     std::string value;
     std::string key;
     std::getline(tokenize_stream, key, ':');
-    std::getline(tokenize_stream, value, ':');
+    std::getline(tokenize_stream, value, '\n');
+    removeWhitespaces(key);
+    removeWhitespaces(value);
     request[key] = value;
 }
 
-/**
- * Creates a listening socket for the server on the specified port.
- * 
- * @param port The port on which the server should listen for incoming connections.
- */
-void HTTP_server::create_listening_sock(int port)
+void HTTP_server::removeWhitespaces(std::string &string)
 {
-    Socket socket(port);
-    listening_socket_fd.push_back(socket.server_fd);
+	string.erase(0, string.find_first_not_of(" \t"));
+	string.erase(string.find_last_not_of(" \t") + 1);
 }
 
 /**
@@ -130,6 +127,7 @@ void HTTP_server::server_mapping_request(int i)
         exit(EXIT_FAILURE);
     }
     std::string HTTP_request(buf);
+    std::cout << HTTP_request << std::endl;
     line = std::strtok(&HTTP_request[0], "\n");
     while (line != NULL)
     {
@@ -143,6 +141,7 @@ void HTTP_server::server_mapping_request(int i)
         clients[i].request["method:"] = std::strtok(&lines.front()[0], " ");
         clients[i].request["location:"] = std::strtok(NULL, " ");
         clients[i].request["HTTP_version:"] = std::strtok(NULL, " ");
+        // clients[i].request["Host:"] = std::strtok(NULL, " ");
     }
     int new_line_count = 0;
     while (!lines.empty())
@@ -262,6 +261,8 @@ void HTTP_server::perform_get_request(int i)
     }
     else if (clients[i].request["location:"].substr(0, 6) == "/HTML/")
     {
+        for (std::map<std::string, std::string>::iterator it = clients[i].request.begin(); it != clients[i].request.end(); it++)
+            std::cout << it->first << "||" << it->second << std::endl;
         filename = ".." + clients[i].request["location:"];
         content = read_file(filename);
 
@@ -416,8 +417,9 @@ int HTTP_server::handle_request(std::string path)
     {
         ServerConfig tmp(path, i);
         std::string port = tmp.getConfProps("port:");
+        Socket socket(atoi(port.c_str()), "0.0.0.0");
+        listening_socket_fd.push_back(socket.server_fd);
         configVec.insert(std::make_pair(port, tmp));
-        create_listening_sock(atoi(port.c_str()));
         std::cout << " Socket " << (i + 1) << " (FD " << listening_socket_fd[i]
                   << ") is listening on port: " << port << std::endl;
     }

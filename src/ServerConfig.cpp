@@ -5,6 +5,10 @@ IF PROPERTIES ARE MISSING, DEFAULT CONFIGURATIONS WILL BE ADDED */
 
 ServerConfig::ServerConfig(std::string path, int socket_no)
 {
+	if (socket_no == 0)
+		this->primary_server = true;
+	else
+		this->primary_server = false;
 	this->setConfProps(path, socket_no);
 	this->setDefaultProps();
 	if (!this->setLocations(path, socket_no))
@@ -52,16 +56,7 @@ void ServerConfig::setConfProps(std::string path, int socket_no)
 	while ((line != "</server>") &&
 		   (line.find("<location>") == std::string::npos))
 	{
-		if (line.find("listen:") != std::string::npos)
-		{
-			this->properties.insert(std::make_pair("host:",
-												   line.substr(line.find(":") + 1, line.find(":") - 1)));
-			value = line.substr(line.rfind(":") + 1);
-			this->removeWhitespaces(value);
-
-			this->properties.insert(std::make_pair("port:", value));
-		}
-		else if (line.find(":") != std::string::npos)
+		if (line.find(":") != std::string::npos)
 		{
 			key = line.substr(0, line.find(":") + 1);
 			value = line.substr(line.find(":") + 1);
@@ -74,15 +69,13 @@ void ServerConfig::setConfProps(std::string path, int socket_no)
 		getline(config, line);
 	}
 	config.close();
-	std::map<std::string, std::string>::iterator it1;
-	// int i = 0;
 
-	// std::cout << "PROPERTIES:\n";
-	// for (it1 = properties.begin(); it1 != properties.end(); it1++)
-	// {
-	// 	std::cout << "value: " << it1->first << " key: " << it1->second << std::endl;
-	// }
-	// i++;
+	std::map<std::string, std::string>::iterator it1;
+	std::cout << "PROPERTIES:\n";
+	for (it1 = properties.begin(); it1 != properties.end(); it1++)
+	{
+		std::cout << "value: " << it1->first << " key: " << it1->second << std::endl;
+	}
 }
 
 void ServerConfig::accessServerBlock(std::fstream &config, int socket_no)
