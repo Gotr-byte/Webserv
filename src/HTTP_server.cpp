@@ -34,13 +34,11 @@ std::string HTTP_server::read_file(const std::string &filename)
     std::ifstream file(filename.c_str());
     std::string content;
     char c;
-    if (!file)
-    {
+    if (!file){
         std::cerr << "Error opening file " << filename << std::endl;
         return "";
     }
-    while (file.get(c))
-    {
+    while (file.get(c)){
         content += c;
     }
     file.close();
@@ -93,18 +91,21 @@ void HTTP_server::server_port_listening(int i)
 {
     if (fds[i].revents & POLLIN)
     {
-        Client client_fd;
+        Client client_get_fd;
+        int pending_connection;
         client_len = sizeof(client_addr);
-        client_fd.fd = accept(listening_socket_fd[i], (struct sockaddr *)&client_addr, &client_len);
-        if (client_fd.fd < 0)
-        {
+        pending_connection = accept(listening_socket_fd[i], (struct sockaddr *)&client_addr, &client_len);
+        if (pending_connection < 0){
             perror("Error accepting client connection on etc");
             exit(EXIT_FAILURE);
         }
-        clients[++currently_served_quantity + listening_port_no - 1] = client_fd;
-        fds[currently_served_quantity + listening_port_no - 1].fd = client_fd.fd;
+        pending_connections.push_back(pending_connection);
+        client_get_fd.fd = pending_connections.front();
+        clients[++currently_served_quantity + listening_port_no - 1] = client_get_fd;
+        fds[currently_served_quantity + listening_port_no - 1].fd = pending_connections.front();
         fds[currently_served_quantity + listening_port_no - 1].events = POLLIN | POLLOUT;
         fds[currently_served_quantity + listening_port_no - 1].revents = 0;
+        pending_connections.pop_front();
         std::cout << "New client connected on etc fd\n";
     }
 }
@@ -113,8 +114,7 @@ void HTTP_server::server_conducts_poll()
 {
     nfds = currently_served_quantity + listening_port_no;
     res = poll(fds, nfds, 10);
-    if (res < 0)
-    {
+    if (res < 0){
         perror("Error polling sockets");
         exit(EXIT_FAILURE);
     }
@@ -126,22 +126,18 @@ void HTTP_server::server_mapping_request(int i)
     char buf[BUF_SIZE];
     memset(buf, 0, BUF_SIZE);
     int n = recv(clients[i].fd, buf, BUF_SIZE, 0);
-    if (n < 0)
-    {
+    if (n < 0){
         perror("Error receiving data from client");
         exit(EXIT_FAILURE);
     }
     std::string HTTP_request(buf);
     line = std::strtok(&HTTP_request[0], "\n");
-    while (line != NULL)
-    {
+    while (line != NULL){
         std::string strLine(line);
-        // std::cout << strLine << "\n";
         lines.push_back(strLine);
         line = strtok(NULL, "\n");
     }
-    if (!lines.empty())
-    {
+    if (!lines.empty()){
         clients[i].request["method:"] = std::strtok(&lines.front()[0], " ");
         clients[i].request["location:"] = std::strtok(NULL, " ");
         clients[i].request["HTTP_version:"] = std::strtok(NULL, " ");
@@ -151,17 +147,14 @@ void HTTP_server::server_mapping_request(int i)
     {
         if (!lines.empty())
         {
-            if (lines.front() == "\n" && new_line_count == 1)
-            {
+            if (lines.front() == "\n" && new_line_count == 1){
                 lines.pop_front();
                 break;
             }
-            if (lines.front() == "\r")
-            {
+            if (lines.front() == "\r"){
                 new_line_count++;
             }
-            else
-            {
+            else{
                 tokenizing(clients[i].request, lines.front());
             }
         }
@@ -174,8 +167,7 @@ void HTTP_server::perform_get_request(int i)
     if (clients[i].request["location:"].substr(0, 6) == "/file/")
     {
         // Check if the initial response headers have been sent for this client
-        if (!clients[i].initialResponseSent)
-        {
+        if (!clients[i].initialResponseSent){
             filename = ".." + clients[i].request["location:"];
             std::cout << filename << "\n";
             // test
@@ -185,7 +177,6 @@ void HTTP_server::perform_get_request(int i)
                 perror("Error opening file");
                 exit(EXIT_FAILURE);
             }
-            // err
             int file_fd = open(filename.c_str(), O_RDONLY);
             if (file_fd < 0)
             {
@@ -194,11 +185,8 @@ void HTTP_server::perform_get_request(int i)
             }
             clients[i].file_fd = dup(file_fd);
             close(file_fd);
-            // Calculate the content length
             off_t content_length = lseek(clients[i].file_fd, 0, SEEK_END);
             lseek(clients[i].file_fd, 0, SEEK_SET);
-
-            // Construct the initial response headers
             std::stringstream response_headers;
             response_headers << "HTTP/1.1 200 OK\r\n"
                              << "Transfer-Encoding: chunked\r\n"
@@ -206,65 +194,49 @@ void HTTP_server::perform_get_request(int i)
                              << "\r\n";
 
             std::string http_response = response_headers.str();
-
-            // Send the initial headers
             if (send(clients[i].fd, http_response.c_str(), http_response.length(), 0) < 0)
             {
                 perror("Error sending initial response headers");
                 exit(EXIT_FAILURE);
             }
-
-            // Mark the initial response as sent for this client
             clients[i].initialResponseSent = true;
-
-            // Store the file descriptor and content length for subsequent chunked transfers
-            // clients[i].file_fd = dup(file_fd);
             clients[i].content_length = content_length;
         }
-
-        // Send the next chunk of data
-        const int chunkSize = 1024; // Chunk size for each chunk
+        const int chunkSize = 1024;
         char buffer[chunkSize];
         ssize_t bytesRead;
         bytesRead = read(clients[i].file_fd, buffer, chunkSize);
         if (bytesRead > 0)
         {
             std::cout << "sent " << bytesRead << "bytes to: " << clients[i].fd << "\n";
-            // Prepare the chunk size and chunk data
             std::stringstream chunkSizeHex;
             chunkSizeHex << std::hex << bytesRead << "\r\n";
             std::string chunkSizeHexStr = chunkSizeHex.str();
             std::string chunkData(buffer, bytesRead);
             std::string chunk = chunkSizeHexStr + chunkData + "\r\n";
-
-            // Send the chunk
             ssize_t bytesSent = send(clients[i].fd, chunk.c_str(), chunk.length(), 0);
-            if (bytesSent < 0)
-            {
+            if (bytesSent < 0){
                 perror("Error sending chunk");
                 exit(EXIT_FAILURE);
             }
         }
         else
         {
-            // No more data to read, send the last chunk to indicate the end of the response
             std::string lastChunk = "0\r\n\r\n";
             if (send(clients[i].fd, lastChunk.c_str(), lastChunk.length(), 0) < 0)
             {
                 perror("Error sending last chunk");
                 exit(EXIT_FAILURE);
             }
-
-            // Close the file descriptor
             close(clients[i].file_fd);
-
-            // Remove the client from the list
-            // clients.erase(clients.begin() + i);
+            close(clients[i].fd);
+            clients[i].initialResponseSent = false;
+            clients[i].request.clear();
+            currently_served_quantity--;
         }
     }
     else if (clients[i].request["location:"].substr(0, 6) == "/HTML/")
     {
-        // Check if the initial response headers have been sent for this client
         if (!clients[i].initialResponseSent)
         {
             filename = ".." + clients[i].request["location:"];
@@ -285,11 +257,8 @@ void HTTP_server::perform_get_request(int i)
             }
             clients[i].file_fd = dup(file_fd);
             close(file_fd);
-            // Calculate the content length
             off_t content_length = lseek(clients[i].file_fd, 0, SEEK_END);
             lseek(clients[i].file_fd, 0, SEEK_SET);
-
-            // Construct the initial response headers
             std::stringstream response_headers;
             response_headers << "HTTP/1.1 200 OK\r\n"
                              << "Transfer-Encoding: chunked\r\n"
@@ -297,31 +266,20 @@ void HTTP_server::perform_get_request(int i)
                              << "\r\n";
 
             std::string http_response = response_headers.str();
-
-            // Send the initial headers
             if (send(clients[i].fd, http_response.c_str(), http_response.length(), 0) < 0)
             {
                 perror("Error sending initial response headers");
                 exit(EXIT_FAILURE);
             }
-
-            // Mark the initial response as sent for this client
             clients[i].initialResponseSent = true;
-
-            // Store the file descriptor and content length for subsequent chunked transfers
-            // clients[i].file_fd = dup(file_fd);
             clients[i].content_length = content_length;
         }
-
-        // Send the next chunk of data
-        const int chunkSize = 1024; // Chunk size for each chunk
+        const int chunkSize = 1024;
         char buffer[chunkSize];
         ssize_t bytesRead;
         bytesRead = read(clients[i].file_fd, buffer, chunkSize);
         if (bytesRead > 0)
         {
-            // std::cout << "sent " << bytesRead << "bytes to: " << clients[i].fd << "\n";
-            // Prepare the chunk size and chunk data
             std::stringstream chunkSizeHex;
             chunkSizeHex << std::hex << bytesRead << "\r\n";
             std::string chunkSizeHexStr = chunkSizeHex.str();
@@ -338,7 +296,6 @@ void HTTP_server::perform_get_request(int i)
         }
         else
         {
-            // No more data to read, send the last chunk to indicate the end of the response
             std::string lastChunk = "0\r\n\r\n";
             if (send(clients[i].fd, lastChunk.c_str(), lastChunk.length(), 0) < 0)
             {
@@ -346,15 +303,11 @@ void HTTP_server::perform_get_request(int i)
                 exit(EXIT_FAILURE);
             }
 
-            // Close the file descriptor
             close(clients[i].file_fd);
             close(clients[i].fd);
             clients[i].initialResponseSent = false;
             clients[i].request.clear();
             currently_served_quantity--;
-
-            // Remove the client from the list
-            // clients.erase(clients.begin() + i);
         }
     }
 }
@@ -392,11 +345,13 @@ void HTTP_server::server_loop()
         }
     }
     // Close all connected client sockets
-    for (unsigned long i = 0; i < currently_served_quantity; i++)
-    {
+    for (unsigned long i = 0; i < currently_served_quantity + listening_port_no; ++i){
         close(clients[i].fd);
     }
     // Close the server socket
+    for(unsigned int i = 0; i < MAX_CLIENTS; ++i){
+        close(fds[i].fd);
+    }
 }
 
 int HTTP_server::handle_request(std::string path)
