@@ -32,6 +32,7 @@
 #include "ServerConfig.hpp"
 #include "Client.hpp"
 #include "Socket.hpp"
+#include "RequestProcessor.hpp"
 
 #define MAX_CLIENTS 300
 #define LISTENING_SOCKET
@@ -82,6 +83,6 @@ private:
     std::string content_type;
     std::vector<int> listening_socket_fd;
     int sentBytes[20];
-    std::map<std::string, ServerConfig> configVec;
+    std::vector<ServerConfig> ConfigVec;
     int listening_port_no;
 };

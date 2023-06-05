@@ -3,12 +3,13 @@
 /* CONSTRUCTOR SETS CONFIG FILE CONFIGURATIONS TO THE OBJECT AND THEN
 IF PROPERTIES ARE MISSING, DEFAULT CONFIGURATIONS WILL BE ADDED */
 
+ServerConfig::ServerConfig()
+{}
+
+
 ServerConfig::ServerConfig(std::string path, int socket_no)
 {
-	if (socket_no == 0)
-		this->primary_server = true;
-	else
-		this->primary_server = false;
+	this->first_server = (socket_no == 0);
 	this->setConfProps(path, socket_no);
 	this->setDefaultProps();
 	if (!this->setLocations(path, socket_no))
@@ -64,18 +65,23 @@ void ServerConfig::setConfProps(std::string path, int socket_no)
 			this->removeWhitespaces(key);
 			this->removeWhitespaces(value);
 
+			if (key == "listen:")
+			{
+				this->host = value.substr(0, value.find(":"));
+				this->port = value.substr(value.find(":") + 1);
+			}
 			this->properties.insert(std::make_pair(key, value));
 		}
 		getline(config, line);
 	}
 	config.close();
 
-	std::map<std::string, std::string>::iterator it1;
-	std::cout << "PROPERTIES:\n";
-	for (it1 = properties.begin(); it1 != properties.end(); it1++)
-	{
-		std::cout << "value: " << it1->first << " key: " << it1->second << std::endl;
-	}
+	// std::map<std::string, std::string>::iterator it1;
+	// std::cout << "PROPERTIES:\n";
+	// for (it1 = properties.begin(); it1 != properties.end(); it1++)
+	// {
+	// 	std::cout << "key: " << it1->first << " value: " << it1->second << std::endl;
+	// }
 }
 
 void ServerConfig::accessServerBlock(std::fstream &config, int socket_no)
@@ -144,20 +150,20 @@ bool ServerConfig::setLocations(std::string path, int socket_no)
 		checkLocationBlock(block, dir);
 		getline(config, line);
 	}
-	// std::map<std::string, std::map<std::string, std::string> >::iterator it1;
-	// std::map<std::string, std::string>::iterator it2;
-	// int i = 0;
+	std::map<std::string, std::map<std::string, std::string> >::iterator it1;
+	std::map<std::string, std::string>::iterator it2;
+	int i = 0;
 
-	// std::cout << "LOCATIONS:\n";
-	// for (it1 = locations.begin(); it1 != locations.end(); it1++)
-	// {
-	// 	std::cout << "Block " << i << " with location: " << it1->first << std::endl;
-	// 	for (it2 = it1->second.begin(); it2 != it1->second.end(); it2++)
-	// 	{
-	// 		std::cout << "value: " << it2->first << " key: " << it2->second << std::endl;
-	// 	}
-	// 	i++;
-	// }
+	std::cout << "LOCATIONS:\n";
+	for (it1 = locations.begin(); it1 != locations.end(); it1++)
+	{
+		std::cout << "Block " << i << " with location: " << it1->first << std::endl;
+		for (it2 = it1->second.begin(); it2 != it1->second.end(); it2++)
+		{
+			std::cout << "value: " << it2->first << " key: " << it2->second << std::endl;
+		}
+		i++;
+	}
 	return true;
 }
 
@@ -194,6 +200,11 @@ std::string	ServerConfig::getLocation(std::string location, std::string key)
 	return this->locations[location][key];
 }
 
+std::map<std::string, \
+	std::map<std::string, std::string> > ServerConfig::getLocations()
+{
+	return this->locations;
+}
 
 void ServerConfig::removeWhitespaces(std::string &string)
 {

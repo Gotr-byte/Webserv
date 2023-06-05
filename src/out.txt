@@ -1,0 +1,6 @@
+Undefined symbols for architecture arm64:
+  "ServerConfig::ServerConfig()", referenced from:
+      void std::__1::allocator<std::__1::__tree_node<std::__1::__value_type<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>, ServerConfig>, void*>>::construct[abi:v15006]<ServerConfig>(ServerConfig*) in HTTP_server.o
+ld: symbol(s) not found for architecture arm64
+clang: error: linker command failed with exit code 1 (use -v to see invocation)
+make: *** [Webserv] Error 1

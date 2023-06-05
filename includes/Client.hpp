@@ -3,6 +3,7 @@
 
 #include <sys/types.h>
 #include <string>
+#include "RequestProcessor.hpp"
 #include <map>
 
 class Client {
@@ -13,6 +14,8 @@ class Client {
         int file_fd;                 // File descriptor for the requested file
         off_t content_length;        // Content length of the requested file
         std::map<std::string, std::string> request;
+        int                         socket;
+        // RequestProcessor                   response;
 };
 
 #endif

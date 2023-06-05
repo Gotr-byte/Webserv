@@ -56,8 +56,8 @@ void HTTP_server::tokenizing(std::map<std::string, std::string> &request, std::s
     std::stringstream tokenize_stream(line_to_tokenize);
     std::string value;
     std::string key;
-    std::getline(tokenize_stream, key, ':');
-    std::getline(tokenize_stream, value, '\n');
+	key = line_to_tokenize.substr(0, line_to_tokenize.find(":") + 1);
+	value = line_to_tokenize.substr(line_to_tokenize.find(":") + 1);
     removeWhitespaces(key);
     removeWhitespaces(value);
     request[key] = value;
@@ -96,11 +96,12 @@ void HTTP_server::server_port_listening(int i)
             perror("Error accepting client connection on etc");
             exit(EXIT_FAILURE);
         }
+        client_fd.socket = i;
         clients.push_back(client_fd);
         fds[clients.size() + listening_port_no - 1].fd = client_fd.fd;
         fds[clients.size() + listening_port_no - 1].events = POLLIN | POLLOUT;
         fds[clients.size() + listening_port_no - 1].revents = 0;
-        std::cout << "New client connected on etc fd\n";
+        std::cout << "New client connected on etc fd on socket: " << i << "\n";
     }
 }
 
@@ -127,7 +128,6 @@ void HTTP_server::server_mapping_request(int i)
         exit(EXIT_FAILURE);
     }
     std::string HTTP_request(buf);
-    std::cout << HTTP_request << std::endl;
     line = std::strtok(&HTTP_request[0], "\n");
     while (line != NULL)
     {
@@ -261,8 +261,8 @@ void HTTP_server::perform_get_request(int i)
     }
     else if (clients[i].request["location:"].substr(0, 6) == "/HTML/")
     {
-        for (std::map<std::string, std::string>::iterator it = clients[i].request.begin(); it != clients[i].request.end(); it++)
-            std::cout << it->first << "||" << it->second << std::endl;
+        for (std::map< std::string, std::string>::iterator it = clients[i].request.begin(); it != clients[i].request.end(); it++)
+            std::cout << "KEY: " << it->first << " VALUE: " << it->second << std::endl;
         filename = ".." + clients[i].request["location:"];
         content = read_file(filename);
 
@@ -340,12 +340,16 @@ void HTTP_server::server_loop()
     {
         server_conducts_poll();
         for (int i = 0; i < listening_port_no; i++)
+        {
             server_port_listening(i);
+        }
         for (unsigned long i = 0; i < clients.size(); i++)
         {
             if (fds[i + listening_port_no].revents & POLLIN)
             {
+                std::cout << clients[i].socket << std::endl;
                 server_mapping_request(i);
+                RequestProcessor    response(clients[i].request, ConfigVec[clients[i].socket]);
                 if (clients[i].request["method:"].substr(0, 4) == "POST")
                 {
                     std::cout << "post is reached"
@@ -416,12 +420,12 @@ int HTTP_server::handle_request(std::string path)
     for (int i = 0; i < listening_port_no; i++)
     {
         ServerConfig tmp(path, i);
-        std::string port = tmp.getConfProps("port:");
-        Socket socket(atoi(port.c_str()), "0.0.0.0");
+        Socket socket(atoi(tmp.port.c_str()), tmp.host);
         listening_socket_fd.push_back(socket.server_fd);
-        configVec.insert(std::make_pair(port, tmp));
+        ConfigVec.push_back(tmp);
+        std::cout << tmp.getConfProps("listen:") << std::endl;
         std::cout << " Socket " << (i + 1) << " (FD " << listening_socket_fd[i]
-                  << ") is listening on port: " << port << std::endl;
+                  << ") is listening on: " << tmp.getConfProps("listen:") << std::endl;
     }
     create_pollfd_struct();
     server_loop();
