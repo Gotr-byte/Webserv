@@ -110,10 +110,15 @@ void HTTP_server::server_port_listening(int i)
     }
 }
 
+/*
+*We can use the timeout with try and reset the poll if the timeout is down because of stability
+*
+*/
 void HTTP_server::server_conducts_poll()
 {
     nfds = currently_served_quantity + listening_port_no;
-    res = poll(fds, nfds, 10);
+    timeout = (3 * 60 * 1000);
+    res = poll(fds, nfds, timeout);
     if (res < 0){
         perror("Error polling sockets");
         exit(EXIT_FAILURE);

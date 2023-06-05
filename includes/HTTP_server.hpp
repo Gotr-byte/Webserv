@@ -66,6 +66,7 @@ private:
     Client *clients;
     std::deque<int> pending_connections;
     struct pollfd *fds;
+    int timeout;
     std::vector<char *> HTTP_requests;
     socklen_t client_len;
     std::string http_response;
