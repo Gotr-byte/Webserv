@@ -51,9 +51,10 @@ public:
     void server_loop();
     std::string read_file(const std::string &filename);
     void tokenizing(std::map<std::string, std::string> &request, std::string line_to_tokenize);
-    // void                            print_map();
     void place_in_file(std::string line_to_file);
     std::string toHex(int value);
+    void get_static_html(int i);
+    void get_file(int i);
 
 private:
     HTTP_server(const HTTP_server &other);
@@ -61,7 +62,6 @@ private:
     int nfds;
     int res;
     int currently_served_quantity;
-    //maybe the below addres could be added to clients struct
     struct sockaddr_in client_addr;
     Client *clients;
     std::deque<int> pending_connections;
