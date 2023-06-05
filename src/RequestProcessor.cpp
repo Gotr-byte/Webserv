@@ -28,7 +28,7 @@ void	RequestProcessor::AssignLocation()
 	for (std::map<std::string, std::map<std::string, std::string> >::iterator \
 		it = config.locations.begin(); it != config.locations.end(); it++)
 	{
-		std::cout << it->first << std::endl; 
+		// std::cout << it->first << std::endl; 
 		if (int pos = request["location:"].find(it->first) != std::string::npos)
 		{
 			this->clientpath = it->first;
@@ -203,7 +203,7 @@ void	RequestProcessor::CreateAutoindex()
     autoidx << "<ul>\n";
 
 	DIR* dir = opendir(path.c_str());
-	std::cout << path << std::endl;
+	// std::cout << path << std::endl;
 
 	struct dirent* entry;
     while ((entry = readdir(dir)) != NULL) {

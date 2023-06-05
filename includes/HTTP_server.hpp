@@ -43,7 +43,7 @@ public:
     HTTP_server();
     ~HTTP_server();
     void server_conducts_poll();
-    void perform_get_request(int i);
+    // void perform_get_request(int i);
     void server_port_listening(int i);
     void server_mapping_request(int i);
     int handle_request(std::string path);
@@ -55,9 +55,9 @@ public:
     void place_in_file(std::string line_to_file);
     std::string toHex(int value);
     void    removeWhitespaces(std::string &string);
-    void get_static_html(int i);
-    void get_file(int i);
-    void get_error_site(int i, std::string error_page);
+    // void get_static_html(int i);
+    void get_request(int i);
+    // void get_error_site(int i, std::string error_page);
 
 private:
     HTTP_server(const HTTP_server &other);
