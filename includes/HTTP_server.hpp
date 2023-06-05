@@ -60,14 +60,12 @@ private:
     HTTP_server& operator = (const HTTP_server & other);
     int nfds;
     int res;
-    // int server_fd; // move to socket
-    // int opt; // move to socket
-    // struct sockaddr_in server_addr; // move to socket
-
+    int currently_served_quantity;
+    //maybe the below addres could be added to clients struct
     struct sockaddr_in client_addr;
-    std::vector<Client> clients;
-    // Client clients[MAX_CLIENTS - 3];
-    struct pollfd fds[MAX_CLIENTS];
+    Client *clients;
+    std::deque<int> pending_connections;
+    struct pollfd *fds;
     std::vector<char *> HTTP_requests;
     socklen_t client_len;
     std::string http_response;
@@ -83,4 +81,12 @@ private:
     int sentBytes[20];
     std::map<std::string, ServerConfig> configVec;
     int listening_port_no;
+    class				InvalidLocationException : public std::exception
+		{
+			public:
+				virtual const char* what() const throw()
+				{
+					return("Invalid location exception\n");
+				}
+		};
 };
