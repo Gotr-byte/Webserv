@@ -52,24 +52,24 @@ public:
     void server_loop();
     std::string read_file(const std::string &filename);
     void tokenizing(std::map<std::string, std::string> &request, std::string line_to_tokenize);
-    // void                            print_map();
     void place_in_file(std::string line_to_file);
     std::string toHex(int value);
     void    removeWhitespaces(std::string &string);
+    void get_static_html(int i);
+    void get_file(int i);
+    void get_error_site(int i, std::string error_page);
 
 private:
     HTTP_server(const HTTP_server &other);
     HTTP_server& operator = (const HTTP_server & other);
     int nfds;
     int res;
-    // int server_fd; // move to socket
-    // int opt; // move to socket
-    // struct sockaddr_in server_addr; // move to socket
-
+    int currently_served_quantity;
     struct sockaddr_in client_addr;
-    std::vector<Client> clients;
-    // Client clients[MAX_CLIENTS - 3];
-    struct pollfd fds[MAX_CLIENTS];
+    Client *clients;
+    std::deque<int> pending_connections;
+    struct pollfd *fds;
+    int timeout;
     std::vector<char *> HTTP_requests;
     socklen_t client_len;
     std::string http_response;
@@ -85,4 +85,12 @@ private:
     int sentBytes[20];
     std::vector<ServerConfig> ConfigVec;
     int listening_port_no;
+    class				InvalidFileDownloadException : public std::exception
+		{
+			public:
+				virtual const char* what() const throw()
+				{
+					return("Invalid location exception\n");
+				}
+		};
 };
