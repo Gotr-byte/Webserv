@@ -152,18 +152,18 @@ bool ServerConfig::setLocations(std::string path, int socket_no)
 	}
 	std::map<std::string, std::map<std::string, std::string> >::iterator it1;
 	std::map<std::string, std::string>::iterator it2;
-	int i = 0;
+	// int i = 0;
 
-	std::cout << "LOCATIONS:\n";
-	for (it1 = locations.begin(); it1 != locations.end(); it1++)
-	{
-		std::cout << "Block " << i << " with location: " << it1->first << std::endl;
-		for (it2 = it1->second.begin(); it2 != it1->second.end(); it2++)
-		{
-			std::cout << "value: " << it2->first << " key: " << it2->second << std::endl;
-		}
-		i++;
-	}
+	// std::cout << "LOCATIONS:\n";
+	// for (it1 = locations.begin(); it1 != locations.end(); it1++)
+	// {
+	// 	std::cout << "Block " << i << " with location: " << it1->first << std::endl;
+	// 	for (it2 = it1->second.begin(); it2 != it1->second.end(); it2++)
+	// 	{
+	// 		std::cout << "value: " << it2->first << " key: " << it2->second << std::endl;
+	// 	}
+	// 	i++;
+	// }
 	return true;
 }
 

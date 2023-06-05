@@ -408,7 +408,6 @@ int HTTP_server::handle_request(std::string path){
 		Socket socket(atoi(tmp.port.c_str()), tmp.host);
 		listening_socket_fd.push_back(socket.server_fd);
 		ConfigVec.push_back(tmp);
-		std::cout << tmp.getConfProps("listen:") << std::endl;
 		std::cout << " Socket " << (i + 1) << " (FD " << listening_socket_fd[i]
 				  << ") is listening on: " << tmp.getConfProps("listen:") << std::endl;
 	}

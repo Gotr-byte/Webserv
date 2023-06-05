@@ -41,7 +41,7 @@ void	RequestProcessor::AssignLocation()
 				autoindex = true;
 		}
 	}
-	std::cout << "CORRECT PATH: " << path << std::endl;
+	// std::cout << "CORRECT PATH: " << path << std::endl;
 }
 
 bool	RequestProcessor::CheckMethod()
