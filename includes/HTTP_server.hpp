@@ -83,7 +83,7 @@ private:
     int sentBytes[20];
     std::map<std::string, ServerConfig> configVec;
     int listening_port_no;
-    class				InvalidLocationException : public std::exception
+    class				InvalidFileDownloadException : public std::exception
 		{
 			public:
 				virtual const char* what() const throw()

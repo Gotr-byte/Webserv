@@ -160,15 +160,15 @@ void HTTP_server::server_mapping_request(int i){
 void HTTP_server::get_static_html(int i){
     if (!clients[i].initialResponseSent){
         filename = ".." + clients[i].request["location:"];
-        int file_fd_err = open(filename.c_str(), O_RDONLY);
-        if (file_fd_err < 0){
-            perror("Error opening file");
-            exit(EXIT_FAILURE);
-        }
         int file_fd = open(filename.c_str(), O_RDONLY);
         if (file_fd < 0){
-            perror("Error opening file");
-            exit(EXIT_FAILURE);
+            get_error_site(i, "404.html");
+            close(clients[i].file_fd);
+            close(clients[i].fd);
+            clients[i].initialResponseSent = false;
+            clients[i].request.clear();
+            currently_served_quantity--;
+            throw(InvalidFileDownloadException());
         }
         clients[i].file_fd = dup(file_fd);
         close(file_fd);
@@ -221,15 +221,15 @@ void HTTP_server::get_static_html(int i){
 void HTTP_server::get_file(int i){
     if (!clients[i].initialResponseSent){
         filename = ".." + clients[i].request["location:"];
-        int file_fd_err = open(filename.c_str(), O_RDONLY);
-        if (file_fd_err < 0){
-            perror("Error opening file");
-            exit(EXIT_FAILURE);
-        }
         int file_fd = open(filename.c_str(), O_RDONLY);
         if (file_fd < 0){
+            close(clients[i].file_fd);
+            close(clients[i].fd);
+            clients[i].initialResponseSent = false;
+            clients[i].request.clear();
+            currently_served_quantity--;
             perror("Error opening file");
-            exit(EXIT_FAILURE);
+            throw(InvalidFileDownloadException());
         }
         clients[i].file_fd = dup(file_fd);
         close(file_fd);
@@ -278,16 +278,11 @@ void HTTP_server::get_file(int i){
     }
 }
 
-void HTTP_server::get_error_site(int i, std::string error_page){
-    if (!clients[i].initialResponseSent){
+void HTTP_server::get_error_site(int i, std::string error_page) {
+    if (!clients[i].initialResponseSent) {
         filename = "../error_pages/" + error_page;
-        int file_fd_err = open(filename.c_str(), O_RDONLY);
-        if (file_fd_err < 0){
-            perror("Error opening file");
-            exit(EXIT_FAILURE);
-        }
         int file_fd = open(filename.c_str(), O_RDONLY);
-        if (file_fd < 0){
+        if (file_fd < 0) {
             perror("Error opening file");
             exit(EXIT_FAILURE);
         }
@@ -297,62 +292,127 @@ void HTTP_server::get_error_site(int i, std::string error_page){
         lseek(clients[i].file_fd, 0, SEEK_SET);
         std::stringstream response_headers;
         response_headers << "HTTP/1.1 200 OK\r\n"
-                            << "Transfer-Encoding: chunked\r\n"
+                            << "Content-Length: " << content_length << "\r\n"
                             << "Content-Type: text/html\r\n"
                             << "\r\n";
 
         std::string http_response = response_headers.str();
-        if (send(clients[i].fd, http_response.c_str(), http_response.length(), 0) < 0){
+        if (send(clients[i].fd, http_response.c_str(), http_response.length(), 0) < 0) {
             perror("Error sending initial response headers");
             exit(EXIT_FAILURE);
         }
         clients[i].initialResponseSent = true;
         clients[i].content_length = content_length;
     }
-    const int chunkSize = 1024;
-    char buffer[chunkSize];
+
+    const int bufferSize = 1024;
+    char buffer[bufferSize];
     ssize_t bytesRead;
-    bytesRead = read(clients[i].file_fd, buffer, chunkSize);
-    if (bytesRead > 0){
-        std::stringstream chunkSizeHex;
-        chunkSizeHex << std::hex << bytesRead << "\r\n";
-        std::string chunkSizeHexStr = chunkSizeHex.str();
-        std::string chunkData(buffer, bytesRead);
-        std::string chunk = chunkSizeHexStr + chunkData + "\r\n";
-        ssize_t bytesSent = send(clients[i].fd, chunk.c_str(), chunk.length(), 0);
-        if (bytesSent < 0){
-            perror("Error sending chunk");
+    while ((bytesRead = read(clients[i].file_fd, buffer, bufferSize)) > 0) {
+        ssize_t bytesSent = send(clients[i].fd, buffer, bytesRead, 0);
+        if (bytesSent < 0) {
+            perror("Error sending file content");
             exit(EXIT_FAILURE);
         }
     }
-    else{
-        std::string lastChunk = "0\r\n\r\n";
-        if (send(clients[i].fd, lastChunk.c_str(), lastChunk.length(), 0) < 0){
-            perror("Error sending last chunk");
-            exit(EXIT_FAILURE);
-        }
-        close(clients[i].file_fd);
-        close(clients[i].fd);
-        clients[i].initialResponseSent = false;
-        clients[i].request.clear();
-        currently_served_quantity--;
-    }
+
+    close(clients[i].file_fd);
+    close(clients[i].fd);
+    clients[i].initialResponseSent = false;
+    clients[i].request.clear();
+    currently_served_quantity--;
 }
+
+// void HTTP_server::get_error_site(int i, std::string error_page){
+//     if (!clients[i].initialResponseSent){
+//         filename = "../error_pages/" + error_page;
+//         int file_fd = open(filename.c_str(), O_RDONLY);
+//         if (file_fd < 0){
+//             perror("Error opening file");
+//             exit(EXIT_FAILURE);
+//         }
+//         clients[i].file_fd = dup(file_fd);
+//         close(file_fd);
+//         off_t content_length = lseek(clients[i].file_fd, 0, SEEK_END);
+//         lseek(clients[i].file_fd, 0, SEEK_SET);
+//         std::stringstream response_headers;
+//         response_headers << "HTTP/1.1 200 OK\r\n"
+//                             << "Transfer-Encoding: chunked\r\n"
+//                             << "Content-Type: text/html\r\n"
+//                             << "\r\n";
+
+//         std::string http_response = response_headers.str();
+//         if (send(clients[i].fd, http_response.c_str(), http_response.length(), 0) < 0){
+//             perror("Error sending initial response headers");
+//             exit(EXIT_FAILURE);
+//         }
+//         clients[i].initialResponseSent = true;
+//         clients[i].content_length = content_length;
+//     }
+//     const int chunkSize = 1024;
+//     char buffer[chunkSize];
+//     // ssize_t bytesRead;
+//     // bytesRead = read(clients[i].file_fd, buffer, chunkSize);
+//     while (ssize_t bytesRead = read(clients[i].file_fd, buffer, chunkSize) > 0){
+//         std::stringstream chunkSizeHex;
+//         chunkSizeHex << std::hex << bytesRead << "\r\n";
+//         std::string chunkSizeHexStr = chunkSizeHex.str();
+//         std::string chunkData(buffer, bytesRead);
+//         std::string chunk = chunkSizeHexStr + chunkData + "\r\n";
+//         ssize_t bytesSent = send(clients[i].fd, chunk.c_str(), chunk.length(), 0);
+//         if (bytesSent < 0){
+//             perror("Error sending chunk");
+//             exit(EXIT_FAILURE);
+//         }
+//     }
+//     // else{
+//     std::string lastChunk = "0\r\n\r\n";
+//     if (send(clients[i].fd, lastChunk.c_str(), lastChunk.length(), 0) < 0){
+//         perror("Error sending last chunk");
+//         exit(EXIT_FAILURE);
+//     }
+//     close(clients[i].file_fd);
+//     close(clients[i].fd);
+//     clients[i].initialResponseSent = false;
+//     clients[i].request.clear();
+//     currently_served_quantity--;
+//     // }
+// }
 
 void HTTP_server::perform_get_request(int i)
 {
+    
     if (clients[i].request["location:"].substr(0, 6) == "/file/"){
-        get_file(i);
+        try{
+            get_file(i);
+        }
+        catch(const std::exception & e)
+        {
+            std::cerr << e.what();
+        }
     }
     else if (clients[i].request["location:"].substr(0, 6) == "/HTML/"){
+        try{
         get_static_html(i);
+        }
+        catch(const std::exception & e)
+        {
+            std::cerr << e.what();
+        }
     }
     else if (clients[i].request["location:"] == "/favicon.ico"){
+        try{
         get_file(i);
+        }
+        catch(const std::exception & e)
+        {
+            std::cerr << e.what();
+        }
     }
     else {
         get_error_site(i, "404.html");
     }
+   
 }
 
 std::string HTTP_server::toHex(int value)
@@ -366,9 +426,10 @@ void HTTP_server::server_loop()
 {
     while (true)
     {
+      
         server_conducts_poll();
         for (int i = 0; i < listening_port_no; i++)
-            server_port_listening(i);
+                server_port_listening(i);
         for (unsigned long i = listening_port_no; i < MAX_CLIENTS; i++)
         {
             if (fds[i].revents & POLLIN){
