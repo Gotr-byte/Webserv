@@ -33,6 +33,7 @@ class RequestProcessor
 		std::string	ResponseHeader;
 		std::string	autoindexbody;
 		std::string	path;
+		std::string	contenttype;
 
 	private:
 
@@ -44,7 +45,6 @@ class RequestProcessor
 		std::string	date;
 		std::string	protocoll;
 		std::string	port;
-		std::string	contenttype;
 		std::string	statuscode;
 		std::string additionalinfo;
 };

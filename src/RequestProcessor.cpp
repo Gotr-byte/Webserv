@@ -5,9 +5,9 @@ RequestProcessor::RequestProcessor()
 {}
 
 RequestProcessor::RequestProcessor(std::map<std::string, std::string> req, ServerConfig	conf) \
-									: request(req), config(conf), isdirectory(false), \
-										autoindex(false), \
-											contenttype("application/octet-stream"), statuscode("200 OK"), additionalinfo("Transfer-Encoding: chunked")
+									: contenttype("application/octet-stream"), request(req), \
+									config(conf), isdirectory(false), autoindex(false), \
+									statuscode("200 OK"), additionalinfo("Transfer-Encoding: chunked")
 {
 	this->protocoll = "HTTP/1.1";
 	this->AssignLocation();
