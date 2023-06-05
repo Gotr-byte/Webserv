@@ -323,62 +323,6 @@ void HTTP_server::get_error_site(int i, std::string error_page) {
     currently_served_quantity--;
 }
 
-// void HTTP_server::get_error_site(int i, std::string error_page){
-//     if (!clients[i].initialResponseSent){
-//         filename = "../error_pages/" + error_page;
-//         int file_fd = open(filename.c_str(), O_RDONLY);
-//         if (file_fd < 0){
-//             perror("Error opening file");
-//             exit(EXIT_FAILURE);
-//         }
-//         clients[i].file_fd = dup(file_fd);
-//         close(file_fd);
-//         off_t content_length = lseek(clients[i].file_fd, 0, SEEK_END);
-//         lseek(clients[i].file_fd, 0, SEEK_SET);
-//         std::stringstream response_headers;
-//         response_headers << "HTTP/1.1 200 OK\r\n"
-//                             << "Transfer-Encoding: chunked\r\n"
-//                             << "Content-Type: text/html\r\n"
-//                             << "\r\n";
-
-//         std::string http_response = response_headers.str();
-//         if (send(clients[i].fd, http_response.c_str(), http_response.length(), 0) < 0){
-//             perror("Error sending initial response headers");
-//             exit(EXIT_FAILURE);
-//         }
-//         clients[i].initialResponseSent = true;
-//         clients[i].content_length = content_length;
-//     }
-//     const int chunkSize = 1024;
-//     char buffer[chunkSize];
-//     // ssize_t bytesRead;
-//     // bytesRead = read(clients[i].file_fd, buffer, chunkSize);
-//     while (ssize_t bytesRead = read(clients[i].file_fd, buffer, chunkSize) > 0){
-//         std::stringstream chunkSizeHex;
-//         chunkSizeHex << std::hex << bytesRead << "\r\n";
-//         std::string chunkSizeHexStr = chunkSizeHex.str();
-//         std::string chunkData(buffer, bytesRead);
-//         std::string chunk = chunkSizeHexStr + chunkData + "\r\n";
-//         ssize_t bytesSent = send(clients[i].fd, chunk.c_str(), chunk.length(), 0);
-//         if (bytesSent < 0){
-//             perror("Error sending chunk");
-//             exit(EXIT_FAILURE);
-//         }
-//     }
-//     // else{
-//     std::string lastChunk = "0\r\n\r\n";
-//     if (send(clients[i].fd, lastChunk.c_str(), lastChunk.length(), 0) < 0){
-//         perror("Error sending last chunk");
-//         exit(EXIT_FAILURE);
-//     }
-//     close(clients[i].file_fd);
-//     close(clients[i].fd);
-//     clients[i].initialResponseSent = false;
-//     clients[i].request.clear();
-//     currently_served_quantity--;
-//     // }
-// }
-
 void HTTP_server::perform_get_request(int i)
 {
     
