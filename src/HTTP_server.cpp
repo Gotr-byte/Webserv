@@ -204,8 +204,7 @@ void HTTP_server::get_static_html(int i){
             exit(EXIT_FAILURE);
         }
     }
-    else
-    {
+    else{
         std::string lastChunk = "0\r\n\r\n";
         if (send(clients[i].fd, lastChunk.c_str(), lastChunk.length(), 0) < 0){
             perror("Error sending last chunk");
@@ -254,7 +253,6 @@ void HTTP_server::get_file(int i){
     ssize_t bytesRead;
     bytesRead = read(clients[i].file_fd, buffer, chunkSize);
     if (bytesRead > 0){
-        std::cout << "sent " << bytesRead << "bytes to: " << clients[i].fd << "\n";
         std::stringstream chunkSizeHex;
         chunkSizeHex << std::hex << bytesRead << "\r\n";
         std::string chunkSizeHexStr = chunkSizeHex.str();
@@ -287,6 +285,12 @@ void HTTP_server::perform_get_request(int i)
     }
     else if (clients[i].request["location:"].substr(0, 6) == "/HTML/"){
         get_static_html(i);
+    }
+    else if (clients[i].request["location:"] == "/favicon.ico"){
+        get_file(i);
+    }
+    else {
+        
     }
 }
 
