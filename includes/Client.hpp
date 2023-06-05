@@ -9,13 +9,14 @@
 class Client {
     public:
         Client();
+        void	CreateResponse(std::map<std::string, std::string> req, ServerConfig	conf);
         int fd;                      // Client file descriptor
         bool initialResponseSent;    // Flag indicating if initial response headers have been sent
         int file_fd;                 // File descriptor for the requested file
         off_t content_length;        // Content length of the requested file
-        std::map<std::string, std::string> request;
         int                         socket;
-        // RequestProcessor                   response;
+        std::map<std::string, std::string> request;
+        RequestProcessor                   response;
 };
 
 #endif

@@ -3,6 +3,7 @@
 
 # include <string>
 # include <map>
+# include <sstream>
 # include <dirent.h>
 # include <cstdio>
 # include <unistd.h>
@@ -12,6 +13,7 @@
 class RequestProcessor
 {
 	public:
+		RequestProcessor();
 		RequestProcessor(std::map<std::string, std::string> req, ServerConfig	conf);
 		~RequestProcessor();
 		void	AssignLocation();
@@ -21,25 +23,29 @@ class RequestProcessor
 		bool	CheckExistance();
 		bool	IsFile();
 		bool	IsDirectory();
+		void	SetContentType();
+		void	BuildResponseHeader();
 		void	SetupErrorPage(std::string status, std::string issue);
 		void	ObtainFileLength();
+		void	CreateAutoindex();
+		std::string	method;
+		off_t		contentlength;
+		std::string	ResponseHeader;
+		std::string	autoindexbody;
+		std::string	path;
 
 	private:
 
 		std::map<std::string, std::string>	request;
 		ServerConfig						config;
-		std::string							clientlocation;
+		std::string							clientpath;
 		bool								isdirectory;
 		bool								autoindex;
 		std::string	date;
 		std::string	protocoll;
 		std::string	port;
-		std::string	method;
-		std::string	path;
 		std::string	contenttype;
 		std::string	statuscode;
-		off_t		contentlength;
-		std::string	ResponseHeader;
 		std::string additionalinfo;
 };
 #endif

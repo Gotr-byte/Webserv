@@ -1,6 +1,24 @@
-Undefined symbols for architecture arm64:
-  "ServerConfig::ServerConfig()", referenced from:
-      void std::__1::allocator<std::__1::__tree_node<std::__1::__value_type<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char>>, ServerConfig>, void*>>::construct[abi:v15006]<ServerConfig>(ServerConfig*) in HTTP_server.o
-ld: symbol(s) not found for architecture arm64
-clang: error: linker command failed with exit code 1 (use -v to see invocation)
-make: *** [Webserv] Error 1
+LOCATIONS:
+Block 0 with location: /
+value: allowed_methods: key: POST, GET
+value: autoindex: key: on
+value: index: key: planescape.html
+value: redirect: key: https://google.de/
+value: root: key: ../HTML/
+Block 1 with location: /Hello/
+value: allowed_methods: key: POST, GET
+value: autoindex: key: on
+value: index: key: test.html
+value: redirect: key: https://google.de/
+value: root: key: ../HTML/
+0.0.0.0:9995
+ Socket 1 (FD 3) is listening on: 0.0.0.0:9995
+LOCATIONS:
+Block 0 with location: /
+value: allowed_methods: key: POST, GET
+value: autoindex: key: on
+value: index: key: planescape.html
+value: redirect: key: https://google.de/
+value: root: key: ../HTML/
+0.0.0.0:9996
+ Socket 2 (FD 4) is listening on: 0.0.0.0:9996

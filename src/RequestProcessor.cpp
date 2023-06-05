@@ -1,18 +1,23 @@
 # include "../includes/RequestProcessor.hpp"
 // # include 
 
+RequestProcessor::RequestProcessor()
+{}
 
 RequestProcessor::RequestProcessor(std::map<std::string, std::string> req, ServerConfig	conf) \
 									: request(req), config(conf), isdirectory(false), \
-										autoindex(false), additionalinfo("")
+										autoindex(false), \
+											contenttype("application/octet-stream"), statuscode("200 OK"), additionalinfo("Transfer-Encoding: chunked")
 {
 	this->protocoll = "HTTP/1.1";
 	this->AssignLocation();
 	if (this->CheckMethod() && this->CheckPath())
 	{
-
+		SetContentType();
+		ObtainFileLength();
 	}
 	this->setDate();
+	this->BuildResponseHeader();
 }
 
 RequestProcessor::~RequestProcessor()
@@ -26,7 +31,7 @@ void	RequestProcessor::AssignLocation()
 		std::cout << it->first << std::endl; 
 		if (int pos = request["location:"].find(it->first) != std::string::npos)
 		{
-			this->clientlocation = it->first;
+			this->clientpath = it->first;
 			this->path = it->second["root:"];
 			if (request["location:"] == it->first)
 				this->path += it->second["index:"];
@@ -41,27 +46,32 @@ void	RequestProcessor::AssignLocation()
 
 bool	RequestProcessor::CheckMethod()
 {
-	if (config.getLocation(clientlocation, "allowed_methods:").find(request["method:"]) \
+	if (config.getLocation(clientpath, "allowed_methods:").find(request["method:"]) \
 		!= std::string::npos)
-		return true;
+		{
+			this->method = request["method:"];
+			return true;
+		}
 	SetupErrorPage("405", "Method Not Allowed");
-	additionalinfo = "Allow: " + config.getLocation(clientlocation, "allowed_methods:");
 	return false;
 }
 
 bool	RequestProcessor::CheckPath()
 {
-	if (CheckExistance() && IsFile())
-		return true;
-	else if (IsDirectory() && !autoindex)
+	if (CheckExistance())
 	{
-		SetupErrorPage("403", "Forbidden");
-		return false;
-	}
-	else if (IsDirectory() && autoindex)
-	{
-		(void) isdirectory;
-		// SETUP AUTOINDEX PAGE
+		if (!IsDirectory())
+			return true;
+		else
+		{
+			if (!autoindex)
+			{
+				SetupErrorPage("403", "Forbidden");
+				return false;
+			}
+			else
+				CreateAutoindex();
+		}
 	}
 	return false;
 }
@@ -108,29 +118,15 @@ bool	RequestProcessor::CheckExistance()
 	return true;
 }
 
-bool	RequestProcessor::IsFile()
-{
-	FILE *file = fopen(path.c_str(), "r");
-	if (file)
-	{
-		std::fclose(file);
-		return true;
-	}
-	return false;
-}
-
 bool	RequestProcessor::IsDirectory()
 {
 	DIR *dir = opendir(path.c_str());
 	if (!dir)
 	{
-		SetupErrorPage("404", "Not Found");
 		return false;
 	}
 	closedir(dir);
-	isdirectory = true;
 	return true;
-
 }
 
 void	RequestProcessor::setDate()
@@ -144,4 +140,103 @@ void	RequestProcessor::setDate()
     std::string conv(buffer);
 	this->date = "Date: " + conv;
 	// std::cout << date << std::endl;
+}
+
+void	RequestProcessor::SetContentType()
+{
+	std::string suffix = path.substr(path.rfind(".") + 1);
+
+	if (path.find("/file/") != std::string::npos)
+		contenttype = "application/octet-stream";
+	else
+	{
+		if (suffix == "html")
+			contenttype = "text/html";
+		else if (suffix == "css")
+			contenttype = "text/css";
+		else if (suffix == "txt")
+			contenttype = "text/plain";
+		else if (suffix == "jpg" || suffix == "jpeg")
+			contenttype = "image/jpeg";
+		else if (suffix == "png")
+			contenttype = "image/png";
+		else if (suffix == "gif")
+			contenttype = "image/gif";
+		else if (suffix == "pdf")
+			contenttype = "application/pdf";
+		else if (suffix == "mp3")
+			contenttype = "audio/mpeg";
+		else if (suffix == "mp4")
+			contenttype = "audio/mpeg";
+	}
+	// std::cout << suffix << std::endl;
+}
+
+void	RequestProcessor::BuildResponseHeader()
+{
+	std::ostringstream header;
+
+	header << protocoll << " " << statuscode << "\r\n";
+	header << "Server: " << config.getConfProps("server_name:") << "\r\n";
+	header << "Date: " << date << "\r\n";
+	header << "Content-Type: " << contenttype << "\r\n";
+	header << "Content-Length: " << contentlength << "\r\n";
+	if (!additionalinfo.empty())
+		header << additionalinfo << "\r\n";
+	header << "\r\n";
+
+	ResponseHeader = header.str();
+	// std::cout << ResponseHeader << std::endl;
+}
+
+void	RequestProcessor::CreateAutoindex()
+{
+	std::ostringstream	autoidx;
+
+	autoidx << "<!DOCTYPE html>\n";
+    autoidx << "<html>\n";
+    autoidx << "<head>\n";
+    autoidx << "<title>Index of " << path << "</title>\n";
+    autoidx << "</head>\n";
+    autoidx << "<body>\n";
+    autoidx << "<h1>Index of " << path << "</h1>\n";
+    autoidx << "<ul>\n";
+
+	DIR* dir = opendir(path.c_str());
+	std::cout << path << std::endl;
+
+	struct dirent* entry;
+    while ((entry = readdir(dir)) != NULL) {
+        // Skip "." and ".." entries
+        if (std::string(entry->d_name) == "." || std::string(entry->d_name) == "..") {
+            continue;
+        }
+        
+        std::string itemName = entry->d_name;
+        std::string itemPath = path + "/" + itemName;
+        
+        // Check if the entry is a file or directory
+        bool isDir = (entry->d_type == DT_DIR);
+        
+        // Generate the appropriate HTML entry
+        if (isDir)
+            autoidx << "<li><a href=\"" << itemName << "/\">" << itemName << "/</a></li>\n";
+        else
+            autoidx << "<li><a href=\"" << itemName << "\">" << itemName << "</a></li>\n";
+        }
+    
+    // Close the directory
+    closedir(dir);
+    
+    // Write the HTML footer
+    autoidx << "</ul>\n";
+    autoidx << "</body>\n";
+    autoidx << "</html>\n";
+
+	autoindexbody = autoidx.str();
+	additionalinfo = "";
+	path = "AUTOINDEX";
+	contenttype = "text/html";
+	contentlength = autoindexbody.size();
+	// std::cout << autoindexbody << std::endl;
 }
