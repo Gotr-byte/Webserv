@@ -79,7 +79,7 @@ void HTTP_server::create_listening_sock(int port)
  */
 void HTTP_server::create_pollfd_struct(void)
 {
-    memset(fds, 0, sizeof(fds));
+    memset(fds, 0, MAX_CLIENTS * sizeof(fds));
     for (int i = 0; i < listening_port_no; i++)
     {
         fds[i].fd = listening_socket_fd[i];
