@@ -55,6 +55,7 @@ public:
     std::string toHex(int value);
     void get_static_html(int i);
     void get_file(int i);
+    void get_error_site(int i, std::string error_page);
 
 private:
     HTTP_server(const HTTP_server &other);
