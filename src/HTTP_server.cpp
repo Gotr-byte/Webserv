@@ -7,6 +7,7 @@
 #include <fstream>
 
 #define BUF_SIZE 1024
+#define TIMEOUT 20
 
 /**
  * Constructor of HTTP server, creates an array of client
@@ -15,8 +16,9 @@
  * @return The contents of the file as a string.
  */
 HTTP_server::HTTP_server(){
-    clients = new Client[MAX_CLIENTS];
-    currently_served_quantity = 0;
+    timeoutDuration = TIMEOUT;
+    // clients = new Client[MAX_CLIENTS];
+    // currently_served_quantity = 0;
 }
 
 HTTP_server::~HTTP_server() {}
@@ -90,9 +92,9 @@ void HTTP_server::server_port_listening(int i)
         {
             if (fds[j].fd == -1)
             {
-                std::cout << FdClientVec[i].first << std::endl;
                 client_len = sizeof(client_addr);
                 FdClientVec[j].first = accept(FdClientVec[i].first, (struct sockaddr *)&client_addr, &client_len);
+                activeClientIdx.insert(j);
                 std::cout << "client FD: " << FdClientVec[j].first << "Index of client FD: " << j << std::endl;
                 if (FdClientVec[j].first < 0)
 		        {
@@ -101,6 +103,7 @@ void HTTP_server::server_port_listening(int i)
                 }
                 fds[j].fd = FdClientVec[j].first;
                 FdClientVec[j].second.socket = i;
+                FdClientVec[j].second.lastInteractionTime = std::time(nullptr);
                 if (j == MAX_CLIENTS + listening_port_no)
                     FdClientVec[j].second.server_full = true;
                 break ;
@@ -227,10 +230,9 @@ void HTTP_server::get_request(int i){
             exit(EXIT_FAILURE);
         }
         close(FdClientVec[i].second.file_fd);
-        // fds[i].fd = -1;
-        close(FdClientVec[i].first);
-        FdClientVec[i].second.ResetClient();
+        FdClientVec[i].second.SetupForNewInteraction();
     }
+    FdClientVec[i].second.lastInteractionTime = std::time(nullptr);
 }
 
 std::string HTTP_server::toHex(int value)
@@ -240,6 +242,16 @@ std::string HTTP_server::toHex(int value)
 	return stream.str();
 }
 
+bool    HTTP_server::CheckForTimeout(int i)
+{
+    currentTime = std::time(nullptr);
+
+    std::time_t elapsedDuration = currentTime - FdClientVec[i].second.lastInteractionTime;
+    if (elapsedDuration >= timeoutDuration)
+        return true;
+    return false;
+}
+
 void HTTP_server::server_loop()
 {
     while (true)
@@ -247,35 +259,42 @@ void HTTP_server::server_loop()
         server_conducts_poll();
         for (int i = 0; i < listening_port_no; i++)
                 server_port_listening(i);
-        for (unsigned long i = listening_port_no; i < MAX_CLIENTS + 1; i++)
+        for (std::set<int>::iterator it_idx = activeClientIdx.begin(); it_idx != activeClientIdx.end(); it_idx++)
         {
-            (void) FdClientVec[i].second.server_full;
-            if (fds[i].revents & POLLIN){
-                server_mapping_request(i);
-				FdClientVec[i].second.CreateResponse(FdClientVec[i].second.request, ConfigVec[FdClientVec[i].second.socket]);
+            (void) FdClientVec[*it_idx].second.server_full;
+            if (fds[*it_idx].revents & POLLIN){
+                server_mapping_request(*it_idx);
+                FdClientVec[*it_idx].second.lastInteractionTime = std::time(nullptr);
+				FdClientVec[*it_idx].second.CreateResponse(FdClientVec[*it_idx].second.request, ConfigVec[FdClientVec[*it_idx].second.socket]);
             }
-            if (fds[i].revents & POLLIN &&
-            FdClientVec[i].second.request["method:"].substr(0, 4) == "POST"){
+            if (fds[*it_idx].revents & POLLIN &&
+            FdClientVec[*it_idx].second.request["method:"].substr(0, 4) == "POST"){
                 std::cout << "post is reached\n";
             }
-            if (fds[i].revents & POLLOUT &&
-            FdClientVec[i].second.response.method == "GET")
+            if (fds[*it_idx].revents & POLLOUT &&
+            FdClientVec[*it_idx].second.response.method == "GET")
 			{
         		try{
-        		    get_request(i);
+        		    get_request(*it_idx);
         		}
         		catch(const std::exception & e)
         		{
         		    std::cerr << e.what();
         		}
             }
+            if (CheckForTimeout(*it_idx))
+            {
+                close(FdClientVec[*it_idx].first);
+                close(fds[*it_idx].fd);
+                fds[*it_idx].fd = -1;
+                FdClientVec[*it_idx].second.ResetClient();
+            }
         }
     }
-    for (unsigned long i = 0; i < MAX_CLIENTS + listening_port_no + 1; ++i){
-        close(FdClientVec[i].first);
-    }
-    for(unsigned int i = 0; i < MAX_CLIENTS + listening_port_no + 1; ++i){
-        close(fds[i].fd);
+    for (std::set<int>::iterator it_idx = activeClientIdx.begin(); it_idx != activeClientIdx.end(); it_idx++)
+    {
+        close(FdClientVec[*it_idx].first);
+        close(fds[*it_idx].fd);
     }
 }
 
@@ -296,7 +315,6 @@ int HTTP_server::handle_request(std::string path){
 
 	listening_port_no = check.checkConfig(path);
     fds = new struct pollfd[MAX_CLIENTS + listening_port_no + 1];
-    // FdClientVec = new std::vector<std::pair<int, Client> >[MAX_CLIENTS + listening_port_no + 1];
 	InitFdClientVec();
 
 	for (int i = 0; i < listening_port_no; i++)

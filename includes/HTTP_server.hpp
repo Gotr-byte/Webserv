@@ -21,8 +21,10 @@
 #include <fcntl.h>
 #include <fstream>
 #include <string>
+#include <ctime>
 #include <stdio.h>
 #include <map>
+#include <set>
 #include <deque>
 #include <stdio.h>
 #include <string>
@@ -51,6 +53,8 @@ public:
     void create_listening_sock(int port);
     void create_pollfd_struct();
     void server_loop();
+    bool CheckForTimeout(int i);
+    std::set<int> activeClientIdx;
     std::string read_file(const std::string &filename);
     void tokenizing(std::map<std::string, std::string> &request, std::string line_to_tokenize);
     void place_in_file(std::string line_to_file);
@@ -70,6 +74,8 @@ private:
     int currently_served_quantity;
     struct sockaddr_in client_addr;
     Client *clients;
+    std::time_t currentTime;
+    std::time_t timeoutDuration;
     std::deque<int> pending_connections;
     struct pollfd *fds;
     int timeout;
