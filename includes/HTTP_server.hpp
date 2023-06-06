@@ -43,6 +43,7 @@ public:
     HTTP_server();
     ~HTTP_server();
     void server_conducts_poll();
+    void	InitFdClientVec();
     // void perform_get_request(int i);
     void server_port_listening(int i);
     void server_mapping_request(int i);
@@ -64,6 +65,8 @@ private:
     HTTP_server& operator = (const HTTP_server & other);
     int nfds;
     int res;
+    std::vector<std::pair<int, Client> >    FdClientVec;
+    std::vector<int>   fd_index;
     int currently_served_quantity;
     struct sockaddr_in client_addr;
     Client *clients;
