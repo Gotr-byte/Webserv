@@ -247,22 +247,22 @@ void HTTP_server::server_loop()
         server_conducts_poll();
         for (int i = 0; i < listening_port_no; i++)
                 server_port_listening(i);
-        for (unsigned long i = listening_port_no; i < MAX_CLIENTS + 1; i++)
+        for (std::set<int>::iterator it_idx = activeClientIdx.begin(); it_idx != activeClientIdx.end(); it_idx++)
         {
-            (void) FdClientVec[i].second.server_full;
-            if (fds[i].revents & POLLIN){
-                server_mapping_request(i);
-				FdClientVec[i].second.CreateResponse(FdClientVec[i].second.request, ConfigVec[FdClientVec[i].second.socket]);
+            (void) FdClientVec[*it_idx].second.server_full;
+            if (fds[*it_idx].revents & POLLIN){
+                server_mapping_request(*it_idx);
+				FdClientVec[*it_idx].second.CreateResponse(FdClientVec[*it_idx].second.request, ConfigVec[FdClientVec[*it_idx].second.socket]);
             }
-            if (fds[i].revents & POLLIN &&
-            FdClientVec[i].second.request["method:"].substr(0, 4) == "POST"){
+            if (fds[*it_idx].revents & POLLIN &&
+            FdClientVec[*it_idx].second.request["method:"].substr(0, 4) == "POST"){
                 std::cout << "post is reached\n";
             }
-            if (fds[i].revents & POLLOUT &&
-            FdClientVec[i].second.response.method == "GET")
+            if (fds[*it_idx].revents & POLLOUT &&
+            FdClientVec[*it_idx].second.response.method == "GET")
 			{
         		try{
-        		    get_request(i);
+        		    get_request(*it_idx);
         		}
         		catch(const std::exception & e)
         		{

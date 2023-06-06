@@ -23,6 +23,7 @@
 #include <string>
 #include <stdio.h>
 #include <map>
+#include <set>
 #include <deque>
 #include <stdio.h>
 #include <string>
@@ -74,6 +75,7 @@ private:
     struct pollfd *fds;
     int timeout;
     std::vector<char *> HTTP_requests;
+    std::set<int> activeClientIdx;
     socklen_t client_len;
     std::string http_response;
     std::string filename;
