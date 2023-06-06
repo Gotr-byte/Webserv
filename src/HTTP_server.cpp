@@ -101,6 +101,7 @@ void HTTP_server::server_port_listening(int i)
                 }
                 fds[j].fd = FdClientVec[j].first;
                 FdClientVec[j].second.socket = i;
+                activeClientIdx.insert(j);
                 if (j == MAX_CLIENTS + listening_port_no)
                     FdClientVec[j].second.server_full = true;
                 break ;
@@ -227,7 +228,6 @@ void HTTP_server::get_request(int i){
             exit(EXIT_FAILURE);
         }
         close(FdClientVec[i].second.file_fd);
-        // fds[i].fd = -1;
         close(FdClientVec[i].first);
         FdClientVec[i].second.ResetClient();
     }
@@ -271,11 +271,10 @@ void HTTP_server::server_loop()
             }
         }
     }
-    for (unsigned long i = 0; i < MAX_CLIENTS + listening_port_no + 1; ++i){
-        close(FdClientVec[i].first);
-    }
-    for(unsigned int i = 0; i < MAX_CLIENTS + listening_port_no + 1; ++i){
-        close(fds[i].fd);
+    for (std::set<int>::iterator it_idx = activeClientIdx.begin(); it_idx != activeClientIdx.end(); it_idx++)
+    {
+        close(FdClientVec[*it_idx].first);
+        close(fds[*it_idx].fd);
     }
 }
 
