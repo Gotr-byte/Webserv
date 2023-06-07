@@ -82,7 +82,6 @@ private:
     int timeout;
     Request tmp;
     std::vector<char *> HTTP_requests;
-    std::set<int> activeClientIdx;
     socklen_t client_len;
     std::string http_response;
     std::string filename;
