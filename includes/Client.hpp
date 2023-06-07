@@ -3,15 +3,18 @@
 
 #include <sys/types.h>
 #include <string>
+#include <vector>
 #include "RequestProcessor.hpp"
+#include "Request.hpp"
 #include <map>
 
-class Client {
+
+class Client
+{
     public:
         Client();
-        
-        Client& operator=(const Client& other);
         void    ResetClient();
+        void    SetupForNewInteraction();
         void	CreateResponse(std::map<std::string, std::string> req, ServerConfig	conf);
         int fd;                      // Client file descriptor
         bool initialResponseSent;    // Flag indicating if initial response headers have been sent
@@ -19,8 +22,11 @@ class Client {
         off_t content_length;        // Content length of the requested file
         int                             socket;
         bool                            server_full;
-        std::map<std::string, std::string> request;
-        RequestProcessor                   response;
+        std::time_t                     lastInteractionTime;
+
+        std::vector<Request>                RequestVector;
+        std::map<std::string, std::string>  request;
+        RequestProcessor                    response;
 };
 
 #endif

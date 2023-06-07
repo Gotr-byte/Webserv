@@ -7,6 +7,7 @@
 #include <fstream>
 
 #define BUF_SIZE 1024
+#define TIMEOUT 20
 
 /**
  * Constructor of HTTP server, creates an array of client
@@ -15,8 +16,9 @@
  * @return The contents of the file as a string.
  */
 HTTP_server::HTTP_server(){
-    clients = new Client[MAX_CLIENTS];
-    currently_served_quantity = 0;
+    timeoutDuration = TIMEOUT;
+    // clients = new Client[MAX_CLIENTS];
+    // currently_served_quantity = 0;
 }
 
 HTTP_server::~HTTP_server() {}
@@ -51,7 +53,7 @@ std::string HTTP_server::read_file(const std::string &filename)
  * @param request The map to store the key-value pair.
  * @param line_to_tokenize The line of text to tokenize.
  */
-void HTTP_server::tokenizing(std::map<std::string, std::string> &request, std::string line_to_tokenize)
+void HTTP_server::tokenizing(std::map<std::string, std::string> & request, std::string line_to_tokenize)
 {
 	std::stringstream tokenize_stream(line_to_tokenize);
 	std::string value;
@@ -90,10 +92,9 @@ void HTTP_server::server_port_listening(int i)
         {
             if (fds[j].fd == -1)
             {
-                std::cout << FdClientVec[i].first << std::endl;
                 client_len = sizeof(client_addr);
                 FdClientVec[j].first = accept(FdClientVec[i].first, (struct sockaddr *)&client_addr, &client_len);
-                std::cout << "client FD: " << FdClientVec[j].first << "Index of client FD: " << j << std::endl;
+                activeClientIdx.insert(j);
                 if (FdClientVec[j].first < 0)
 		        {
                     perror("Error accepting client connection on etc");
@@ -101,7 +102,7 @@ void HTTP_server::server_port_listening(int i)
                 }
                 fds[j].fd = FdClientVec[j].first;
                 FdClientVec[j].second.socket = i;
-                activeClientIdx.insert(j);
+                FdClientVec[j].second.lastInteractionTime = std::time(nullptr);
                 if (j == MAX_CLIENTS + listening_port_no)
                     FdClientVec[j].second.server_full = true;
                 break ;
@@ -126,8 +127,9 @@ void HTTP_server::server_conducts_poll(){
     }
 }
 
-void HTTP_server::server_mapping_request(int i){
+std::map<std::string, std::string> HTTP_server::server_mapping_request(int i){
     std::string key;
+    std::map<std::string, std::string> new_request;
     int new_line_count = 0;
     char buf[BUF_SIZE];
     memset(buf, 0, BUF_SIZE);
@@ -144,9 +146,9 @@ void HTTP_server::server_mapping_request(int i){
         line = strtok(NULL, "\n");
     }
     if (!lines.empty()){
-        FdClientVec[i].second.request["method:"] = std::strtok(&lines.front()[0], " ");
-        FdClientVec[i].second.request["location:"] = std::strtok(NULL, " ");
-        FdClientVec[i].second.request["HTTP_version:"] = std::strtok(NULL, " ");
+        new_request["method:"] = std::strtok(&lines.front()[0], " ");
+        new_request["location:"] = std::strtok(NULL, " ");
+        new_request["HTTP_version:"] = std::strtok(NULL, " ");
     }
     while (!lines.empty())
     {
@@ -161,61 +163,57 @@ void HTTP_server::server_mapping_request(int i){
             new_line_count++;
         }
         else{
-            tokenizing(FdClientVec[i].second.request, lines.front());
+            tokenizing(new_request, lines.front());
         }
         lines.pop_front();
     }
+    return new_request;
 }
 
-void HTTP_server::get_request(int i){
-    if (!FdClientVec[i].second.initialResponseSent)
+void HTTP_server::get_request(int i, std::vector<Request>::iterator req){
+    if (!req->initialResponseSent)
 	{
-		if (FdClientVec[i].second.response.path != "AUTOINDEX")
+		if (req->response.path != "AUTOINDEX")
 		{
-	        int file_fd = open(FdClientVec[i].second.response.path.c_str(), O_RDONLY);
+	        int file_fd = open(req->response.path.c_str(), O_RDONLY);
 	        if (file_fd < 0)
 			{
-	            close(FdClientVec[i].second.file_fd);
-	            close(FdClientVec[i].first);
-	            FdClientVec[i].second.initialResponseSent = false;
-	            FdClientVec[i].second.request.clear();
-	            currently_served_quantity--;
+	            // close(FdClientVec[i].second.file_fd);
+	            // close(FdClientVec[i].first);
+	            // FdClientVec[i].second.initialResponseSent = false;
+	            // FdClientVec[i].second.request.clear();
 	            perror("Error opening file");
 	            throw(InvalidFileDownloadException());
 	        }
-        FdClientVec[i].second.file_fd = dup(file_fd);
-        close(file_fd);
+        req->file_fd = file_fd;
 		}
 
-        if (send(FdClientVec[i].first, FdClientVec[i].second.response.ResponseHeader.c_str(), FdClientVec[i].second.response.ResponseHeader.length(), 0) < 0)
+        if (send(req->client_fd, req->response.ResponseHeader.c_str(), req->response.ResponseHeader.size(), 0) < 0)
 		{
             perror("Error sending initial response headers");
             exit(EXIT_FAILURE);
         }
 
-		if (FdClientVec[i].second.response.path == "AUTOINDEX")
+		if (req->response.path == "AUTOINDEX")
 		{
-			if (send(FdClientVec[i].first, FdClientVec[i].second.response.autoindexbody.c_str(), FdClientVec[i].second.response.autoindexbody.size(), 0)  == -1)
-				std::cout << "Autoindex send error" << std::endl;
-			FdClientVec[i].second.initialResponseSent = false;
-        	FdClientVec[i].second.request.clear();
-       		currently_served_quantity--;
+			if (send(req->client_fd, req->response.autoindexbody.c_str(), req->response.autoindexbody.size(), 0)  == -1)
+				perror("Autoindex send error");
+        	req->requestdone = true;
 			return ;
 		}
-        FdClientVec[i].second.initialResponseSent = true;
-        FdClientVec[i].second.content_length = FdClientVec[i].second.response.contentlength;
+        req->initialResponseSent = true;
     }
     const int chunkSize = 1024;
     char buffer[chunkSize];
     ssize_t bytesRead;
-    bytesRead = read(FdClientVec[i].second.file_fd, buffer, chunkSize);
+    bytesRead = read(req->file_fd, buffer, chunkSize);
     if (bytesRead > 0){
         std::stringstream chunkSizeHex;
         chunkSizeHex << std::hex << bytesRead << "\r\n";
         std::string chunkSizeHexStr = chunkSizeHex.str();
         std::string chunkData(buffer, bytesRead);
         std::string chunk = chunkSizeHexStr + chunkData + "\r\n";
-        ssize_t bytesSent = send(FdClientVec[i].first, chunk.c_str(), chunk.length(), 0);
+        ssize_t bytesSent = send(req->client_fd, chunk.c_str(), chunk.length(), 0);
         if (bytesSent < 0){
             perror("Error sending chunk");
             exit(EXIT_FAILURE);
@@ -223,14 +221,13 @@ void HTTP_server::get_request(int i){
     }
     else{
         std::string lastChunk = "0\r\n\r\n";
-        if (send(FdClientVec[i].first, lastChunk.c_str(), lastChunk.length(), 0) < 0){
+        if (send(req->client_fd, lastChunk.c_str(), lastChunk.length(), 0) < 0){
             perror("Error sending last chunk");
             exit(EXIT_FAILURE);
         }
-        close(FdClientVec[i].second.file_fd);
-        close(FdClientVec[i].first);
-        FdClientVec[i].second.ResetClient();
+        req->requestdone = true;
     }
+    FdClientVec[i].second.lastInteractionTime = std::time(nullptr);
 }
 
 std::string HTTP_server::toHex(int value)
@@ -238,6 +235,16 @@ std::string HTTP_server::toHex(int value)
 	std::stringstream stream;
 	stream << std::hex << value;
 	return stream.str();
+}
+
+bool    HTTP_server::CheckForTimeout(int i)
+{
+    currentTime = std::time(nullptr);
+
+    std::time_t elapsedDuration = currentTime - FdClientVec[i].second.lastInteractionTime;
+    if (elapsedDuration >= timeoutDuration)
+        return true;
+    return false;
 }
 
 void HTTP_server::server_loop()
@@ -251,23 +258,48 @@ void HTTP_server::server_loop()
         {
             (void) FdClientVec[*it_idx].second.server_full;
             if (fds[*it_idx].revents & POLLIN){
-                server_mapping_request(*it_idx);
-				FdClientVec[*it_idx].second.CreateResponse(FdClientVec[*it_idx].second.request, ConfigVec[FdClientVec[*it_idx].second.socket]);
+                Request new_req;
+                new_req.request = server_mapping_request(*it_idx);
+                FdClientVec[*it_idx].second.lastInteractionTime = std::time(nullptr);
+				new_req.CreateResponse(ConfigVec[FdClientVec[*it_idx].second.socket]);
+                new_req.client_fd = FdClientVec[*it_idx].first;
+                FdClientVec[*it_idx].second.RequestVector.push_back(new_req);
             }
             if (fds[*it_idx].revents & POLLIN &&
             FdClientVec[*it_idx].second.request["method:"].substr(0, 4) == "POST"){
                 std::cout << "post is reached\n";
             }
-            if (fds[*it_idx].revents & POLLOUT &&
-            FdClientVec[*it_idx].second.response.method == "GET")
-			{
-        		try{
-        		    get_request(*it_idx);
-        		}
-        		catch(const std::exception & e)
-        		{
-        		    std::cerr << e.what();
-        		}
+            if (fds[*it_idx].revents & POLLOUT)
+            {
+                for (std::vector<Request>::iterator it_req = FdClientVec[*it_idx].second.RequestVector.begin(); it_req != FdClientVec[*it_idx].second.RequestVector.end(); it_req++)
+                {
+                    if (it_req->response.method == "GET")
+			        {
+        	    	    try{
+        	    	        get_request(*it_idx, it_req);
+        	    	    }
+        	    	    catch(const std::exception & e)
+        	    	    {
+        	    	        std::cerr << e.what();
+        	    	    }
+                    }
+                    if (it_req->requestdone)
+                    {
+                        std::cout << "Response: " << it_req->id << " sent to client: " << *it_idx << std::endl;
+                        FdClientVec[*it_idx].second.RequestVector.erase(it_req);
+                        break ;
+                    }
+                }
+            }
+            if (FdClientVec[*it_idx].second.RequestVector.empty() && CheckForTimeout(*it_idx))
+            {
+                close(FdClientVec[*it_idx].first);
+                close(fds[*it_idx].fd);
+                fds[*it_idx].fd = -1;
+                FdClientVec[*it_idx].second.ResetClient();
+                std::cout << "Connection Timeout - Client " << *it_idx << " disconnected" << std::endl;
+                activeClientIdx.erase(it_idx);
+                break;
             }
         }
     }
@@ -285,7 +317,6 @@ void	HTTP_server::InitFdClientVec()
         Client init;
         std::pair<int, Client> tmp(-1, init);
 		FdClientVec.push_back(tmp);
-        std::cout << i << std::endl;
 	}
 }
 
@@ -295,7 +326,6 @@ int HTTP_server::handle_request(std::string path){
 
 	listening_port_no = check.checkConfig(path);
     fds = new struct pollfd[MAX_CLIENTS + listening_port_no + 1];
-    // FdClientVec = new std::vector<std::pair<int, Client> >[MAX_CLIENTS + listening_port_no + 1];
 	InitFdClientVec();
 
 	for (int i = 0; i < listening_port_no; i++)
