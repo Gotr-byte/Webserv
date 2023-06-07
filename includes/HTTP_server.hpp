@@ -35,6 +35,7 @@
 #include "Client.hpp"
 #include "Socket.hpp"
 #include "RequestProcessor.hpp"
+#include "../includes/Request.hpp"
 
 #define MAX_CLIENTS 300
 #define LISTENING_SOCKET
@@ -48,7 +49,7 @@ public:
     void	InitFdClientVec();
     // void perform_get_request(int i);
     void server_port_listening(int i);
-    void server_mapping_request(int i);
+    std::map<std::string, std::string> server_mapping_request(int i);
     int handle_request(std::string path);
     void create_listening_sock(int port);
     void create_pollfd_struct();
@@ -56,12 +57,12 @@ public:
     bool CheckForTimeout(int i);
     std::set<int> activeClientIdx;
     std::string read_file(const std::string &filename);
-    void tokenizing(std::map<std::string, std::string> &request, std::string line_to_tokenize);
+    void tokenizing(std::map<std::string, std::string> & request, std::string line_to_tokenize);
     void place_in_file(std::string line_to_file);
     std::string toHex(int value);
     void    removeWhitespaces(std::string &string);
     // void get_static_html(int i);
-    void get_request(int i);
+    void get_request(int i, std::vector<Request>::iterator req);
     // void get_error_site(int i, std::string error_page);
 
 private:
@@ -79,13 +80,14 @@ private:
     std::deque<int> pending_connections;
     struct pollfd *fds;
     int timeout;
+    Request tmp;
     std::vector<char *> HTTP_requests;
     socklen_t client_len;
     std::string http_response;
     std::string filename;
     std::string content;
     std::string message;
-    std::map< int, std::map<std::string, std::string> > request;
+    // std::map< int, std::map<std::string, std::string> > request;
     char *line;
     std::deque<std::string> lines;
     std::string HTTP_line;

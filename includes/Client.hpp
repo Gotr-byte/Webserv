@@ -3,10 +3,14 @@
 
 #include <sys/types.h>
 #include <string>
+#include <vector>
 #include "RequestProcessor.hpp"
+#include "Request.hpp"
 #include <map>
 
-class Client {
+
+class Client
+{
     public:
         Client();
         void    ResetClient();
@@ -19,8 +23,10 @@ class Client {
         int                             socket;
         bool                            server_full;
         std::time_t                     lastInteractionTime;
-        std::map<std::string, std::string> request;
-        RequestProcessor                   response;
+
+        std::vector<Request>                RequestVector;
+        std::map<std::string, std::string>  request;
+        RequestProcessor                    response;
 };
 
 #endif

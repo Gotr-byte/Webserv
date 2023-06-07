@@ -317,7 +317,6 @@ void	HTTP_server::InitFdClientVec()
         Client init;
         std::pair<int, Client> tmp(-1, init);
 		FdClientVec.push_back(tmp);
-        std::cout << i << std::endl;
 	}
 }
 
