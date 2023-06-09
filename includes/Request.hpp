@@ -12,6 +12,7 @@ class Request
 	Request();
 
 	void	CreateResponse(ServerConfig	conf);
+	void	GenerateOverloadError(int errorcode, ServerConfig	conf);
 	
 	std::map<std::string, std::string> 	request;
 	RequestProcessor 					response;
@@ -23,4 +24,5 @@ class Request
 	int		file_fd;
 	int 	client_fd;
 	bool	requestdone;
+	bool	error;
 };

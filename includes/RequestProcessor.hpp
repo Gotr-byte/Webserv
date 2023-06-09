@@ -14,6 +14,7 @@ class RequestProcessor
 {
 	public:
 		RequestProcessor();
+		RequestProcessor(int errorcode, ServerConfig	conf);
 		RequestProcessor(std::map<std::string, std::string> req, ServerConfig	conf);
 		~RequestProcessor();
 		void	AssignLocation();
@@ -28,12 +29,16 @@ class RequestProcessor
 		void	SetupErrorPage(std::string status, std::string issue);
 		void	ObtainFileLength();
 		void	CreateAutoindex();
+		bool	CheckPermissions();
+		bool	CheckBodySize();
 		std::string	method;
 		off_t		contentlength;
 		std::string	ResponseHeader;
 		std::string	autoindexbody;
 		std::string	path;
 		std::string	contenttype;
+		std::string	statuscode;
+		bool		cutoffClient;
 
 	private:
 
@@ -45,7 +50,6 @@ class RequestProcessor
 		std::string	date;
 		std::string	protocoll;
 		std::string	port;
-		std::string	statuscode;
 		std::string additionalinfo;
 };
 #endif

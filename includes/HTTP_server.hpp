@@ -37,7 +37,7 @@
 #include "RequestProcessor.hpp"
 #include "../includes/Request.hpp"
 
-#define MAX_CLIENTS 300
+#define MAX_CLIENTS 3
 #define LISTENING_SOCKET
 
 class HTTP_server

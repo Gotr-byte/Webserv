@@ -14,7 +14,6 @@ class Client
     public:
         Client();
         void    ResetClient();
-        void    SetupForNewInteraction();
         void	CreateResponse(std::map<std::string, std::string> req, ServerConfig	conf);
         int fd;                      // Client file descriptor
         bool initialResponseSent;    // Flag indicating if initial response headers have been sent
@@ -25,8 +24,7 @@ class Client
         std::time_t                     lastInteractionTime;
 
         std::vector<Request>                RequestVector;
-        std::map<std::string, std::string>  request;
-        RequestProcessor                    response;
+        bool                                cutoffClient;
 };
 
 #endif

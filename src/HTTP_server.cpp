@@ -6,7 +6,7 @@
 #include <limits>
 #include <fstream>
 
-#define BUF_SIZE 1024
+#define BUF_SIZE 4096
 #define TIMEOUT 20
 
 /**
@@ -142,6 +142,7 @@ std::map<std::string, std::string> HTTP_server::server_mapping_request(int i){
     line = std::strtok(&HTTP_request[0], "\n");
     while (line != NULL){
         std::string strLine(line);
+        std::cout << line << std::endl;
         lines.push_back(strLine);
         line = strtok(NULL, "\n");
     }
@@ -166,6 +167,14 @@ std::map<std::string, std::string> HTTP_server::server_mapping_request(int i){
             tokenizing(new_request, lines.front());
         }
         lines.pop_front();
+    }
+    size_t v;
+    if ((v = new_request["Content-Type:"].find("boundary=")) != std::string::npos)
+    {
+        std::string key = new_request["Content-Type:"].substr(v, 8);
+        std::string value = new_request["Content-Type:"].substr(new_request["Content-Type:"].find("=") + 1);
+        new_request[key] = value;
+        new_request["Content-Type:"] = new_request["Content-Type:"].substr(0, new_request["Content-Type:"].find(";"));
     }
     return new_request;
 }
@@ -203,7 +212,7 @@ void HTTP_server::get_request(int i, std::vector<Request>::iterator req){
 		}
         req->initialResponseSent = true;
     }
-    const int chunkSize = 1024;
+    const int chunkSize = BUF_SIZE;
     char buffer[chunkSize];
     ssize_t bytesRead;
     bytesRead = read(req->file_fd, buffer, chunkSize);
@@ -247,6 +256,8 @@ bool    HTTP_server::CheckForTimeout(int i)
     return false;
 }
 
+// stashed everything i did, i need to set error codes correctly, set pollout
+
 void HTTP_server::server_loop()
 {
     while (true)
@@ -256,25 +267,26 @@ void HTTP_server::server_loop()
                 server_port_listening(i);
         for (std::set<int>::iterator it_idx = activeClientIdx.begin(); it_idx != activeClientIdx.end(); it_idx++)
         {
-            (void) FdClientVec[*it_idx].second.server_full;
-            if (fds[*it_idx].revents & POLLIN){
+            if (fds[*it_idx].revents & POLLIN)
+            {
                 Request new_req;
-                new_req.request = server_mapping_request(*it_idx);
-                FdClientVec[*it_idx].second.lastInteractionTime = std::time(nullptr);
-				new_req.CreateResponse(ConfigVec[FdClientVec[*it_idx].second.socket]);
+                if (FdClientVec[*it_idx].second.server_full)
+                    new_req.GenerateOverloadError(503, ConfigVec[FdClientVec[*it_idx].second.socket]);
+                else
+                {
+                    new_req.request = server_mapping_request(*it_idx);
+				    new_req.CreateResponse(ConfigVec[FdClientVec[*it_idx].second.socket]);
+                    FdClientVec[*it_idx].second.lastInteractionTime = std::time(nullptr);
+                }
                 new_req.client_fd = FdClientVec[*it_idx].first;
                 FdClientVec[*it_idx].second.RequestVector.push_back(new_req);
-            }
-            if (fds[*it_idx].revents & POLLIN &&
-            FdClientVec[*it_idx].second.request["method:"].substr(0, 4) == "POST"){
-                std::cout << "post is reached\n";
+                if (new_req.response.cutoffClient)
+                    fds[*it_idx].events = POLLOUT;
             }
             if (fds[*it_idx].revents & POLLOUT)
             {
                 for (std::vector<Request>::iterator it_req = FdClientVec[*it_idx].second.RequestVector.begin(); it_req != FdClientVec[*it_idx].second.RequestVector.end(); it_req++)
                 {
-                    if (it_req->response.method == "GET")
-			        {
         	    	    try{
         	    	        get_request(*it_idx, it_req);
         	    	    }
@@ -282,19 +294,20 @@ void HTTP_server::server_loop()
         	    	    {
         	    	        std::cerr << e.what();
         	    	    }
-                    }
                     if (it_req->requestdone)
                     {
+                        if (it_req->response.cutoffClient)
+                            FdClientVec[*it_idx].second.cutoffClient = true;
                         std::cout << "Response: " << it_req->id << " sent to client: " << *it_idx << std::endl;
                         FdClientVec[*it_idx].second.RequestVector.erase(it_req);
                         break ;
                     }
                 }
             }
-            if (FdClientVec[*it_idx].second.RequestVector.empty() && CheckForTimeout(*it_idx))
+            if (FdClientVec[*it_idx].second.cutoffClient || (FdClientVec[*it_idx].second.RequestVector.empty() && (CheckForTimeout(*it_idx))))
             {
-                close(FdClientVec[*it_idx].first);
                 close(fds[*it_idx].fd);
+                fds[*it_idx].events = POLLIN | POLLOUT;
                 fds[*it_idx].fd = -1;
                 FdClientVec[*it_idx].second.ResetClient();
                 std::cout << "Connection Timeout - Client " << *it_idx << " disconnected" << std::endl;

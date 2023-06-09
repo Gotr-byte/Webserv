@@ -4,12 +4,21 @@
 RequestProcessor::RequestProcessor()
 {}
 
-RequestProcessor::RequestProcessor(std::map<std::string, std::string> req, ServerConfig	conf) \
-									: contenttype("application/octet-stream"), request(req), \
-									config(conf), isdirectory(false), autoindex(false), \
-									statuscode("200 OK"), additionalinfo("Transfer-Encoding: chunked")
+RequestProcessor::RequestProcessor(int errorcode, ServerConfig	conf) : \
+									cutoffClient(true), config(conf), protocoll("HTTP/1.1"), \
+									additionalinfo("Connection: closed\nTransfer-Encoding: chunked")
 {
-	this->protocoll = "HTTP/1.1";
+	if (errorcode == 503)
+		SetupErrorPage("503", "Unavailable");
+	this->setDate();
+	this->BuildResponseHeader();
+}
+
+RequestProcessor::RequestProcessor(std::map<std::string, std::string> req, ServerConfig	conf) \
+									: contenttype("application/octet-stream"), statuscode("200 OK"), cutoffClient(false), \
+									request(req), config(conf), isdirectory(false), autoindex(false),\
+									protocoll("HTTP/1.1"), additionalinfo("Transfer-Encoding: chunked")
+{
 	this->AssignLocation();
 	if (this->CheckMethod() && this->CheckPath())
 	{
@@ -64,16 +73,44 @@ bool	RequestProcessor::CheckPath()
 			return true;
 		else
 		{
-			if (!autoindex)
+			if (method == "POST" || method == "DELETE")
+				return CheckPermissions() && CheckBodySize();
+			else if (!autoindex)
 			{
 				SetupErrorPage("403", "Forbidden");
 				return false;
 			}
-			else
-				CreateAutoindex();
+			CreateAutoindex();
 		}
 	}
 	return false;
+}
+
+bool	RequestProcessor::CheckBodySize()
+{
+	std::cout << config.getConfProps("limit_body_size:") << request["Content-Length:"] << std::endl;
+	if (method == "POST")
+	{
+		if (std::atol(config.getConfProps("limit_body_size:").c_str()) < std::atol(request["Content-Length:"].c_str()))
+		SetupErrorPage("413", "Payload Too Large");
+		return false;
+	}
+	return true;
+}
+
+bool	RequestProcessor::CheckPermissions()
+{
+	if (access(path.c_str(), W_OK) == -1)
+	{
+		SetupErrorPage("403", "Forbidden");
+		return false;
+	}
+	if (request["Content-Type:"] != "multipart/form-data" && access(path.c_str(), X_OK) == -1)
+	{
+		SetupErrorPage("403", "Forbidden");
+		return false;
+	}
+	return true;
 }
 
 void	RequestProcessor::SetupErrorPage(std::string status, std::string issue)
@@ -81,9 +118,9 @@ void	RequestProcessor::SetupErrorPage(std::string status, std::string issue)
 	path = "../error_pages/" + status + ".html";
 	statuscode = status + " " + issue;
 	contenttype = "text/html";
-	method = "GET";
+	if (status == "413" || status == "503")
+		cutoffClient = true;
 	ObtainFileLength();
-	// std::cout << content << std::endl;
 	// std::cout << path << std::endl;
 	// std::cout << statuscode << std::endl;
 	// std::cout << contenttype << std::endl;
@@ -144,30 +181,36 @@ void	RequestProcessor::setDate()
 
 void	RequestProcessor::SetContentType()
 {
-	std::string suffix = path.substr(path.rfind(".") + 1);
-
-	if (path.find("/file/") != std::string::npos)
-		contenttype = "application/octet-stream";
-	else
+	if (method == "GET")
 	{
-		if (suffix == "html")
-			contenttype = "text/html";
-		else if (suffix == "css")
-			contenttype = "text/css";
-		else if (suffix == "txt")
-			contenttype = "text/plain";
-		else if (suffix == "jpg" || suffix == "jpeg")
-			contenttype = "image/jpeg";
-		else if (suffix == "png")
-			contenttype = "image/png";
-		else if (suffix == "gif")
-			contenttype = "image/gif";
-		else if (suffix == "pdf")
-			contenttype = "application/pdf";
-		else if (suffix == "mp3")
-			contenttype = "audio/mpeg";
-		else if (suffix == "mp4")
-			contenttype = "audio/mpeg";
+		std::string suffix = path.substr(path.rfind(".") + 1);
+
+		if (path.find("/file/") != std::string::npos)
+			contenttype = "application/octet-stream";
+		else
+		{
+			if (suffix == "html")
+				contenttype = "text/html";
+			else if (suffix == "css")
+				contenttype = "text/css";
+			else if (suffix == "txt")
+				contenttype = "text/plain";
+			else if (suffix == "jpg" || suffix == "jpeg")
+				contenttype = "image/jpeg";
+			else if (suffix == "png")
+				contenttype = "image/png";
+			else if (suffix == "gif")
+				contenttype = "image/gif";
+			else if (suffix == "pdf")
+				contenttype = "application/pdf";
+			else if (suffix == "mp3")
+				contenttype = "audio/mpeg";
+			else if (suffix == "mp4")
+				contenttype = "audio/mpeg";
+			else
+				contenttype = "application/octet-stream";
+		}
+
 	}
 	// std::cout << suffix << std::endl;
 }
@@ -186,7 +229,7 @@ void	RequestProcessor::BuildResponseHeader()
 	header << "\r\n";
 
 	ResponseHeader = header.str();
-	// std::cout << ResponseHeader << std::endl;
+	std::cout << ResponseHeader << std::endl;
 }
 
 void	RequestProcessor::CreateAutoindex()
