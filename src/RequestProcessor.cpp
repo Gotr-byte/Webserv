@@ -16,7 +16,7 @@ RequestProcessor::RequestProcessor(int errorcode, ServerConfig	conf) : \
 
 RequestProcessor::RequestProcessor(std::map<std::string, std::string> req, ServerConfig	conf) \
 									: contenttype("application/octet-stream"), statuscode("200 OK"), cutoffClient(false), \
-									request(req), config(conf), isdirectory(false), autoindex(false),\
+									PostInProgress(false), request(req), config(conf), isdirectory(false), autoindex(false),\
 									protocoll("HTTP/1.1"), additionalinfo("Transfer-Encoding: chunked")
 {
 	this->AssignLocation();
@@ -195,6 +195,8 @@ void	RequestProcessor::SetContentType()
 				contenttype = "text/css";
 			else if (suffix == "txt")
 				contenttype = "text/plain";
+			else if (suffix == "ico")
+				contenttype = "image/x-icon";
 			else if (suffix == "jpg" || suffix == "jpeg")
 				contenttype = "image/jpeg";
 			else if (suffix == "png")

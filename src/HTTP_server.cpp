@@ -133,11 +133,20 @@ std::map<std::string, std::string> HTTP_server::server_mapping_request(int i){
     int new_line_count = 0;
     char buf[BUF_SIZE];
     memset(buf, 0, BUF_SIZE);
-    int n = recv(FdClientVec[i].first, buf, BUF_SIZE, 0);
-    if (n < 0){
+
+    // Obtain Header Length
+    int n = recv(FdClientVec[i].first, buf, BUF_SIZE, MSG_PEEK);
+    char *header = strstr(buf, "\r\n\r\n");
+    size_t headerlength = header - buf + 4;
+
+    // Get lines of Header
+    memset(buf, 0, BUF_SIZE);
+    n = recv(FdClientVec[i].first, buf, headerlength, MSG_WAITALL);
+    if (n < 0) {
         perror("Error receiving data from client");
         exit(EXIT_FAILURE);
     }
+
     std::string HTTP_request(buf);
     line = std::strtok(&HTTP_request[0], "\n");
     while (line != NULL){
@@ -178,6 +187,17 @@ std::map<std::string, std::string> HTTP_server::server_mapping_request(int i){
     }
     return new_request;
 }
+
+void    HTTP_server::ProcessUpload(std::vector<Request>::iterator req)
+{
+    char buf[BUF_SIZE];
+    memset(buf, 0, BUF_SIZE);
+
+    int i = recv(req->client_fd, buf, BUF_SIZE - 1, MSG_WAITALL);
+    if (i < 0)
+        perror("Upload reciving Error");
+}
+
 
 void HTTP_server::get_request(int i, std::vector<Request>::iterator req){
     if (!req->initialResponseSent)
@@ -256,6 +276,20 @@ bool    HTTP_server::CheckForTimeout(int i)
     return false;
 }
 
+bool HTTP_server::ContentIsPartOfUpload(int i)
+{
+    char buf[26];
+    memset(buf, 0, 26);
+
+    // Obtain Header Length
+    recv(FdClientVec[i].first, buf, 25, MSG_PEEK);
+
+    char *header = std::strstr(buf, "------WebKitFormBoundary");
+    if (header == nullptr)
+        return false;
+    return true;
+}
+
 // stashed everything i did, i need to set error codes correctly, set pollout
 
 void HTTP_server::server_loop()
@@ -269,19 +303,29 @@ void HTTP_server::server_loop()
         {
             if (fds[*it_idx].revents & POLLIN)
             {
-                Request new_req;
-                if (FdClientVec[*it_idx].second.server_full)
-                    new_req.GenerateOverloadError(503, ConfigVec[FdClientVec[*it_idx].second.socket]);
+                if (!ContentIsPartOfUpload(*it_idx))
+                {
+                    Request new_req;
+                    if (FdClientVec[*it_idx].second.server_full)
+                        new_req.GenerateOverloadError(503, ConfigVec[FdClientVec[*it_idx].second.socket]);
+                    else
+                    {
+                        new_req.request = server_mapping_request(*it_idx);
+				        new_req.CreateResponse(ConfigVec[FdClientVec[*it_idx].second.socket]);
+                        FdClientVec[*it_idx].second.lastInteractionTime = std::time(nullptr);
+                    }
+                    new_req.client_fd = FdClientVec[*it_idx].first;
+                    FdClientVec[*it_idx].second.RequestVector.push_back(new_req);
+                    if (new_req.response.cutoffClient)
+                        fds[*it_idx].events = POLLOUT;
+                }
                 else
                 {
-                    new_req.request = server_mapping_request(*it_idx);
-				    new_req.CreateResponse(ConfigVec[FdClientVec[*it_idx].second.socket]);
-                    FdClientVec[*it_idx].second.lastInteractionTime = std::time(nullptr);
+                    for (std::vector<Request>::iterator it_req = FdClientVec[*it_idx].second.RequestVector.begin(); it_req != FdClientVec[*it_idx].second.RequestVector.end(); it_req++)
+                    {
+                        ProcessUpload(it_req);
+                    }
                 }
-                new_req.client_fd = FdClientVec[*it_idx].first;
-                FdClientVec[*it_idx].second.RequestVector.push_back(new_req);
-                if (new_req.response.cutoffClient)
-                    fds[*it_idx].events = POLLOUT;
             }
             if (fds[*it_idx].revents & POLLOUT)
             {

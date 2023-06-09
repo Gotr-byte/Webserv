@@ -39,6 +39,7 @@ class RequestProcessor
 		std::string	contenttype;
 		std::string	statuscode;
 		bool		cutoffClient;
+		bool		PostInProgress;
 
 	private:
 

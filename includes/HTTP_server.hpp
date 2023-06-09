@@ -47,12 +47,14 @@ public:
     ~HTTP_server();
     void server_conducts_poll();
     void	InitFdClientVec();
+    bool ContentIsPartOfUpload(int i);
     // void perform_get_request(int i);
     void server_port_listening(int i);
     std::map<std::string, std::string> server_mapping_request(int i);
     int handle_request(std::string path);
     void create_listening_sock(int port);
     void create_pollfd_struct();
+    void ProcessUpload(std::vector<Request>::iterator req);
     void server_loop();
     bool CheckForTimeout(int i);
     std::set<int> activeClientIdx;
