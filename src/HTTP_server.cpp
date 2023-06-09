@@ -354,7 +354,7 @@ void HTTP_server::server_loop()
                     }
                 }
             }
-            if (FdClientVec[*it_idx].second.cutoffClient || (FdClientVec[*it_idx].second.RequestVector.empty() && (CheckForTimeout(*it_idx))))
+            if (fds[*it_idx].revents & (POLLHUP | POLLERR) || FdClientVec[*it_idx].second.cutoffClient || (FdClientVec[*it_idx].second.RequestVector.empty() && (CheckForTimeout(*it_idx))))
             {
                 close(fds[*it_idx].fd);
                 fds[*it_idx].events = POLLIN | POLLOUT;
