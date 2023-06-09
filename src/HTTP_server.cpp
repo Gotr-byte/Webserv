@@ -136,6 +136,11 @@ std::map<std::string, std::string> HTTP_server::server_mapping_request(int i){
 
     // Obtain Header Length
     int n = recv(FdClientVec[i].first, buf, BUF_SIZE, MSG_PEEK);
+    if (n < 0) {
+        perror("Error receiving data from client1");
+        exit(EXIT_FAILURE);
+    }
+    std::cout << buf << std::endl;
     char *header = strstr(buf, "\r\n\r\n");
     size_t headerlength = header - buf + 4;
 
@@ -143,7 +148,7 @@ std::map<std::string, std::string> HTTP_server::server_mapping_request(int i){
     memset(buf, 0, BUF_SIZE);
     n = recv(FdClientVec[i].first, buf, headerlength, MSG_WAITALL);
     if (n < 0) {
-        perror("Error receiving data from client");
+        perror("Error receiving data from client2");
         exit(EXIT_FAILURE);
     }
 
@@ -278,13 +283,14 @@ bool    HTTP_server::CheckForTimeout(int i)
 
 bool HTTP_server::ContentIsPartOfUpload(int i)
 {
-    char buf[26];
-    memset(buf, 0, 26);
+    char buf[7];
+    memset(buf, 0, 7);
 
     // Obtain Header Length
-    recv(FdClientVec[i].first, buf, 25, MSG_PEEK);
+    if (recv(FdClientVec[i].first, buf, 6, MSG_PEEK) < 0)
+        perror("error recv");
 
-    char *header = std::strstr(buf, "------WebKitFormBoundary");
+    char *header = std::strstr(buf, "------");
     if (header == nullptr)
         return false;
     return true;
