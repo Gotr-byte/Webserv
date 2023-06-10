@@ -15,7 +15,7 @@
  * @param filename The name of the file to read.
  * @return The contents of the file as a string.
  */
-HTTP_server::HTTP_server(std::string path): _path(path){
+HTTP_server::HTTP_server(std::string path, char **env): _path(path), _env(env){
     timeoutDuration = TIMEOUT;
 }
 
@@ -352,7 +352,13 @@ void HTTP_server::server_loop()
                     ProcessUpload(FdsClients[*it_idx].second.RequestVector.end() - 1);
                 else if (new_req.isCGI)
                 {
-                    // CGI Operations
+                    Cgi cgi("generic cgi", new_req.id);
+                    try{
+                        cgi.run(_env, new_req.path.c_str());
+                    }
+                    catch (const std::exception &e){
+                        std::cerr << e.what();
+                    }
                     (void)fds;
                 }
             }

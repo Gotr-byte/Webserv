@@ -35,6 +35,7 @@
 #include "Client.hpp"
 #include "Socket.hpp"
 #include "../includes/Request.hpp"
+#include "Colors.hpp"
 
 #define MAX_CLIENTS 3
 #define LISTENING_SOCKET
@@ -42,7 +43,7 @@
 class HTTP_server
 {
 public:
-    HTTP_server(std::string path);
+    HTTP_server(std::string path, char **env);
     ~HTTP_server();
 
     void server_conducts_poll();
@@ -68,6 +69,7 @@ private:
     HTTP_server(const HTTP_server &other);
     HTTP_server& operator = (const HTTP_server & other);
 
+    char **_env;
     std::string _path;
     int nfds;
     int res;

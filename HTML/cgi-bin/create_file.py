@@ -4,7 +4,6 @@ import os
 
 # Set the content type header to indicate that the response will be plain text
 print("Content-Type: text/plain")
-print()
 
 # Create a file and write "Hello World" to it
 file_path = "../file/file.txt"

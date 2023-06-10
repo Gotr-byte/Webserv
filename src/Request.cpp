@@ -211,6 +211,8 @@ void	Request::SetContentType()
 		{
 			if (suffix == "html")
 				contenttype = "text/html";
+			else if (suffix == "py")
+                isCGI = true;
 			else if (suffix == "css")
 				contenttype = "text/css";
 			else if (suffix == "txt")
