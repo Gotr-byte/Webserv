@@ -7,6 +7,7 @@
 #include <ctime>
 #include "Request.hpp"
 #include <map>
+#include <time.h>
 
 
 class Client
@@ -21,7 +22,7 @@ class Client
         off_t content_length;        // Content length of the requested file
         int                             socket;
         bool                            server_full;
-        std::time_t                     lastInteractionTime;
+        time_t                     lastInteractionTime;
 
         std::vector<Request>                RequestVector;
         bool                                cutoffClient;

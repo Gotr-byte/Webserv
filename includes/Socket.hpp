@@ -5,6 +5,7 @@
 #endif
 #if defined(__linux__)
 #include <unistd.h>
+#include <string.h>
 #endif
 
 #include <sys/wait.h>

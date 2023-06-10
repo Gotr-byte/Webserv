@@ -9,7 +9,7 @@ int main (int argc, char **argv)
         return 1;
     }
 
-    HTTP_server serverLoop;
+    HTTP_server server(argv[1]);
 
-    serverLoop.handle_request(argv[1]);
+    server.running();
 }
