@@ -28,17 +28,28 @@ void	Request::CreateResponse(ServerConfig	conf)
 	this->BuildResponseHeader();
 }
 
-void	Request::GenerateOverloadError(int errorcode, ServerConfig	conf)
+void	Request::GenerateServerError(int errorcode, ServerConfig	conf)
 {
 	cutoffClient = true;
 	config = conf;
 	protocoll = "HTTP/1.1", \
 	additionalinfo = "Connection: closed\nTransfer-Encoding: chunked";
 
+	if (errorcode == 500)
+		SetupErrorPage("500", "Internal Server Error");
 	if (errorcode == 503)
 		SetupErrorPage("503", "Unavailable");
 	this->setDate();
 	this->BuildResponseHeader();
+}
+
+void	Request::GenerateUploadResponse()
+{
+	contenttype = "text/plain";
+	responsebody = "File was uploaded succesfully";
+	contentlength = responsebody.size();
+	additionalinfo.clear();
+	BuildResponseHeader();
 }
 
 void	Request::AssignLocation()
@@ -251,7 +262,6 @@ void	Request::BuildResponseHeader()
 	header << "\r\n";
 
 	ResponseHeader = header.str();
-	std::cout << ResponseHeader << std::endl;
 }
 
 void	Request::CreateAutoindex()
@@ -298,11 +308,11 @@ void	Request::CreateAutoindex()
     autoidx << "</body>\n";
     autoidx << "</html>\n";
 
-	autoindexbody = autoidx.str();
+	responsebody = autoidx.str();
 	additionalinfo = "";
 	path = "AUTOINDEX";
 	contenttype = "text/html";
-	contentlength = autoindexbody.size();
+	contentlength = responsebody.size();
 	// std::cout << autoindexbody << std::endl;
 }
 

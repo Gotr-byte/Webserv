@@ -162,7 +162,6 @@ std::map<std::string, std::string> HTTP_server::server_mapping_request(int i)
     while (line != NULL)
     {
         std::string strLine(line);
-        std::cout << line << std::endl;
         lines.push_back(strLine);
         line = strtok(NULL, "\n");
     }
@@ -264,6 +263,7 @@ void HTTP_server::ProcessUpload(std::vector<Request>::iterator req)
     }
     createFile.close();
     memset(buf, 0, BUF_SIZE);
+    req->GenerateUploadResponse();
     recv(req->client_fd, buf, BUF_SIZE, MSG_DONTWAIT);
 }
 
@@ -271,7 +271,8 @@ void HTTP_server::get_request(int i, std::vector<Request>::iterator req)
 {
     if (!req->initialResponseSent)
     {
-        if (req->path != "AUTOINDEX")
+
+        if (req->responsebody.empty())
         {
             int file_fd = open(req->path.c_str(), O_RDONLY);
             if (file_fd < 0)
@@ -288,9 +289,9 @@ void HTTP_server::get_request(int i, std::vector<Request>::iterator req)
             exit(EXIT_FAILURE);
         }
 
-        if (req->path == "AUTOINDEX")
+        if (!req->responsebody.empty())
         {
-            if (send(req->client_fd, req->autoindexbody.c_str(), req->autoindexbody.size(), 0) == -1)
+            if (send(req->client_fd, req->responsebody.c_str(), req->responsebody.size(), 0) == -1)
                 perror("Autoindex send error");
             req->requestdone = true;
             return;
@@ -358,7 +359,7 @@ void HTTP_server::server_loop()
             {
                 Request new_req;
                 if (FdsClients[*it_idx].second.server_full)
-                    new_req.GenerateOverloadError(503, ConfigVec[FdsClients[*it_idx].second.socket]);
+                    new_req.GenerateServerError(503, ConfigVec[FdsClients[*it_idx].second.socket]);
                 else
                 {
                     new_req.requestHeaderMap = server_mapping_request(*it_idx);

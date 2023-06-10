@@ -17,7 +17,8 @@ class Request
 		Request();
 
 		void	CreateResponse(ServerConfig	conf);
-		void	GenerateOverloadError(int errorcode, ServerConfig	conf);
+		void	GenerateServerError(int errorcode, ServerConfig	conf);
+		void	GenerateUploadResponse();
 
 		void	AssignLocation();
 		void	setDate();
@@ -45,7 +46,7 @@ class Request
 		std::string	method;
 		off_t		contentlength;
 		std::string	ResponseHeader;
-		std::string	autoindexbody;
+		std::string	responsebody;
 		std::string	path;
 		std::string	contenttype;
 		std::string	statuscode;
