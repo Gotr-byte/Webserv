@@ -5,15 +5,18 @@
 #include <fstream>
 #include <sys/types.h>
 #include <unistd.h>
+#include <errno.h>
+#include <stdio.h>
+#include "Colors.hpp"
 
 class Cgi
 {
 public:
-	Cgi(std::string type, char **env, int socket_fd, const char *args);
+	Cgi(std::string type, int request_id);
 	~Cgi();
 
 	std::string get_file_name();
-	void run();
+	void run(char **env, const char *args);
 
 	class CgiException : public std::exception
 	{
@@ -30,10 +33,9 @@ private:
 	Cgi(const Cgi &other);
 
 	std::string _type;
-	// int _tubes[2];
 	int _cgi_pid;
 	int _file_fd;
 	char **_env;
-	char *_args;
+	char **_args;
 	std::string _file_name;
 };

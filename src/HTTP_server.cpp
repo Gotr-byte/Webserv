@@ -355,9 +355,14 @@ void HTTP_server::server_loop()
                     // CGI Operations
                     // Cgi(std::string type, char **env, int request_id, char **args)
                     std::cout << RED << new_req.path << DEF;
-                    Cgi create_file("create_file", _env, new_req.id, new_req.path.c_str());
-                    create_file.run();
-                    exit(EXIT_SUCCESS);
+                    Cgi create_file("create_file", new_req.id);
+                    try{
+                        create_file.run(_env, new_req.path.c_str());
+                    }
+                    catch (const std::exception &e){
+                        std::cerr << e.what();
+                    }
+                    // exit(EXIT_SUCCESS);
 
                     (void)fds;
                 }
