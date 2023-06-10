@@ -1,0 +1,43 @@
+Socket 1 (FD 3) is listening on: 0.0.0.0:9995
+Socket 2 (FD 4) is listening on: 0.0.0.0:9996
+Socket 3 (FD 5) is listening on: 0.0.0.0:9997
+New client connected
+3
+GET /planescape.html HTTP/1.1
+Host: localhost:9995
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:109.0) Gecko/20100101 Firefox/114.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8
+Accept-Language: de,en-US;q=0.7,en;q=0.3
+Accept-Encoding: gzip, deflate, br
+Connection: keep-alive
+Upgrade-Insecure-Requests: 1
+Sec-Fetch-Dest: document
+Sec-Fetch-Mode: navigate
+Sec-Fetch-Site: none
+Sec-Fetch-User: ?1
+
+
+GET /planescape.html HTTP/1.1
+Host: localhost:9995
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:109.0) Gecko/20100101 Firefox/114.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8
+Accept-Language: de,en-US;q=0.7,en;q=0.3
+Accept-Encoding: gzip, deflate, br
+Connection: keep-alive
+Upgrade-Insecure-Requests: 1
+Sec-Fetch-Dest: document
+Sec-Fetch-Mode: navigate
+Sec-Fetch-Site: none
+Sec-Fetch-User: ?1
+
+HTTP/1.1 200 OK
+Server: HTML
+Date: Date: Fri, 09 Jun 2023 12:54:04 GMT
+Content-Type: text/html
+Content-Length: 3268
+Transfer-Encoding: chunked
+
+
+Response: 1 sent to client: 3
+3
+

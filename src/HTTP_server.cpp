@@ -6,7 +6,7 @@
 #include <limits>
 #include <fstream>
 
-#define BUF_SIZE 4096
+#define BUF_SIZE 1024
 #define TIMEOUT 20
 
 /**
@@ -102,7 +102,7 @@ void HTTP_server::server_port_listening(int i)
                 }
                 fds[j].fd = FdClientVec[j].first;
                 FdClientVec[j].second.socket = i;
-                FdClientVec[j].second.lastInteractionTime = std::time(nullptr);
+                FdClientVec[j].second.lastInteractionTime = time(nullptr);
                 if (j == MAX_CLIENTS + listening_port_no)
                     FdClientVec[j].second.server_full = true;
                 break ;
@@ -135,18 +135,17 @@ std::map<std::string, std::string> HTTP_server::server_mapping_request(int i){
     memset(buf, 0, BUF_SIZE);
 
     // Obtain Header Length
-    int n = recv(FdClientVec[i].first, buf, BUF_SIZE, MSG_PEEK);
+    int n = recv(FdClientVec[i].first, buf, BUF_SIZE, MSG_DONTWAIT | MSG_PEEK);
     if (n < 0) {
         perror("Error receiving data from client1");
         exit(EXIT_FAILURE);
     }
-    std::cout << buf << std::endl;
     char *header = strstr(buf, "\r\n\r\n");
     size_t headerlength = header - buf + 4;
 
     // Get lines of Header
     memset(buf, 0, BUF_SIZE);
-    n = recv(FdClientVec[i].first, buf, headerlength, MSG_WAITALL);
+    n = recv(FdClientVec[i].first, buf, headerlength, MSG_DONTWAIT);
     if (n < 0) {
         perror("Error receiving data from client2");
         exit(EXIT_FAILURE);
@@ -195,21 +194,54 @@ std::map<std::string, std::string> HTTP_server::server_mapping_request(int i){
 
 void    HTTP_server::ProcessUpload(std::vector<Request>::iterator req)
 {
-    char buf[BUF_SIZE];
-    memset(buf, 0, BUF_SIZE);
+        char buf[BUF_SIZE];
+        memset(buf, 0, BUF_SIZE);
 
-    int i = recv(req->client_fd, buf, BUF_SIZE - 1, MSG_WAITALL);
-    if (i < 0)
-        perror("Upload reciving Error");
+        int n = recv(req->client_fd, buf, BUF_SIZE, MSG_DONTWAIT | MSG_PEEK);
+        if (n < 0) {
+            perror("Error receiving data from client1");
+            exit(EXIT_FAILURE);
+        }
+        char *header = strstr(buf, "\r\n\r\n");
+        size_t headerlength = header - buf + 4;
+
+        // Get lines of Header
+        memset(buf, 0, BUF_SIZE);
+        n = recv(req->client_fd, buf, headerlength, MSG_DONTWAIT);
+        if (n < 0) {
+            perror("Error receiving data from client2");
+            exit(EXIT_FAILURE);
+        }
+        std::cout << buf << std::endl;
+        std::string fileheader(buf);
+        std::string filename = fileheader.substr(fileheader.find("filename=") + 10);
+        filename = filename.substr(0, filename.find("\""));
+        req->path += filename;
+        std::ofstream createFile(req->path, std::ios::binary | std::ios::trunc);
+        if (!createFile.is_open())
+        {
+            perror("error creating uploading file");
+            exit(1);
+        }
+
+        std::string thisChunk;
+        memset(buf, 0, BUF_SIZE);
+        int readbytes = recv(req->client_fd, buf, BUF_SIZE, MSG_DONTWAIT);
+        if (readbytes < 0) {
+            perror("Error receiving data from client in Upload");
+            exit(EXIT_FAILURE);
+        }
+
+
 }
 
 
 void HTTP_server::get_request(int i, std::vector<Request>::iterator req){
     if (!req->initialResponseSent)
 	{
-		if (req->response.path != "AUTOINDEX")
+		if (req->path != "AUTOINDEX")
 		{
-	        int file_fd = open(req->response.path.c_str(), O_RDONLY);
+	        int file_fd = open(req->path.c_str(), O_RDONLY);
 	        if (file_fd < 0)
 			{
 	            // close(FdClientVec[i].second.file_fd);
@@ -222,15 +254,15 @@ void HTTP_server::get_request(int i, std::vector<Request>::iterator req){
         req->file_fd = file_fd;
 		}
 
-        if (send(req->client_fd, req->response.ResponseHeader.c_str(), req->response.ResponseHeader.size(), 0) < 0)
+        if (send(req->client_fd, req->ResponseHeader.c_str(), req->ResponseHeader.size(), 0) < 0)
 		{
             perror("Error sending initial response headers");
             exit(EXIT_FAILURE);
         }
 
-		if (req->response.path == "AUTOINDEX")
+		if (req->path == "AUTOINDEX")
 		{
-			if (send(req->client_fd, req->response.autoindexbody.c_str(), req->response.autoindexbody.size(), 0)  == -1)
+			if (send(req->client_fd, req->autoindexbody.c_str(), req->autoindexbody.size(), 0)  == -1)
 				perror("Autoindex send error");
         	req->requestdone = true;
 			return ;
@@ -275,28 +307,11 @@ bool    HTTP_server::CheckForTimeout(int i)
 {
     currentTime = std::time(nullptr);
 
-    std::time_t elapsedDuration = currentTime - FdClientVec[i].second.lastInteractionTime;
+    time_t elapsedDuration = currentTime - FdClientVec[i].second.lastInteractionTime;
     if (elapsedDuration >= timeoutDuration)
         return true;
     return false;
 }
-
-bool HTTP_server::ContentIsPartOfUpload(int i)
-{
-    char buf[7];
-    memset(buf, 0, 7);
-
-    // Obtain Header Length
-    if (recv(FdClientVec[i].first, buf, 6, MSG_PEEK) < 0)
-        perror("error recv");
-
-    char *header = std::strstr(buf, "------");
-    if (header == nullptr)
-        return false;
-    return true;
-}
-
-// stashed everything i did, i need to set error codes correctly, set pollout
 
 void HTTP_server::server_loop()
 {
@@ -309,44 +324,41 @@ void HTTP_server::server_loop()
         {
             if (fds[*it_idx].revents & POLLIN)
             {
-                if (!ContentIsPartOfUpload(*it_idx))
-                {
-                    Request new_req;
-                    if (FdClientVec[*it_idx].second.server_full)
-                        new_req.GenerateOverloadError(503, ConfigVec[FdClientVec[*it_idx].second.socket]);
-                    else
-                    {
-                        new_req.request = server_mapping_request(*it_idx);
-				        new_req.CreateResponse(ConfigVec[FdClientVec[*it_idx].second.socket]);
-                        FdClientVec[*it_idx].second.lastInteractionTime = std::time(nullptr);
-                    }
-                    new_req.client_fd = FdClientVec[*it_idx].first;
-                    FdClientVec[*it_idx].second.RequestVector.push_back(new_req);
-                    if (new_req.response.cutoffClient)
-                        fds[*it_idx].events = POLLOUT;
-                }
+                Request new_req;
+                if (FdClientVec[*it_idx].second.server_full)
+                    new_req.GenerateOverloadError(503, ConfigVec[FdClientVec[*it_idx].second.socket]);
                 else
                 {
-                    for (std::vector<Request>::iterator it_req = FdClientVec[*it_idx].second.RequestVector.begin(); it_req != FdClientVec[*it_idx].second.RequestVector.end(); it_req++)
-                    {
-                        ProcessUpload(it_req);
-                    }
+                    new_req.requestHeaderMap = server_mapping_request(*it_idx);
+				    new_req.CreateResponse(ConfigVec[FdClientVec[*it_idx].second.socket]);
+                    FdClientVec[*it_idx].second.lastInteractionTime = std::time(nullptr);
+                }
+                new_req.client_fd = FdClientVec[*it_idx].first;
+                FdClientVec[*it_idx].second.RequestVector.push_back(new_req);
+                if (new_req.cutoffClient)
+                    fds[*it_idx].events = POLLOUT;
+                else if (new_req.isUpload)
+                    ProcessUpload(FdClientVec[*it_idx].second.RequestVector.end() - 1);
+                else if (new_req.isCGI)
+                {
+                    //CGI Operations
+                    (void) fds;
                 }
             }
             if (fds[*it_idx].revents & POLLOUT)
             {
                 for (std::vector<Request>::iterator it_req = FdClientVec[*it_idx].second.RequestVector.begin(); it_req != FdClientVec[*it_idx].second.RequestVector.end(); it_req++)
                 {
-        	    	    try{
-        	    	        get_request(*it_idx, it_req);
-        	    	    }
-        	    	    catch(const std::exception & e)
-        	    	    {
-        	    	        std::cerr << e.what();
-        	    	    }
+        	    	try{
+        	    	    get_request(*it_idx, it_req);
+        	    	}
+        	    	catch(const std::exception & e)
+        	    	{
+        	    	    std::cerr << e.what();
+        	    	}
                     if (it_req->requestdone)
                     {
-                        if (it_req->response.cutoffClient)
+                        if (it_req->cutoffClient)
                             FdClientVec[*it_idx].second.cutoffClient = true;
                         std::cout << "Response: " << it_req->id << " sent to client: " << *it_idx << std::endl;
                         FdClientVec[*it_idx].second.RequestVector.erase(it_req);

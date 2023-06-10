@@ -34,7 +34,6 @@
 #include "ServerConfig.hpp"
 #include "Client.hpp"
 #include "Socket.hpp"
-#include "RequestProcessor.hpp"
 #include "../includes/Request.hpp"
 
 #define MAX_CLIENTS 3
@@ -47,7 +46,6 @@ public:
     ~HTTP_server();
     void server_conducts_poll();
     void	InitFdClientVec();
-    bool ContentIsPartOfUpload(int i);
     // void perform_get_request(int i);
     void server_port_listening(int i);
     std::map<std::string, std::string> server_mapping_request(int i);
