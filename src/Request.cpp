@@ -188,11 +188,11 @@ bool	Request::IsDirectory()
 
 void	Request::setDate()
 {
-	std::time_t currentTime = std::time(nullptr);
-    std::tm* timeinfo = std::gmtime(&currentTime);
+	time_t currentTime = time(nullptr);
+    tm* timeinfo = gmtime(&currentTime);
     
     char buffer[80];
-    std::strftime(buffer, sizeof(buffer), "%a, %d %b %Y %H:%M:%S GMT", timeinfo);
+    strftime(buffer, sizeof(buffer), "%a, %d %b %Y %H:%M:%S GMT", timeinfo);
     
     std::string conv(buffer);
 	this->date = "Date: " + conv;
