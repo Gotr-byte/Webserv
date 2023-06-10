@@ -353,7 +353,6 @@ void HTTP_server::server_loop()
                 else if (new_req.isCGI)
                 {
                     // CGI Operations
-                    // Cgi(std::string type, char **env, int request_id, char **args)
                     std::cout << RED << new_req.path << DEF;
                     Cgi cgi("generic cgi", new_req.id);
                     try{
@@ -362,8 +361,6 @@ void HTTP_server::server_loop()
                     catch (const std::exception &e){
                         std::cerr << e.what();
                     }
-                    // exit(EXIT_SUCCESS);
-
                     (void)fds;
                 }
             }
