@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdlib>
 #include <limits>
+#include <algorithm>
 #include <fstream>
 
 #define BUF_SIZE 1024
@@ -144,7 +145,7 @@ std::map<std::string, std::string> HTTP_server::server_mapping_request(int i)
         perror("Error receiving data from client1");
         exit(EXIT_FAILURE);
     }
-    char *header = strstr(buf, "\r\n\r\n");
+    char *header = std::strstr(buf, "\r\n\r\n");
     size_t headerlength = header - buf + 4;
 
     // Get lines of Header
@@ -224,26 +225,46 @@ void HTTP_server::ProcessUpload(std::vector<Request>::iterator req)
         perror("Error receiving data from client2");
         exit(EXIT_FAILURE);
     }
-    std::cout << buf << std::endl;
+    
     std::string fileheader(buf);
+    std::cout << buf << std::endl;
     std::string filename = fileheader.substr(fileheader.find("filename=") + 10);
     filename = filename.substr(0, filename.find("\""));
     req->path += filename;
     std::ofstream createFile(req->path, std::ios::binary | std::ios::trunc);
+
     if (!createFile.is_open())
     {
         perror("error creating uploading file");
         exit(1);
     }
 
-    std::string thisChunk;
-    memset(buf, 0, BUF_SIZE);
-    int readbytes = recv(req->client_fd, buf, BUF_SIZE, MSG_DONTWAIT);
-    if (readbytes < 0)
+    size_t bodyLength = std::atol(req->requestHeaderMap["Content-Length:"].c_str()) - headerlength;
+    size_t boundaryLength = req->requestHeaderMap["boundary"].size() + 4;
+    size_t readbytes = 0;
+    size_t remainingBytes = bodyLength - boundaryLength;
+
+    std::cout << req->requestHeaderMap["boundary"] << std::endl;
+
+
+    while (remainingBytes > boundaryLength)
     {
-        perror("Error receiving data from client in Upload");
-        exit(EXIT_FAILURE);
+        size_t chunkBytes = std::min((size_t) BUF_SIZE, remainingBytes);
+
+        memset(buf, 0, chunkBytes);
+        readbytes = recv(req->client_fd, buf, chunkBytes, MSG_DONTWAIT);
+        if (readbytes < 0)
+        {
+            perror("Error receiving data from client in Upload");
+            exit(EXIT_FAILURE);
+        }
+
+        createFile.write(buf, readbytes);
+        remainingBytes -= readbytes;
     }
+    createFile.close();
+    memset(buf, 0, BUF_SIZE);
+    recv(req->client_fd, buf, BUF_SIZE, MSG_DONTWAIT);
 }
 
 void HTTP_server::get_request(int i, std::vector<Request>::iterator req)
@@ -409,7 +430,6 @@ void HTTP_server::InitFdsClients()
 
 int HTTP_server::running()
 {
-
     ConfigCheck check;
 
     listening_port_no = check.checkConfig(_path);
