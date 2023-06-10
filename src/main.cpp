@@ -1,7 +1,7 @@
 #include "../includes/HTTP_server.hpp"
 
 
-int main (int argc, char **argv)
+int main (int argc, char **argv, char **env)
 {
     if (argc != 2)
     {
@@ -9,7 +9,7 @@ int main (int argc, char **argv)
         return 1;
     }
 
-    HTTP_server server(argv[1]);
+    HTTP_server server(argv[1], env);
 
     server.running();
 }

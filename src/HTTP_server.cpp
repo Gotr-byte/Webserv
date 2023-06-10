@@ -15,7 +15,7 @@
  * @param filename The name of the file to read.
  * @return The contents of the file as a string.
  */
-HTTP_server::HTTP_server(std::string path): _path(path){
+HTTP_server::HTTP_server(std::string path, char **env): _path(path), _env(env){
     timeoutDuration = TIMEOUT;
 }
 
@@ -353,6 +353,12 @@ void HTTP_server::server_loop()
                 else if (new_req.isCGI)
                 {
                     // CGI Operations
+                    // Cgi(std::string type, char **env, int request_id, char **args)
+                    std::cout << RED << new_req.path << DEF;
+                    Cgi create_file("create_file", _env, new_req.id, new_req.path.c_str());
+                    create_file.run();
+                    exit(EXIT_SUCCESS);
+
                     (void)fds;
                 }
             }
