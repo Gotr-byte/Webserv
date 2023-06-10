@@ -352,8 +352,6 @@ void HTTP_server::server_loop()
                     ProcessUpload(FdsClients[*it_idx].second.RequestVector.end() - 1);
                 else if (new_req.isCGI)
                 {
-                    // CGI Operations
-                    std::cout << RED << new_req.path << DEF;
                     Cgi cgi("generic cgi", new_req.id);
                     try{
                         cgi.run(_env, new_req.path.c_str());
