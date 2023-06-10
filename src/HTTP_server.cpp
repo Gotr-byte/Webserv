@@ -226,7 +226,7 @@ void HTTP_server::ProcessUpload(std::vector<Request>::iterator req)
     }
     
     std::string fileheader(buf);
-    std::cout << buf << std::endl;
+    // std::cout << buf << std::endl;
     std::string filename = fileheader.substr(fileheader.find("filename=") + 10);
     filename = filename.substr(0, filename.find("\""));
     req->path += filename;
@@ -242,9 +242,6 @@ void HTTP_server::ProcessUpload(std::vector<Request>::iterator req)
     size_t boundaryLength = req->requestHeaderMap["boundary"].size() + 4;
     size_t readbytes = 0;
     size_t remainingBytes = bodyLength - boundaryLength;
-
-    std::cout << req->requestHeaderMap["boundary"] << std::endl;
-
 
     while (remainingBytes > boundaryLength)
     {
