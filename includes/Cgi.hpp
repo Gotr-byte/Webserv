@@ -8,6 +8,7 @@
 #include <errno.h>
 #include <stdio.h>
 #include "Colors.hpp"
+#include <string.h>
 
 class Cgi
 {
@@ -35,7 +36,5 @@ private:
 	std::string _type;
 	int _cgi_pid;
 	int _file_fd;
-	char **_env;
-	char **_args;
 	std::string _file_name;
 };

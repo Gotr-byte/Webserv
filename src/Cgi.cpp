@@ -24,11 +24,15 @@ void Cgi::run(char **env, const char *args)
 	}
 	if (_cgi_pid == 0)
 	{
-		std::string python_path = "/usr/bin/python3";
-		_args[0] = (char *)python_path.c_str();
-		_args[1] = (char *)args;
-		_args[2] = NULL;
-		_env = env;
+		char* scriptPath = (char*)args;
+        char* _args[] = { "/usr/bin/python3", scriptPath, NULL };
+        char* _env[] = {
+            "REQUEST_METHOD=GET",
+            "SCRIPT_NAME=/cgi-bin/create_file.py",
+            "SERVER_PROTOCOL=HTTP/1.1",
+            "SERVER_SOFTWARE=MyWebServer/1.0",
+            NULL
+        };
 		execve(_args[0], _args, _env);
 		throw(CgiException());
 	}
