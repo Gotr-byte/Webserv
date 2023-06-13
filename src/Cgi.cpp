@@ -80,6 +80,7 @@ void Cgi::run(std::map<std::string, std::string> request)
 		//create arguments for execve
 		std::string path_adder = "../HTML" + request["location:"];
 		char* script_path = (char*)(path_adder).c_str();
+
         char* _args[] = { "/usr/bin/python3", script_path, NULL };
 		//TODO change this to const
 		//create enviroment
@@ -87,24 +88,25 @@ void Cgi::run(std::map<std::string, std::string> request)
 		char *_env[variables_number + 1];
 
 		//TEST
-		_env[0] = "CONTENT_TYPE=text/html";  // Example value for Content-Type
-		_env[1] = "GATEWAY_INTERFACE=CGI/1.1";
-		_env[2] = "PATH_TRANSLATED=/path/to/file";
-		_env[3] = "REQUEST_METHOD=POST";
-		_env[4] = "CONTENT_LENGTH=1024";
-		_env[5] = "SERVER_SOFTWARE=Weebserver";
-		_env[6] = "SERVER_NAME=Weebserver.com";  // Example value for server name
-		_env[7] = "HTTP_ACCEPT=text/html";  // Example value for Accept header
-		_env[8] = "HTTP_ACCEPT_LANGUAGE=en-US";  // Example value for Accept-Language header
-		_env[9] = "HTTP_USER_AGENT=Mozilla/5.0";  // Example value for User-Agent header
-		_env[10] = "SCRIPT_NAME=../HTML/cgi-bin/print_params.py";  // Example value for script name
-		_env[11] = "HTTP_REFERER=http://example.com"; 
-		_env[12] = "PATH_TRANSLATED=../HTML/cgi-bin/print_params.py";
-		_env[13] = "QUERY_STRING=param1=value3&param2=value4";
-		_env[14] = "REQUEST_METHOD=POST";
-		_env[15] = "CONTENT_LENGTH=512";
-		_env[16] = "SERVER_SOFTWARE=MyWeebserver";
+		_env[0] = const_cast<char*>("CONTENT_TYPE=text/html");  // Example value for Content-Type
+		_env[1] = const_cast<char*>("GATEWAY_INTERFACE=CGI/1.1");
+		_env[2] = const_cast<char*>("PATH_TRANSLATED=../HTML/cgi-bin/print_params.py");
+		_env[3] = const_cast<char*>("REQUEST_METHOD=POST");
+		_env[4] = const_cast<char*>("CONTENT_LENGTH=1024");
+		_env[5] = const_cast<char*>("SERVER_SOFTWARE=Weebserver");
+		_env[6] = const_cast<char*>("SERVER_NAME=Weebserver.com");  // Example value for server name
+		_env[7] = const_cast<char*>("HTTP_ACCEPT=text/html");  // Example value for Accept header
+		_env[8] = const_cast<char*>("HTTP_ACCEPT_LANGUAGE=en-US");  // Example value for Accept-Language header
+		_env[9] = const_cast<char*>("HTTP_USER_AGENT=Mozilla/5.0");  // Example value for User-Agent header
+		_env[10] = const_cast<char*> ("SCRIPT_NAME=../HTML/cgi-bin/print_params.py");  // Example value for script name
+		_env[11] = const_cast<char*>("HTTP_REFERER=http://example.com"); 
+		_env[12] = const_cast<char*>("PATH_TRANSLATED=../HTML/cgi-bin/print_params.py");
+		_env[13] = const_cast<char*>("QUERY_STRING=param1=value3&param2=value4");
+		_env[14] = const_cast<char*>("REQUEST_METHOD=POST");
+		_env[15] = const_cast<char*>("CONTENT_LENGTH=512");
+		_env[16] = const_cast<char*> ("SERVER_SOFTWARE=MyWeebserver");
 		_env[17] = NULL;
+
 		//END OF TEST
 
 

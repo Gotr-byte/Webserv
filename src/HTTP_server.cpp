@@ -243,7 +243,8 @@ std::map<std::string, std::string> HTTP_server::server_mapping_request(int i)
     {
         new_request["method:"] = std::strtok(&lines.front()[0], " ");
         new_request["location:"] = std::strtok(NULL, " ");
-        if (new_request["location:"].find('?')){
+        std::size_t found = new_request["location:"].find('?');
+        if (found != std::string::npos){
             new_request["HTTP_version:"] = std::strtok(NULL, " ");
             std::string temporary = std::strtok(&new_request["location:"][0], "?");
             new_request["querry_string:"] = std::strtok(NULL, " ");
