@@ -37,6 +37,7 @@
 #include "../includes/Request.hpp"
 #include "Colors.hpp"
 
+
 #define MAX_CLIENTS 3
 #define LISTENING_SOCKET
 
@@ -63,12 +64,14 @@ public:
     std::string toHex(int value);
     void    removeWhitespaces(std::string &string);
     void get_request(int i, std::vector<Request>::iterator req);
+    void print_request(std::map<std::string, std::string> my_map);
 
 private:
     HTTP_server();
     HTTP_server(const HTTP_server &other);
     HTTP_server& operator = (const HTTP_server & other);
 
+    int color_index;
     char **_env;
     std::string _path;
     int nfds;

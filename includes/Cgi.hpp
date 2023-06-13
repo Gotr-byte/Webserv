@@ -17,6 +17,7 @@
 #include <stdio.h>
 #include "Colors.hpp"
 #include <string.h>
+#include <map>
 
 class Cgi
 {
@@ -25,7 +26,8 @@ public:
 	~Cgi();
 
 	std::string get_file_name();
-	void run(char **env, const char *args);
+	void run(std::map<std::string, std::string> request);
+	void print_request(std::map<std::string, std::string> my_map);
 
 	class CgiException : public std::exception
 	{
@@ -41,6 +43,7 @@ private:
 	Cgi &operator=(const Cgi &other);
 	Cgi(const Cgi &other);
 
+	int color_index;
 	std::string _type;
 	int _cgi_pid;
 	int _file_fd;
