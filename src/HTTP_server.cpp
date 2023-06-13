@@ -10,6 +10,42 @@
 #define BUF_SIZE 1024
 #define TIMEOUT 20
 
+
+
+void HTTP_server::print_request(std::map<std::string, std::string> my_map)
+{
+    std::map<std::string, std::string>::iterator it;
+    switch (color_index) {
+        case 0:
+            for (it = my_map.begin(); it != my_map.end(); ++it) {
+                std::cout << RED << "Key: " << it->first << ", Value: " << it->second << DEF <<std::endl;
+            }
+            color_index++;
+            break;
+        case 1:
+            for (it = my_map.begin(); it != my_map.end(); ++it) {
+                std::cout << YELLOW << "Key: " << it->first << ", Value: " << it->second << DEF <<std::endl;
+            }
+            color_index++;
+            break;
+        case 2:
+            for (it = my_map.begin(); it != my_map.end(); ++it) {
+                std::cout << CYAN << "Key: " << it->first << ", Value: " << it->second << DEF <<std::endl;
+            }
+            color_index++;
+            break;
+        case 3:
+            for (it = my_map.begin(); it != my_map.end(); ++it) {
+                std::cout << CYAN << "Key: " << it->first << ", Value: " << it->second << DEF <<std::endl;
+            }
+            color_index = 0;
+            break;
+        default:
+            std::cout << "Invalid choice." << std::endl;
+            break;
+    }
+}
+
 /**
  * Constructor of HTTP server, creates an array of client
  *
@@ -18,6 +54,7 @@
  */
 HTTP_server::HTTP_server(std::string path, char **env): _path(path), _env(env){
     timeoutDuration = TIMEOUT;
+    color_index = 0;
 }
 
 HTTP_server::~HTTP_server(){}
@@ -373,7 +410,7 @@ void HTTP_server::server_loop()
                 {
                     Cgi cgi("generic cgi", new_req.id);
                     try{
-                        cgi.run(_env, new_req.path.c_str());
+                        cgi.run(new_req.requestHeaderMap);
                     }
                     catch (const std::exception &e){
                         std::cerr << e.what();
