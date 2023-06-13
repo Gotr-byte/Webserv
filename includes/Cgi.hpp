@@ -1,5 +1,13 @@
 #pragma once
 
+#if defined(__APPLE__)
+#include <sys/types.h>
+#include <fcntl.h>
+#endif
+#if defined(__linux__)
+#include <unistd.h>
+#endif
+
 #include <iostream>
 #include <sstream>
 #include <fstream>

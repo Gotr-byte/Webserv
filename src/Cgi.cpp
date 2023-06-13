@@ -22,8 +22,29 @@ void Cgi::run(char **env, const char *args)
 		std::cerr << "Error with fork\n";
 		throw(CgiException());
 	}
+	//create a file
+	const char* filename = "../HTML/cgi-bin/outfile.txt";
+    int outfile = open(filename, O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR);
+    if (outfile == -1) {
+        std::cerr << "Error opening the file.\n";
+        throw(CgiException());
+    }
 	if (_cgi_pid == 0)
 	{
+		//read file
+		char buffer[100];
+		ssize_t bytesRead;
+
+		while ((bytesRead = read(outfile, buffer, sizeof(buffer) - 1)) > 0) {
+			buffer[bytesRead] = '\0';  // Null-terminate the buffer
+			std::cout << buffer;
+		}
+
+		//set standard output to file
+		dup2(outfile, STDOUT_FILENO);
+		close(outfile);
+
+		//create enviroment
 		char* scriptPath = (char*)args;
         char* _args[] = { "/usr/bin/python3", scriptPath, NULL };
         char* _env[] = {
@@ -35,5 +56,7 @@ void Cgi::run(char **env, const char *args)
         };
 		execve(_args[0], _args, _env);
 		throw(CgiException());
+		//close fds
+		close(outfile);
 	}
 }
