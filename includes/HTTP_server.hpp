@@ -36,6 +36,8 @@
 #include "Socket.hpp"
 #include "../includes/Request.hpp"
 #include "Colors.hpp"
+// #include <cstring.h>
+// #include <string.h>
 
 
 #define MAX_CLIENTS 3
@@ -65,6 +67,7 @@ public:
     void    removeWhitespaces(std::string &string);
     void get_request(int i, std::vector<Request>::iterator req);
     void print_request(std::map<std::string, std::string> my_map);
+    void generate_cgi_querry(std::map<std::string, std::string> &new_request);
 
 private:
     HTTP_server();

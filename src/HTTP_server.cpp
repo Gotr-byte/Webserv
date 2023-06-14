@@ -11,6 +11,35 @@
 #define TIMEOUT 20
 
 
+size_t	ft_strlen(const char *s)
+{
+	size_t	i;
+
+	i = 0;
+	while (s[i] != '\0')
+		i++;
+	return (i);
+}
+
+
+char	*ft_strchr(const char *s, int c)
+{
+	size_t	i;
+	char	*h;
+	size_t	t;
+
+	t = ft_strlen(s);
+	h = (char *)s;
+	i = 0;
+	while (i <= t)
+	{
+		if (*(h + i) == (char)c)
+			return (h + i);
+		i++;
+	}
+	return (0);
+}
+
 
 void HTTP_server::print_request(std::map<std::string, std::string> my_map)
 {
@@ -167,6 +196,14 @@ void HTTP_server::server_conducts_poll()
     }
 }
 
+//also update location request
+void HTTP_server::generate_cgi_querry(std::map<std::string, std::string>&new_request){
+    char * temporary = std::strtok(&new_request["location:"][0], "?");
+    std::cout << "the temp file: "<< temporary << "\n";
+    new_request["query_string:"] = std::strtok(NULL, "");
+    new_request["location:"] = temporary;
+}
+
 std::map<std::string, std::string> HTTP_server::server_mapping_request(int i)
 {
     std::string key;
@@ -206,7 +243,15 @@ std::map<std::string, std::string> HTTP_server::server_mapping_request(int i)
     {
         new_request["method:"] = std::strtok(&lines.front()[0], " ");
         new_request["location:"] = std::strtok(NULL, " ");
-        new_request["HTTP_version:"] = std::strtok(NULL, " ");
+        std::size_t found = new_request["location:"].find('?');
+        if (found != std::string::npos){
+            new_request["HTTP_version:"] = std::strtok(NULL, " ");
+            std::string temporary = std::strtok(&new_request["location:"][0], "?");
+            new_request["query_string:"] = std::strtok(NULL, " ");
+            new_request["location:"] = temporary;
+        }
+        else
+            new_request["HTTP_version:"] = std::strtok(NULL, " ");
     }
     while (!lines.empty())
     {
@@ -236,6 +281,7 @@ std::map<std::string, std::string> HTTP_server::server_mapping_request(int i)
         new_request[key] = value;
         new_request["Content-Type:"] = new_request["Content-Type:"].substr(0, new_request["Content-Type:"].find(";"));
     }
+    print_request(new_request);
     return new_request;
 }
 
@@ -263,7 +309,6 @@ void HTTP_server::ProcessUpload(std::vector<Request>::iterator req)
     }
     
     std::string fileheader(buf);
-    // std::cout << buf << std::endl;
     std::string filename = fileheader.substr(fileheader.find("filename=") + 10);
     filename = filename.substr(0, filename.find("\""));
     req->path += filename;
