@@ -94,7 +94,7 @@ void Cgi::run(std::map<std::string, std::string> request)
 		throw(CgiException());
 	}
 	//create a file
-	const char* filename = "../HTML/cgi-bin/outfile.txt";
+	const char* filename = "../HTML/cgi-bin/city_of_brass";
     int outfile = open(filename, O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR);
     if (outfile == -1) {
         std::cerr << "Error opening the file.\n";
