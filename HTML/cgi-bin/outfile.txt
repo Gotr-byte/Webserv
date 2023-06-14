@@ -1,5 +1,6 @@
-value: value3
-value: value4
-Pararameter 1: value3
-Paraarmeter 2: value4
-Parameter 3: value4
+value: 10
+eldrich_ziggurat: None
+magi_school None
+farm 10
+ancient_temple None
+food 30

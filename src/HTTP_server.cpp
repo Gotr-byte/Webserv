@@ -200,7 +200,7 @@ void HTTP_server::server_conducts_poll()
 void HTTP_server::generate_cgi_querry(std::map<std::string, std::string>&new_request){
     char * temporary = std::strtok(&new_request["location:"][0], "?");
     std::cout << "the temp file: "<< temporary << "\n";
-    new_request["querry_string:"] = std::strtok(NULL, "");
+    new_request["query_string:"] = std::strtok(NULL, "");
     new_request["location:"] = temporary;
 }
 
@@ -247,7 +247,7 @@ std::map<std::string, std::string> HTTP_server::server_mapping_request(int i)
         if (found != std::string::npos){
             new_request["HTTP_version:"] = std::strtok(NULL, " ");
             std::string temporary = std::strtok(&new_request["location:"][0], "?");
-            new_request["querry_string:"] = std::strtok(NULL, " ");
+            new_request["query_string:"] = std::strtok(NULL, " ");
             new_request["location:"] = temporary;
         }
         else

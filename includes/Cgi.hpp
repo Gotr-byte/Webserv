@@ -18,6 +18,7 @@
 #include "Colors.hpp"
 #include <string.h>
 #include <map>
+#include <vector>
 
 class Cgi
 {
@@ -28,6 +29,8 @@ public:
 	std::string get_file_name();
 	void run(std::map<std::string, std::string> request);
 	void print_request(std::map<std::string, std::string> my_map);
+	bool is_python3_installed();
+	bool is_python_file(const std::string& str);
 
 	class CgiException : public std::exception
 	{
@@ -43,6 +46,7 @@ private:
 	Cgi &operator=(const Cgi &other);
 	Cgi(const Cgi &other);
 
+	std::vector <std::string> enviromentals;
 	int color_index;
 	std::string _type;
 	int _cgi_pid;
