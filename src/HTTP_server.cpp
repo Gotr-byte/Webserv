@@ -459,7 +459,6 @@ void HTTP_server::server_loop()
                 else if (new_req.isCGI)
                 {
                     Cgi cgi("generic cgi", new_req.id);
-                    std::cout << "yeah" << std::endl;
                     try{
                         cgi.run(new_req.requestHeader);
                     }
