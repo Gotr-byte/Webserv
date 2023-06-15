@@ -1,7 +1,26 @@
-Parameter 1: None
-Parameter 2: None
-_school None
+cgi: print the vector elements
+CONTENT_LENGTH=7
+CONTENT_TYPE=
+GATEWAY_INTERFACE=CGI/1.1
+PATH_INFO=../HTML/cgi-bin/ziggurat_magi_infile
+QUERY_STRING=farm=5
+REQUEST_METHOD=POST
+REMOTE_ADDR=127.0.0.1
+SCRIPT_NAME=/cgi-bin/ziggurat_magi.py
+SERVER_NAME=Weebserver.com
+SERVER_PORT=9995
+SERVER_PROTOCOL=HTTP/1.1
+SERVER_SOFTWARE=Weebserver
+
+cgi: enviromentals size equals 12
+value: 5
+eldrich_ziggurat: None
+magi_school None
+
 farm 5
 ancient_temple None
-food 555
-1010
+food 30
+30
+
+ancient_temple None
+food 30

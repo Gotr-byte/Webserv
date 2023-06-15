@@ -106,6 +106,7 @@ private:
     int sentBytes[20];
     std::vector<ServerConfig> ConfigVec;
     int listening_port_no;
+    void cgi_file_upload(std::vector<Request>::iterator req);
     class				InvalidFileDownloadException : public std::exception
 		{
 			public:
