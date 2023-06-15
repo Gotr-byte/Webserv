@@ -410,7 +410,6 @@ void HTTP_server::send_response(std::vector<Request>::iterator req)
         }
         req->requestdone = true;
     }
-    FdsClients[i].second.lastInteractionTime = std::time(nullptr);
 }
 
 std::string HTTP_server::toHex(int value)
@@ -477,7 +476,7 @@ void HTTP_server::server_loop()
                     try
                     {
                         send_response(it_req);
-                        FdsClients[i].second.lastInteractionTime = std::time(nullptr);
+                        FdsClients[*it_idx].second.lastInteractionTime = std::time(nullptr);
                     }
                     catch (const std::exception &e)
                     {

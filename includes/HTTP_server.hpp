@@ -67,7 +67,7 @@ public:
     void place_in_file(std::string line_to_file);
     std::string toHex(int value);
     void removeWhitespaces(std::string &string);
-    void send_response(int i, std::vector<Request>::iterator req);
+    void send_response(std::vector<Request>::iterator req);
     void print_request(std::map<std::string, std::string> my_map);
     void generate_cgi_querry(std::map<std::string, std::string> &new_request);
 
