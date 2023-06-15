@@ -206,7 +206,6 @@ void HTTP_server::generate_cgi_querry(std::map<std::string, std::string>&new_req
     new_request["location:"] = temporary;
 }
 
-std::map<std::string, std::string> HTTP_server::server_mapping_request(int i)
 size_t HTTP_server::findHeaderLength(int fd)
 {
     char buf[BUF_SIZE];
@@ -326,7 +325,7 @@ void HTTP_server::ProcessUpload(std::vector<Request>::iterator req)
     }
 
     size_t bodyLength = std::atol(req->requestHeader["Content-Length:"].c_str()) - headerlength;
-    size_t boundaryLength = req->requestHeader["boundary"].size() + 4;
+    size_t boundaryLength = req->requestHeader["boundary"].size() + 7;
     size_t readbytes = 0;
     size_t remainingBytes = bodyLength - boundaryLength;
 
@@ -462,7 +461,7 @@ void HTTP_server::server_loop()
                     Cgi cgi("generic cgi", new_req.id);
                     std::cout << "yeah" << std::endl;
                     try{
-                        cgi.run(new_req.requestHeaderMap);
+                        cgi.run(new_req.requestHeader);
                     }
                     catch (const std::exception &e){
                         std::cerr << e.what();
