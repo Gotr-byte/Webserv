@@ -131,6 +131,7 @@ std::string Cgi::get_file_name()
 
 std::string	Cgi::create_request_body_file(std::vector<Request>::iterator it_req)
 {
+	std::cout << "what the fuck\n";
     char buf[BUF_SIZE];
 	std::ostringstream	filename;
 
@@ -149,14 +150,17 @@ std::string	Cgi::create_request_body_file(std::vector<Request>::iterator it_req)
 
     	int read_bytes;
     	read_bytes = recv(it_req->client_fd, buf, request_body_size, MSG_DONTWAIT);
-		if (read_bytes < 0)
+		if (read_bytes <= 0)
 			break;
 		outFile.write(buf, read_bytes);
 		remaining_bytes -= chunk_bytes;
 	}
+	std::cout << "zero fucks\n";
 	outFile.close();
     memset(buf, 0, BUF_SIZE);
-    recv(it_req->client_fd, buf, BUF_SIZE, MSG_WAITALL);
+	std::cout << "cgi: filename is" << filename.str() << "\n";
+    recv(it_req->client_fd, buf, BUF_SIZE, MSG_DONTWAIT);
+	std::cout << "given\n";
 	return (filename.str());
 }
 
@@ -164,21 +168,30 @@ std::string	Cgi::create_request_body_file(std::vector<Request>::iterator it_req)
 void Cgi::run(std::vector<Request>::iterator it_req)
 {
 	std::string env_variable;
+	int infile;
+	std::string body_path;
 
 	if(!is_python3_installed())
 		throw(CgiException());
 	if(!is_python_file(it_req->requestHeader["location:"]))
 		throw(CgiException());
-	if (it_req->method == "POST")
-		std::string body_path = create_request_body_file(it_req);
-	it_req->GenerateUploadResponse();
-	this->_cgi_pid = fork();
-	if (_cgi_pid < 0)
+	int save_stdin = dup(STDIN_FILENO);
+	int save_stdout = dup(STDOUT_FILENO);
+	std::cout << "cgi: request header method [" << it_req->requestHeader["method:"] << "]\n";
+	if (it_req->requestHeader["method:"]== "POST")
 	{
-		std::cerr << "Error with fork\n";
-		throw(CgiException());
+		body_path = create_request_body_file(it_req);
+		std::cout << "cgi: the body path is " << body_path << "\n";
+		// exit(EXIT_SUCCESS);
+		const char* in_filename = body_path.c_str();
+		infile = open(in_filename, O_RDONLY);
+		if (infile == -1) {
+			std::cerr << "cgi: Error opening the input file.\n";
+			throw(CgiException());
+    	}
 	}
-	//create a file
+	
+	//create an output file
 	const char* out_filename = "../HTML/cgi-bin/city_of_brass";
     int outfile = open(out_filename, O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR);
     if (outfile == -1) {
@@ -186,25 +199,34 @@ void Cgi::run(std::vector<Request>::iterator it_req)
         throw(CgiException());
     }
 
-	// const char* in_filename = "../HTML/cgi-bin/ziggurat_magi_infile";
-    // int in_file = open(in_filename, O_RDONLY);
-    // if (in_file == -1) {
-    //     std::cerr << "cgi: Error opening the input file.\n";
-    //     throw(CgiException());
-    // }
 
+	this->_cgi_pid = fork();
+	if (_cgi_pid < 0)
+	{
+		std::cerr << "Error with fork\n";
+		throw(CgiException());
+	}
+	
 	if (_cgi_pid == 0)
 	{
 		//set standard output to file
 		dup2(outfile, STDOUT_FILENO);
 		close(outfile);
+		if(it_req->method == "POST"){
+			dup2(infile, STDIN_FILENO);
+			close(infile);
+		}
+		char c;
+    	while (std::cin.get(c)) {
+        	std::cout.put(c);
+   		}
 
 		//create arguments for execve
 		std::string path_adder = "../HTML" + it_req->requestHeader["location:"];
 		char* script_path = (char*)(path_adder).c_str();
 
 		const char* path_to_python = "/usr/bin/python3";
-    char* _args[3];
+    	char* _args[3];
 		_args[0] = (char *)path_to_python;
 		_args[1] = script_path;
 		_args[2] = NULL;
@@ -215,7 +237,7 @@ void Cgi::run(std::vector<Request>::iterator it_req)
 		int i = 0;
 
 		//represents the length of the request body in bytes, only if there is a body
-		env_variable = "CONTENT_LENGTH=7";
+		env_variable = "CONTENT_LENGTH=" + it_req->requestHeader["Content-Length:"];
 		enviromentals.push_back(env_variable);
 
 		// CONTENT_TYPE: "text/html" represents the media type of the request body
@@ -227,7 +249,8 @@ void Cgi::run(std::vector<Request>::iterator it_req)
 		enviromentals.push_back(env_variable);
 
 		// PATH_INFO: "/path/to/resource" (represents the path to the requested resource)
-		env_variable = "PATH_INFO=../HTML/cgi-bin/ziggurat_magi_infile";
+		// env_variable = "PATH_INFO=../HTML/cgi-bin/ziggurat_magi_infile";
+		env_variable = "PATH_INFO=" + body_path;
 		enviromentals.push_back(env_variable);
 
 		// QUERY_STRING: "param1=value1&param2=value2" (represents the query string parameters)
@@ -270,14 +293,14 @@ void Cgi::run(std::vector<Request>::iterator it_req)
     	env_variable = "SERVER_SOFTWARE=Weebserver";
     	enviromentals.push_back(env_variable);
 
-		std::cout << "cgi: print the vector elements\n";
-		for (std::vector<std::string>::iterator it = enviromentals.begin(); it != enviromentals.end(); ++it) {
-			std::cout << *it << "\n";
-		}
-		std::cout << std::endl;
+		// std::cout << "cgi: print the vector elements\n";
+		// for (std::vector<std::string>::iterator it = enviromentals.begin(); it != enviromentals.end(); ++it) {
+		// 	std::cout << *it << "\n";
+		// }
+		// std::cout << std::endl;
 
 		char *_env[enviromentals.size() + 1];
-		std::cout << "cgi: enviromentals size equals " << enviromentals.size() << "\n";
+		// std::cout << "cgi: enviromentals size equals " << enviromentals.size() << "\n";
 
 		//turn enviroment into array
 		for (std::vector<std::string>::iterator it = enviromentals.begin(); it != enviromentals.end(); it++)
@@ -287,8 +310,14 @@ void Cgi::run(std::vector<Request>::iterator it_req)
   	  	}
 		_env[i] = NULL;
 		execve(_args[0], const_cast<char* const*>(_args), _env);
+		exit(EXIT_SUCCESS);
 		throw(CgiException());
 	}
+	exit(EXIT_SUCCESS);
+	dup2(save_stdin, STDIN_FILENO);
+	close(save_stdin);
+	dup2(save_stdout, STDOUT_FILENO);
+	close(save_stdout);
 	//close fds
 	close(outfile);
 }

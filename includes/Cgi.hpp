@@ -6,6 +6,8 @@
 #endif
 #if defined(__linux__)
 #include <unistd.h>
+#include <sys/types.h>
+#include <fcntl.h>
 #endif
 
 #include <iostream>

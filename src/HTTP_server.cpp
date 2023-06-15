@@ -255,7 +255,7 @@ std::map<std::string, std::string> HTTP_server::mapping_request_header(int i)
         new_request["method:"] = std::strtok(&lines.front()[0], " ");
         new_request["location:"] = std::strtok(NULL, " ");
         std::size_t found = new_request["location:"].find('?');
-        if (found != std::string::npos){
+        if (found != std::string::npos && new_request["method:"] == "GET"){
             new_request["HTTP_version:"] = std::strtok(NULL, " ");
             std::string temporary = std::strtok(&new_request["location:"][0], "?");
             new_request["query_string:"] = std::strtok(NULL, " ");
