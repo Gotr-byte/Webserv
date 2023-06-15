@@ -15,7 +15,7 @@ void Client::ResetClient(){
 	server_full = false;
 	lastInteractionTime = time_t(-1);
 	cutoffClient = false;
-	RequestVector.clear();
+	Requests.clear();
 }
 
 void Client::set_cgi_filename(Cgi &cgi){

@@ -168,11 +168,13 @@ void Cgi::run(std::map<std::string, std::string> request)
 		//create arguments for execve
 		std::string path_adder = "../HTML" + request["location:"];
 		char* script_path = (char*)(path_adder).c_str();
+
 		char* path_to_python = "/usr/bin/python3";
-        char* _args[3];
+    char* _args[3];
 		_args[0] = path_to_python;
 		_args[1] = script_path;
 		_args[2] = NULL;
+
 		//create enviroment
 		std::string env_variable;
 
@@ -250,7 +252,7 @@ void Cgi::run(std::map<std::string, std::string> request)
 			i++;
   	  	}
 		_env[i] = NULL;
-		execve(_args[0], _args, _env);
+		execve(_args[0], const_cast<char* const*>(_args), _env);
 		throw(CgiException());
 	}
 	//close fds

@@ -31,7 +31,7 @@ class Client
         time_t                          lastInteractionTime;
         void                     set_cgi_filename(Cgi &cgi);
 
-        std::vector<Request>                RequestVector;
+        std::vector<Request>                Requests;
         bool                                cutoffClient;
     private:
         std::string _cgi_filename;
