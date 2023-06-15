@@ -230,7 +230,6 @@ std::map<std::string, std::string> HTTP_server::mapping_request_header(int i)
     std::string key;
     std::map<std::string, std::string> new_request;
     size_t headerlength = findHeaderLength(FdsClients[i].first);
-    std::cout << headerlength << std::endl;
     int new_line_count = 0;
     char buf[BUF_SIZE];
     memset(buf, 0, headerlength);
