@@ -352,7 +352,7 @@ void HTTP_server::ProcessUpload(std::vector<Request>::iterator req)
     recv(req->client_fd, buf, BUF_SIZE, MSG_DONTWAIT);
 }
 
-void HTTP_server::send_response(int i, std::vector<Request>::iterator req)
+void HTTP_server::send_response(std::vector<Request>::iterator req)
 {
     if (!req->initialResponseSent)
     {
@@ -476,7 +476,8 @@ void HTTP_server::server_loop()
                 {
                     try
                     {
-                        send_response(*it_idx, it_req);
+                        send_response(it_req);
+                        FdsClients[i].second.lastInteractionTime = std::time(nullptr);
                     }
                     catch (const std::exception &e)
                     {
