@@ -1,9 +1,8 @@
 cgi: print the vector elements
 CONTENT_LENGTH=7
-CONTENT_TYPE=
+CONTENT_TYPE=application/x-www-form-urlencoded
 GATEWAY_INTERFACE=CGI/1.1
 PATH_INFO=../HTML/cgi-bin/ziggurat_magi_infile
-QUERY_STRING=farm=5
 REQUEST_METHOD=POST
 REMOTE_ADDR=127.0.0.1
 SCRIPT_NAME=/cgi-bin/ziggurat_magi.py
@@ -12,13 +11,13 @@ SERVER_PORT=9995
 SERVER_PROTOCOL=HTTP/1.1
 SERVER_SOFTWARE=Weebserver
 
-cgi: enviromentals size equals 12
-value: 5
+cgi: enviromentals size equals 11
 eldrich_ziggurat: None
 magi_school None
-
-farm 5
+farm None
 ancient_temple None
+food 30
+one
 food 30
 30
 

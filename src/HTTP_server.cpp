@@ -214,10 +214,10 @@ size_t HTTP_server::findHeaderLength(int fd)
     char buf[BUF_SIZE];
     memset(buf, 0, BUF_SIZE);
 
-    int n = recv(fd, buf, BUF_SIZE, MSG_DONTWAIT | MSG_PEEK);
+    int n = recv(fd, buf, BUF_SIZE, MSG_PEEK);
     if (n < 0)
     {
-        perror("Error receiving data from in server_mapping_request when obtaining header lenghth");
+        perror("Error receiving data from client1");
         exit(EXIT_FAILURE);
     }
     char *header = std::strstr(buf, "\r\n\r\n");
@@ -230,20 +230,19 @@ std::map<std::string, std::string> HTTP_server::mapping_request_header(int i)
     std::string key;
     std::map<std::string, std::string> new_request;
     size_t headerlength = findHeaderLength(FdsClients[i].first);
+    std::cout << headerlength << std::endl;
     int new_line_count = 0;
-    char buf[headerlength];
+    char buf[BUF_SIZE];
     memset(buf, 0, headerlength);
 
     // Get lines of Header
     int n;
-    n = recv(FdsClients[i].first, buf, headerlength - 1, MSG_DONTWAIT);
+    n = recv(FdsClients[i].first, buf, headerlength, MSG_DONTWAIT);
     if (n < 0)
     {
         perror("Error receiving data from in server_mapping_request");
         exit(EXIT_FAILURE);
     }
-
-    std::cout << buf << std::endl;
     std::string HTTP_request(buf);
     line = std::strtok(&HTTP_request[0], "\n");
     while (line != NULL)
@@ -310,6 +309,11 @@ std::map<std::string, std::string> HTTP_server::mapping_request_header(int i)
         new_request[key] = value;
         new_request["Content-Type:"] = new_request["Content-Type:"].substr(0, new_request["Content-Type:"].find(";"));
     }
+    if (new_request["method:"] != "POST")
+    {
+        memset(buf, 0, BUF_SIZE);
+        recv(FdsClients[i].first, buf, BUF_SIZE, MSG_DONTWAIT);
+    }
     print_request(new_request);
     return new_request;
 }
@@ -367,8 +371,8 @@ void HTTP_server::ProcessUpload(std::vector<Request>::iterator req)
 
     //Read rest of the request body and dicscard it
     memset(buf, 0, BUF_SIZE);
-    req->GenerateUploadResponse();
     recv(req->client_fd, buf, BUF_SIZE, MSG_DONTWAIT);
+    req->GenerateUploadResponse();
 }
 
 void HTTP_server::send_response(std::vector<Request>::iterator req)
@@ -542,7 +546,7 @@ void HTTP_server::deleteContent(std::vector<Request>::iterator req)
     int i = std::remove(req->path.c_str());
     if (i != 0)
     {
-        req->buildErrorResponse("409", "Conflict");
+        req->GenerateClientErrorResponse("409", "Conflict");
         return;
     }
     req->GenerateDeleteResponse();

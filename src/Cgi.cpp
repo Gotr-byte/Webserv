@@ -131,28 +131,32 @@ std::string Cgi::get_file_name()
 
 std::string	Cgi::create_request_body_file(std::vector<Request>::iterator it_req)
 {
+    char buf[BUF_SIZE];
 	std::ostringstream	filename;
 
-	filename << it_req->path.substr(it_req->path.rfind("/"));
-	filename << "response_body_" << it_req->id;
-	std::cout << filename << std::endl;
+	filename << it_req->path.substr(0, it_req->path.rfind("/") + 1);
+	filename << "request_body_" << it_req->id;
 	std::ofstream outFile(filename.str(), std::ios::binary | std::ios::trunc);
 
-	size_t	request_body_size = atol(it_req->requestHeader["Content-Length"].c_str());
+	size_t	request_body_size = atol(it_req->requestHeader["Content-Length:"].c_str());
 	size_t	remaining_bytes = request_body_size;
 
 	while (remaining_bytes)
 	{
 		size_t chunk_bytes = std::min((size_t) BUF_SIZE, remaining_bytes);
 
-    	char buf[chunk_bytes];
     	memset(buf, 0, chunk_bytes);
 
-    	int n;
-    	n = recv(it_req->client_fd, buf, request_body_size, MSG_DONTWAIT);
-		if (n < 0)
+    	int read_bytes;
+    	read_bytes = recv(it_req->client_fd, buf, request_body_size, MSG_DONTWAIT);
+		if (read_bytes < 0)
 			break;
+		outFile.write(buf, read_bytes);
+		remaining_bytes -= chunk_bytes;
 	}
+	outFile.close();
+    memset(buf, 0, BUF_SIZE);
+    recv(it_req->client_fd, buf, BUF_SIZE, MSG_WAITALL);
 	return (filename.str());
 }
 
@@ -166,9 +170,8 @@ void Cgi::run(std::vector<Request>::iterator it_req)
 	if(!is_python_file(it_req->requestHeader["location:"]))
 		throw(CgiException());
 	if (it_req->method == "POST")
-	{
 		std::string body_path = create_request_body_file(it_req);
-	}
+	it_req->GenerateUploadResponse();
 	this->_cgi_pid = fork();
 	if (_cgi_pid < 0)
 	{

@@ -20,6 +20,8 @@ class Request
 		void	GenerateServerErrorResponse(int errorcode, ServerConfig	conf);
 		void	GenerateUploadResponse();
 		void	GenerateDeleteResponse();
+		void	GenerateClientErrorResponse(std::string status, std::string issue);
+
 
 		void	AssignLocation();
 		void	setDate();
@@ -33,7 +35,6 @@ class Request
 		bool	IsFile();
 		bool	IsDirectory();
 		void	SetResponseContentType();
-		void	buildErrorResponse(std::string status, std::string issue);
 		void	BuildResponseHeader();
 		void	SetupErrorPage(std::string status, std::string issue);
 		void	ObtainFileLength();

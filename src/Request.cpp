@@ -77,15 +77,6 @@ void	Request::PreparePost()
 		SetupErrorPage("403", "Forbidden");
 }
 
-void	Request::buildErrorResponse(std::string status, std::string issue)
-{
-	SetupErrorPage(status, issue);
-	setDate();
-	BuildResponseHeader();
-}
-
-
-
 void	Request::PrepareGetResponse()
 {
 	if (path.find(".py") != std::string::npos)
@@ -106,6 +97,15 @@ void	Request::PrepareGetResponse()
 		CreateAutoindex();
 	else
 		SetupErrorPage("403", "Forbidden");
+}
+
+void	Request::GenerateClientErrorResponse(std::string status, std::string issue)
+{
+	protocoll = "HTTP/1.1", \
+	additionalinfo = "Connection: closed\nTransfer-Encoding: chunked";
+	SetupErrorPage(status, issue);
+	setDate();
+	BuildResponseHeader();
 }
 
 void	Request::GenerateServerErrorResponse(int errorcode, ServerConfig	conf)
