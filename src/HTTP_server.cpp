@@ -10,6 +10,71 @@
 #define BUF_SIZE 1024
 #define TIMEOUT 20
 
+
+size_t	ft_strlen(const char *s)
+{
+	size_t	i;
+
+	i = 0;
+	while (s[i] != '\0')
+		i++;
+	return (i);
+}
+
+
+char	*ft_strchr(const char *s, int c)
+{
+	size_t	i;
+	char	*h;
+	size_t	t;
+
+	t = ft_strlen(s);
+	h = (char *)s;
+	i = 0;
+	while (i <= t)
+	{
+		if (*(h + i) == (char)c)
+			return (h + i);
+		i++;
+	}
+	return (0);
+}
+
+
+void HTTP_server::print_request(std::map<std::string, std::string> my_map)
+{
+    std::map<std::string, std::string>::iterator it;
+    switch (color_index) {
+        case 0:
+            for (it = my_map.begin(); it != my_map.end(); ++it) {
+                std::cout << RED << "Key: " << it->first << ", Value: " << it->second << DEF <<std::endl;
+            }
+            color_index++;
+            break;
+        case 1:
+            for (it = my_map.begin(); it != my_map.end(); ++it) {
+                std::cout << YELLOW << "Key: " << it->first << ", Value: " << it->second << DEF <<std::endl;
+            }
+            color_index++;
+            break;
+        case 2:
+            for (it = my_map.begin(); it != my_map.end(); ++it) {
+                std::cout << CYAN << "Key: " << it->first << ", Value: " << it->second << DEF <<std::endl;
+            }
+            color_index++;
+            break;
+        case 3:
+            for (it = my_map.begin(); it != my_map.end(); ++it) {
+                std::cout << CYAN << "Key: " << it->first << ", Value: " << it->second << DEF <<std::endl;
+            }
+            color_index = 0;
+            break;
+        default:
+            std::cout << "Invalid choice." << std::endl;
+            break;
+    }
+}
+
 /**
  * Constructor of HTTP server, creates an array of client
  *
@@ -20,6 +85,7 @@ HTTP_server::HTTP_server(std::string path, char **env): _path(path), _env(env)
 {
     InitFdsClients();
     timeoutDuration = TIMEOUT;
+    color_index = 0;
 }
 
 HTTP_server::~HTTP_server(){}
@@ -132,6 +198,15 @@ void HTTP_server::server_conducts_poll()
     }
 }
 
+//also update location request
+void HTTP_server::generate_cgi_querry(std::map<std::string, std::string>&new_request){
+    char * temporary = std::strtok(&new_request["location:"][0], "?");
+    std::cout << "the temp file: "<< temporary << "\n";
+    new_request["query_string:"] = std::strtok(NULL, "");
+    new_request["location:"] = temporary;
+}
+
+std::map<std::string, std::string> HTTP_server::server_mapping_request(int i)
 size_t HTTP_server::findHeaderLength(int fd)
 {
     char buf[BUF_SIZE];
@@ -178,7 +253,15 @@ std::map<std::string, std::string> HTTP_server::mapping_request_header(int i)
     {
         new_request["method:"] = std::strtok(&lines.front()[0], " ");
         new_request["location:"] = std::strtok(NULL, " ");
-        new_request["HTTP_version:"] = std::strtok(NULL, " ");
+        std::size_t found = new_request["location:"].find('?');
+        if (found != std::string::npos){
+            new_request["HTTP_version:"] = std::strtok(NULL, " ");
+            std::string temporary = std::strtok(&new_request["location:"][0], "?");
+            new_request["query_string:"] = std::strtok(NULL, " ");
+            new_request["location:"] = temporary;
+        }
+        else
+            new_request["HTTP_version:"] = std::strtok(NULL, " ");
     }
     while (!lines.empty())
     {
@@ -208,6 +291,7 @@ std::map<std::string, std::string> HTTP_server::mapping_request_header(int i)
         new_request[key] = value;
         new_request["Content-Type:"] = new_request["Content-Type:"].substr(0, new_request["Content-Type:"].find(";"));
     }
+    print_request(new_request);
     return new_request;
 }
 
@@ -378,7 +462,7 @@ void HTTP_server::server_loop()
                     Cgi cgi("generic cgi", new_req.id);
                     std::cout << "yeah" << std::endl;
                     try{
-                        cgi.run(_env, new_req.path.c_str());
+                        cgi.run(new_req.requestHeaderMap);
                     }
                     catch (const std::exception &e){
                         std::cerr << e.what();
