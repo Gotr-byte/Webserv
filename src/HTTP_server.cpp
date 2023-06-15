@@ -16,7 +16,9 @@
  * @param filename The name of the file to read.
  * @return The contents of the file as a string.
  */
-HTTP_server::HTTP_server(std::string path, char **env): _path(path), _env(env){
+HTTP_server::HTTP_server(std::string path, char **env): _path(path), _env(env)
+{
+    InitFdsClients();
     timeoutDuration = TIMEOUT;
 }
 
@@ -77,7 +79,7 @@ void HTTP_server::removeWhitespaces(std::string &string)
  */
 void HTTP_server::create_pollfd_struct(void)
 {
-    memset(fds, 0, MAX_CLIENTS * sizeof(fds));
+    memset(fds, 0, MAX_CLIENTS + 1 * sizeof(fds));
     for (int i = 0; i < listening_port_no + MAX_CLIENTS + 1; i++)
     {
         fds[i].fd = FdsClients[i].first;
@@ -130,16 +132,12 @@ void HTTP_server::server_conducts_poll()
     }
 }
 
-std::map<std::string, std::string> HTTP_server::server_mapping_request(int i)
+size_t HTTP_server::findHeaderLength(int fd)
 {
-    std::string key;
-    std::map<std::string, std::string> new_request;
-    int new_line_count = 0;
     char buf[BUF_SIZE];
     memset(buf, 0, BUF_SIZE);
 
-    // Obtain Header Length
-    int n = recv(FdsClients[i].first, buf, BUF_SIZE, MSG_DONTWAIT | MSG_PEEK);
+    int n = recv(fd, buf, BUF_SIZE, MSG_DONTWAIT | MSG_PEEK);
     if (n < 0)
     {
         perror("Error receiving data from client1");
@@ -147,9 +145,20 @@ std::map<std::string, std::string> HTTP_server::server_mapping_request(int i)
     }
     char *header = std::strstr(buf, "\r\n\r\n");
     size_t headerlength = header - buf + 4;
+    return headerlength;
+}
+
+std::map<std::string, std::string> HTTP_server::mapping_request_header(int i)
+{
+    std::string key;
+    std::map<std::string, std::string> new_request;
+    size_t headerlength = findHeaderLength(FdsClients[i].first);
+    int new_line_count = 0;
+    char buf[headerlength];
+    memset(buf, 0, headerlength);
 
     // Get lines of Header
-    memset(buf, 0, BUF_SIZE);
+    int n;
     n = recv(FdsClients[i].first, buf, headerlength, MSG_DONTWAIT);
     if (n < 0)
     {
@@ -204,20 +213,14 @@ std::map<std::string, std::string> HTTP_server::server_mapping_request(int i)
 
 void HTTP_server::ProcessUpload(std::vector<Request>::iterator req)
 {
-    char buf[BUF_SIZE];
-    memset(buf, 0, BUF_SIZE);
+    size_t headerlength = findHeaderLength(req->client_fd);
 
-    int n = recv(req->client_fd, buf, BUF_SIZE, MSG_DONTWAIT | MSG_PEEK);
-    if (n < 0)
-    {
-        perror("Error receiving data from client1");
-        exit(EXIT_FAILURE);
-    }
-    char *header = strstr(buf, "\r\n\r\n");
-    size_t headerlength = header - buf + 4;
+    char buf[BUF_SIZE];
+    memset(buf, 0, headerlength);
+
 
     // Get lines of Header
-    memset(buf, 0, BUF_SIZE);
+    int n;
     n = recv(req->client_fd, buf, headerlength, MSG_DONTWAIT);
     if (n < 0)
     {
@@ -226,7 +229,7 @@ void HTTP_server::ProcessUpload(std::vector<Request>::iterator req)
     }
     
     std::string fileheader(buf);
-    // std::cout << buf << std::endl;
+
     std::string filename = fileheader.substr(fileheader.find("filename=") + 10);
     filename = filename.substr(0, filename.find("\""));
     req->path += filename;
@@ -234,12 +237,12 @@ void HTTP_server::ProcessUpload(std::vector<Request>::iterator req)
 
     if (!createFile.is_open())
     {
-        perror("error creating uploading file");
+        perror("error creating upload file");
         exit(1);
     }
 
-    size_t bodyLength = std::atol(req->requestHeaderMap["Content-Length:"].c_str()) - headerlength;
-    size_t boundaryLength = req->requestHeaderMap["boundary"].size() + 4;
+    size_t bodyLength = std::atol(req->requestHeader["Content-Length:"].c_str()) - headerlength;
+    size_t boundaryLength = req->requestHeader["boundary"].size() + 4;
     size_t readbytes = 0;
     size_t remainingBytes = bodyLength - boundaryLength;
 
@@ -259,16 +262,17 @@ void HTTP_server::ProcessUpload(std::vector<Request>::iterator req)
         remainingBytes -= readbytes;
     }
     createFile.close();
+
+    //Read rest of the request body and dicscard it
     memset(buf, 0, BUF_SIZE);
     req->GenerateUploadResponse();
     recv(req->client_fd, buf, BUF_SIZE, MSG_DONTWAIT);
 }
 
-void HTTP_server::get_request(int i, std::vector<Request>::iterator req)
+void HTTP_server::send_response(int i, std::vector<Request>::iterator req)
 {
     if (!req->initialResponseSent)
     {
-
         if (req->responsebody.empty())
         {
             int file_fd = open(req->path.c_str(), O_RDONLY);
@@ -333,7 +337,7 @@ std::string HTTP_server::toHex(int value)
     return stream.str();
 }
 
-bool HTTP_server::CheckForTimeout(int i)
+bool HTTP_server::CheckForClientTimeout(int i)
 {
     currentTime = std::time(nullptr);
 
@@ -356,22 +360,23 @@ void HTTP_server::server_loop()
             {
                 Request new_req;
                 if (FdsClients[*it_idx].second.server_full)
-                    new_req.GenerateServerError(503, ConfigVec[FdsClients[*it_idx].second.socket]);
+                    new_req.GenerateServerErrorResponse(503, ConfigVec[FdsClients[*it_idx].second.socket]);
                 else
                 {
-                    new_req.requestHeaderMap = server_mapping_request(*it_idx);
+                    new_req.requestHeader = mapping_request_header(*it_idx);
                     new_req.CreateResponse(ConfigVec[FdsClients[*it_idx].second.socket]);
                     FdsClients[*it_idx].second.lastInteractionTime = std::time(nullptr);
                 }
                 new_req.client_fd = FdsClients[*it_idx].first;
-                FdsClients[*it_idx].second.RequestVector.push_back(new_req);
+                FdsClients[*it_idx].second.Requests.push_back(new_req);
                 if (new_req.cutoffClient)
                     fds[*it_idx].events = POLLOUT;
                 else if (new_req.isUpload)
-                    ProcessUpload(FdsClients[*it_idx].second.RequestVector.end() - 1);
+                    ProcessUpload(FdsClients[*it_idx].second.Requests.end() - 1);
                 else if (new_req.isCGI)
                 {
                     Cgi cgi("generic cgi", new_req.id);
+                    std::cout << "yeah" << std::endl;
                     try{
                         cgi.run(_env, new_req.path.c_str());
                     }
@@ -380,14 +385,16 @@ void HTTP_server::server_loop()
                     }
                     (void)fds;
                 }
+                else if (new_req.isDelete)
+                    deleteContent(FdsClients[*it_idx].second.Requests.end() - 1);
             }
             if (fds[*it_idx].revents & POLLOUT)
             {
-                for (std::vector<Request>::iterator it_req = FdsClients[*it_idx].second.RequestVector.begin(); it_req != FdsClients[*it_idx].second.RequestVector.end(); it_req++)
+                for (std::vector<Request>::iterator it_req = FdsClients[*it_idx].second.Requests.begin(); it_req != FdsClients[*it_idx].second.Requests.end(); it_req++)
                 {
                     try
                     {
-                        get_request(*it_idx, it_req);
+                        send_response(*it_idx, it_req);
                     }
                     catch (const std::exception &e)
                     {
@@ -398,12 +405,12 @@ void HTTP_server::server_loop()
                         if (it_req->cutoffClient)
                             FdsClients[*it_idx].second.cutoffClient = true;
                         std::cout << "Response: " << it_req->id << " sent to client: " << *it_idx << std::endl;
-                        FdsClients[*it_idx].second.RequestVector.erase(it_req);
+                        FdsClients[*it_idx].second.Requests.erase(it_req);
                         break;
                     }
                 }
             }
-            if (fds[*it_idx].revents & (POLLHUP | POLLERR) || FdsClients[*it_idx].second.cutoffClient || (FdsClients[*it_idx].second.RequestVector.empty() && (CheckForTimeout(*it_idx))))
+            if (fds[*it_idx].revents & (POLLHUP | POLLERR) || FdsClients[*it_idx].second.cutoffClient || (FdsClients[*it_idx].second.Requests.empty() && (CheckForClientTimeout(*it_idx))))
             {
                 close(fds[*it_idx].fd);
                 fds[*it_idx].events = POLLIN | POLLOUT;
@@ -422,8 +429,24 @@ void HTTP_server::server_loop()
     }
 }
 
+void HTTP_server::deleteContent(std::vector<Request>::iterator req)
+{
+    int i = std::remove(req->path.c_str());
+    if (i != 0)
+    {
+        req->buildErrorResponse("409", "Conflict");
+        return;
+    }
+    req->GenerateDeleteResponse();
+}
+
 void HTTP_server::InitFdsClients()
 {
+    ConfigCheck check;
+    listening_port_no = check.checkConfig(_path);
+    
+    fds = new struct pollfd[MAX_CLIENTS + listening_port_no + 1];
+
     for (int i = 0; i < (MAX_CLIENTS + listening_port_no + 1); i++)
     {
         Client init;
@@ -434,16 +457,11 @@ void HTTP_server::InitFdsClients()
 
 int HTTP_server::running()
 {
-    ConfigCheck check;
-
-    listening_port_no = check.checkConfig(_path);
-    fds = new struct pollfd[MAX_CLIENTS + listening_port_no + 1];
-    InitFdsClients();
 
     for (int i = 0; i < listening_port_no; i++)
     {
         ServerConfig tmp(_path, i);
-        Socket socket(atoi(tmp.port.c_str()), tmp.host);
+        Socket socket(std::atoi(tmp.port.c_str()), tmp.host);
         FdsClients[i].first = socket.server_fd;
         ConfigVec.push_back(tmp);
         std::cout << "Socket " << (i + 1) << " (FD " << FdsClients[i].first

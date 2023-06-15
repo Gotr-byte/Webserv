@@ -17,18 +17,23 @@ class Request
 		Request();
 
 		void	CreateResponse(ServerConfig	conf);
-		void	GenerateServerError(int errorcode, ServerConfig	conf);
+		void	GenerateServerErrorResponse(int errorcode, ServerConfig	conf);
 		void	GenerateUploadResponse();
+		void	GenerateDeleteResponse();
 
 		void	AssignLocation();
 		void	setDate();
+		void	PrepareGetResponse();
+		void	PreparePost();
+		void	PrepareDelete();
 		void	setPostType();
 		bool	CheckMethod();
 		bool	CheckPath();
 		bool	CheckExistance();
 		bool	IsFile();
 		bool	IsDirectory();
-		void	SetContentType();
+		void	SetResponseContentType();
+		void	buildErrorResponse(std::string status, std::string issue);
 		void	BuildResponseHeader();
 		void	SetupErrorPage(std::string status, std::string issue);
 		void	ObtainFileLength();
@@ -53,7 +58,8 @@ class Request
 		bool		cutoffClient;
 		bool		isCGI;
 		bool		isUpload;
-		std::map<std::string, std::string>	requestHeaderMap;
+		bool		isDelete;
+		std::map<std::string, std::string>	requestHeader;
 
 	private:
 

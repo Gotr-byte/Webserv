@@ -49,20 +49,22 @@ public:
     void server_conducts_poll();
     void	InitFdsClients();
     void server_port_listening(int i);
-    std::map<std::string, std::string> server_mapping_request(int i);
+    size_t  findHeaderLength(int fd);
+    std::map<std::string, std::string> mapping_request_header(int i);
     int running();
     void create_listening_sock(int port);
     void create_pollfd_struct();
     void ProcessUpload(std::vector<Request>::iterator req);
     void server_loop();
-    bool CheckForTimeout(int i);
+    void deleteContent(std::vector<Request>::iterator req);
+    bool CheckForClientTimeout(int i);
     std::set<int> activeClientIdx;
     std::string read_file(const std::string &filename);
     void tokenizing(std::map<std::string, std::string> & request, std::string line_to_tokenize);
     void place_in_file(std::string line_to_file);
     std::string toHex(int value);
-    void    removeWhitespaces(std::string &string);
-    void get_request(int i, std::vector<Request>::iterator req);
+    void removeWhitespaces(std::string &string);
+    void send_response(int i, std::vector<Request>::iterator req);
 
 private:
     HTTP_server();
