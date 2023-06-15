@@ -307,8 +307,8 @@ void HTTP_server::ProcessUpload(std::vector<Request>::iterator req)
     n = recv(req->client_fd, buf, headerlength, MSG_DONTWAIT);
     if (n < 0)
     {
-        perror("Error receiving data from client2");
-        exit(EXIT_FAILURE);
+        req->GenerateServerErrorResponse(500, req->config);
+        return ;
     }
     
     std::string fileheader(buf);
@@ -320,8 +320,8 @@ void HTTP_server::ProcessUpload(std::vector<Request>::iterator req)
 
     if (!createFile.is_open())
     {
-        perror("error creating upload file");
-        exit(1);
+        req->GenerateServerErrorResponse(500, req->config);
+        return ;
     }
 
     size_t bodyLength = std::atol(req->requestHeader["Content-Length:"].c_str()) - headerlength;
@@ -335,10 +335,10 @@ void HTTP_server::ProcessUpload(std::vector<Request>::iterator req)
 
         memset(buf, 0, chunkBytes);
         readbytes = recv(req->client_fd, buf, chunkBytes, MSG_DONTWAIT);
-        if (readbytes < 0)
+        if (n < 0)
         {
-            perror("Error receiving data from client in Upload");
-            exit(EXIT_FAILURE);
+            req->GenerateServerErrorResponse(500, req->config);
+            return ;
         }
 
         createFile.write(buf, readbytes);
