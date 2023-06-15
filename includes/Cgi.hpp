@@ -12,13 +12,16 @@
 #include <sstream>
 #include <fstream>
 #include <sys/types.h>
+#include <sys/socket.h>
 #include <unistd.h>
 #include <errno.h>
 #include <stdio.h>
 #include "Colors.hpp"
+#include "Request.hpp"
 #include <string.h>
 #include <map>
 #include <vector>
+#include <algorithm>
 
 class Cgi
 {
@@ -27,10 +30,11 @@ public:
 	~Cgi();
 
 	std::string get_file_name();
-	void run(std::map<std::string, std::string> request);
+	void run(std::vector<Request>::iterator it_req);
 	void print_request(std::map<std::string, std::string> my_map);
 	bool is_python3_installed();
 	bool is_python_file(const std::string& str);
+	std::string	create_request_body_file(std::vector<Request>::iterator it_req);
 
 	class CgiException : public std::exception
 	{

@@ -129,15 +129,46 @@ std::string Cgi::get_file_name()
 	return (_file_name);
 }
 
+std::string	Cgi::create_request_body_file(std::vector<Request>::iterator it_req)
+{
+	std::ostringstream	filename;
+
+	filename << it_req->path.substr(it_req->path.rfind("/"));
+	filename << "response_body_" << it_req->id;
+	std::cout << filename << std::endl;
+	std::ofstream outFile(filename.str(), std::ios::binary | std::ios::trunc);
+
+	size_t	request_body_size = atol(it_req->requestHeader["Content-Length"].c_str());
+	size_t	remaining_bytes = request_body_size;
+
+	while (remaining_bytes)
+	{
+		size_t chunk_bytes = std::min((size_t) BUF_SIZE, remaining_bytes);
+
+    	char buf[chunk_bytes];
+    	memset(buf, 0, chunk_bytes);
+
+    	int n;
+    	n = recv(it_req->client_fd, buf, request_body_size, MSG_DONTWAIT);
+		if (n < 0)
+			break;
+	}
+	return (filename.str());
+}
+
 // Use try while running
-void Cgi::run(std::map<std::string, std::string> request)
+void Cgi::run(std::vector<Request>::iterator it_req)
 {
 	std::string env_variable;
 
 	if(!is_python3_installed())
 		throw(CgiException());
-	if(!is_python_file(request["location:"]))
+	if(!is_python_file(it_req->requestHeader["location:"]))
 		throw(CgiException());
+	if (it_req->method == "POST")
+	{
+		std::string body_path = create_request_body_file(it_req);
+	}
 	this->_cgi_pid = fork();
 	if (_cgi_pid < 0)
 	{
@@ -166,12 +197,12 @@ void Cgi::run(std::map<std::string, std::string> request)
 		close(outfile);
 
 		//create arguments for execve
-		std::string path_adder = "../HTML" + request["location:"];
+		std::string path_adder = "../HTML" + it_req->requestHeader["location:"];
 		char* script_path = (char*)(path_adder).c_str();
 
-		char* path_to_python = "/usr/bin/python3";
+		const char* path_to_python = "/usr/bin/python3";
     char* _args[3];
-		_args[0] = path_to_python;
+		_args[0] = (char *)path_to_python;
 		_args[1] = script_path;
 		_args[2] = NULL;
 
@@ -185,7 +216,7 @@ void Cgi::run(std::map<std::string, std::string> request)
 		enviromentals.push_back(env_variable);
 
 		// CONTENT_TYPE: "text/html" represents the media type of the request body
-		env_variable = "CONTENT_TYPE=" + request["Content-Type:"];
+		env_variable = "CONTENT_TYPE=" + it_req->requestHeader["Content-Type:"];
 		enviromentals.push_back(env_variable);
 
 		// GATEWAY_INTERFACE: "CGI/1.1" (indicates the CGI interface version)
@@ -199,16 +230,16 @@ void Cgi::run(std::map<std::string, std::string> request)
 		// QUERY_STRING: "param1=value1&param2=value2" (represents the query string parameters)
 		// in case of POST this should be read from file
 		std::string keyToFind = "query_string:";
-		std::map<std::string, std::string>::iterator it = request.find(keyToFind);
-		if (it != request.end()) {
-			env_variable = "QUERY_STRING=" + request["query_string:"];
+		std::map<std::string, std::string>::iterator it = it_req->requestHeader.find(keyToFind);
+		if (it != it_req->requestHeader.end()) {
+			env_variable = "QUERY_STRING=" + it_req->requestHeader["query_string:"];
 			enviromentals.push_back(env_variable);	
 		}
 		// env_variable = "QUERY_STRING=farm=13";
 		// enviromentals.push_back(env_variable);
 
 		// REQUEST_METHOD: "POST" (indicates the HTTP request method)
-		// env_variable = "REQUEST_METHOD=" + request["method:"];
+		// env_variable = "REQUEST_METHOD=" + it_req->requestHeader["method:"];
 		env_variable = "REQUEST_METHOD=POST";
     	enviromentals.push_back(env_variable);
 
@@ -217,7 +248,7 @@ void Cgi::run(std::map<std::string, std::string> request)
     	enviromentals.push_back(env_variable);
 
 		// SCRIPT_NAME: "/cgi-bin/script.cgi" (represents the path to the executed script)
-		env_variable = "SCRIPT_NAME=" + request["location:"];
+		env_variable = "SCRIPT_NAME=" + it_req->requestHeader["location:"];
     	enviromentals.push_back(env_variable);
 
 		// SERVER_NAME: "example.com" (represents the server's hostname or domain name)
@@ -229,7 +260,7 @@ void Cgi::run(std::map<std::string, std::string> request)
     	enviromentals.push_back(env_variable);
 
 		// SERVER_PROTOCOL: "HTTP/1.1" (indicates the version of the HTTP protocol)
-		env_variable = "SERVER_PROTOCOL=" + request["HTTP_version:"];
+		env_variable = "SERVER_PROTOCOL=" + it_req->requestHeader["HTTP_version:"];
     	enviromentals.push_back(env_variable);
 
 		// SERVER_SOFTWARE: "Apache/2.4.18" (represents the server software version)

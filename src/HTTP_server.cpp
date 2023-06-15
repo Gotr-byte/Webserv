@@ -84,7 +84,7 @@ void HTTP_server::print_request(std::map<std::string, std::string> my_map)
  * @param filename The name of the file to read.
  * @return The contents of the file as a string.
  */
-HTTP_server::HTTP_server(std::string path, char **env): _path(path), _env(env)
+HTTP_server::HTTP_server(std::string path, char **env): _env(env), _path(path)
 {
     InitFdsClients();
     timeoutDuration = TIMEOUT;
@@ -236,13 +236,14 @@ std::map<std::string, std::string> HTTP_server::mapping_request_header(int i)
 
     // Get lines of Header
     int n;
-    n = recv(FdsClients[i].first, buf, headerlength, MSG_DONTWAIT);
+    n = recv(FdsClients[i].first, buf, headerlength - 1, MSG_DONTWAIT);
     if (n < 0)
     {
         perror("Error receiving data from in server_mapping_request");
         exit(EXIT_FAILURE);
     }
 
+    std::cout << buf << std::endl;
     std::string HTTP_request(buf);
     line = std::strtok(&HTTP_request[0], "\n");
     while (line != NULL)
@@ -260,7 +261,9 @@ std::map<std::string, std::string> HTTP_server::mapping_request_header(int i)
             new_request["HTTP_version:"] = std::strtok(NULL, " ");
             std::string temporary = std::strtok(&new_request["location:"][0], "?");
             new_request["query_string:"] = std::strtok(NULL, " ");
+            std::cout << "test1\n";
             new_request["location:"] = temporary;
+            std::cout << "test1\n";
         }
         // else if(new_request["method:"] == "POST" &&
         // new_request["location:"] == "/cgi-bin/ziggurat_magi.py"){
@@ -482,7 +485,7 @@ void HTTP_server::server_loop()
                     std::cout << "*******************\n";
                     Cgi cgi("generic cgi", new_req.id);
                     try{
-                        cgi.run(new_req.requestHeader);
+                        cgi.run(FdsClients[*it_idx].second.Requests.end() - 1);
                     }
                     catch (const std::exception &e){
                         std::cerr << e.what();

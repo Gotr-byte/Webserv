@@ -60,10 +60,10 @@ class Request
 		bool		isUpload;
 		bool		isDelete;
 		std::map<std::string, std::string>	requestHeader;
+		ServerConfig						config;
 
 	private:
 
-		ServerConfig						config;
 		std::string							clientpath;
 		bool								isdirectory;
 		bool								autoindex;
