@@ -10,6 +10,9 @@
 #define BUF_SIZE 1024
 #define TIMEOUT 20
 
+//TODO same server port different name, different methods allowed, second server runs
+//TODO two servers sharing the same port, just ignore one of the servers
+//TODO possibly there is a necessity to reduce the number of recv
 
 size_t	ft_strlen(const char *s)
 {
@@ -216,7 +219,7 @@ std::map<std::string, std::string> HTTP_server::server_mapping_request(int i)
     int n = recv(FdsClients[i].first, buf, BUF_SIZE, MSG_DONTWAIT | MSG_PEEK);
     if (n < 0)
     {
-        perror("Error receiving data from client1");
+        perror("Error receiving data from in server_mapping_request when obtaining header lenghth");
         exit(EXIT_FAILURE);
     }
     char *header = std::strstr(buf, "\r\n\r\n");
@@ -227,7 +230,7 @@ std::map<std::string, std::string> HTTP_server::server_mapping_request(int i)
     n = recv(FdsClients[i].first, buf, headerlength, MSG_DONTWAIT);
     if (n < 0)
     {
-        perror("Error receiving data from client2");
+        perror("Error receiving data from in server_mapping_request");
         exit(EXIT_FAILURE);
     }
 
@@ -250,6 +253,20 @@ std::map<std::string, std::string> HTTP_server::server_mapping_request(int i)
             new_request["query_string:"] = std::strtok(NULL, " ");
             new_request["location:"] = temporary;
         }
+        // else if(new_request["method:"] == "POST" &&
+        // new_request["location:"] == "/cgi-bin/ziggurat_magi.py"){
+        //     char buffy[4096];  // Buffer to store received data
+
+        //     memset(buffy, 0, sizeof(buffy));
+        //     ssize_t bytes_read_request_body;
+        //     while ((bytes_read_request_body = read(FdsClients[i].first, buffy, sizeof(buffy))) != 0) {
+        //         new_request["query_string"] = new_request["query_string"] + buffy;
+        //         memset(buffy, 0, sizeof(buffy));
+        //     }
+        //     if (bytes_read_request_body == -1) {
+        //         std::cerr << "Error reading from file descriptor\n";
+        //     }
+        // }
         else
             new_request["HTTP_version:"] = std::strtok(NULL, " ");
     }
@@ -293,7 +310,7 @@ void HTTP_server::ProcessUpload(std::vector<Request>::iterator req)
     int n = recv(req->client_fd, buf, BUF_SIZE, MSG_DONTWAIT | MSG_PEEK);
     if (n < 0)
     {
-        perror("Error receiving data from client1");
+        perror("Error receiving data from in upload");
         exit(EXIT_FAILURE);
     }
     char *header = strstr(buf, "\r\n\r\n");
@@ -304,7 +321,7 @@ void HTTP_server::ProcessUpload(std::vector<Request>::iterator req)
     n = recv(req->client_fd, buf, headerlength, MSG_DONTWAIT);
     if (n < 0)
     {
-        perror("Error receiving data from client2");
+        perror("Error receiving data from in upload");
         exit(EXIT_FAILURE);
     }
     
@@ -443,6 +460,10 @@ void HTTP_server::server_loop()
                 {
                     new_req.requestHeaderMap = server_mapping_request(*it_idx);
                     new_req.CreateResponse(ConfigVec[FdsClients[*it_idx].second.socket]);
+                    // if (new_req.requestHeaderMap["location:"] == "/cgi-bin/ziggurat_magi.py" &&
+                    // new_req.requestHeaderMap["method:"] == "POST"){
+                    //     new_req.isCGI = true;
+                    // }
                     FdsClients[*it_idx].second.lastInteractionTime = std::time(nullptr);
                 }
                 new_req.client_fd = FdsClients[*it_idx].first;
@@ -453,6 +474,9 @@ void HTTP_server::server_loop()
                     ProcessUpload(FdsClients[*it_idx].second.RequestVector.end() - 1);
                 else if (new_req.isCGI)
                 {
+                    std::cout << "*******************\n";
+                    std::cout << "* Welcome to CGI! *\n";
+                    std::cout << "*******************\n";
                     Cgi cgi("generic cgi", new_req.id);
                     try{
                         cgi.run(new_req.requestHeaderMap);
@@ -518,10 +542,14 @@ int HTTP_server::running()
 {
     ConfigCheck check;
 
+    //determining the ammout of listening sockets
     listening_port_no = check.checkConfig(_path);
+
+    //create
     fds = new struct pollfd[MAX_CLIENTS + listening_port_no + 1];
     InitFdsClients();
 
+    //creating listening sockets
     for (int i = 0; i < listening_port_no; i++)
     {
         ServerConfig tmp(_path, i);
@@ -532,6 +560,8 @@ int HTTP_server::running()
                   << ") is listening on: " << tmp.getConfProps("listen:") << std::endl;
     }
     create_pollfd_struct();
+
     server_loop();
+
     return 0;
 }

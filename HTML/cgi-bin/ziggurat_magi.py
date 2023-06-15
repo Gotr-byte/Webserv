@@ -25,7 +25,7 @@ turns = 3
 eldrich_ziggurat = params.get('eldrich_ziggurat')
 magi_school = params.get('magi_school')
 farm = params.get('farm')
-ammount_of_farms = farm
+ammount_of_farms = 10
 ancient_temple = params.get('ancient_temple')
 wall = params.get('wall')
 #resources you get 500 food per farm per turn 10 mana per magi per turn ziggurat gives 500 mana
