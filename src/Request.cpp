@@ -40,13 +40,11 @@ void	Request::PrepareDelete()
 {
 	if (IsDirectory()) //Operation is forbidden is client wants to delete a folder
 	{
-			std::cout << "1" << std::endl;
 		SetupErrorPage("403", "Forbidden");
 		return;
 	}
 	else if (access(path.c_str(), W_OK) == -1)
 	{
-			std::cout << "2" << std::endl;
 		SetupErrorPage("403", "Forbidden");
 		return;
 	}
@@ -61,7 +59,6 @@ void	Request::PreparePost()
 	{
 		if (access(path.c_str(), X_OK) == -1)
 		{
-			perror("access execute: ");
 			SetupErrorPage("403", "Forbidden");
 			return;
 		}
