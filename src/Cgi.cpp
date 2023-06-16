@@ -310,10 +310,10 @@ void Cgi::run(std::vector<Request>::iterator it_req)
   	  	}
 		_env[i] = NULL;
 		execve(_args[0], const_cast<char* const*>(_args), _env);
-		exit(EXIT_SUCCESS);
+		// exit(EXIT_SUCCESS);
 		throw(CgiException());
 	}
-	exit(EXIT_SUCCESS);
+	// exit(EXIT_SUCCESS);
 	dup2(save_stdin, STDIN_FILENO);
 	close(save_stdin);
 	dup2(save_stdout, STDOUT_FILENO);
