@@ -156,7 +156,7 @@ std::string	Cgi::create_request_body_file(std::vector<Request>::iterator it_req)
 	}
 	outFile.close();
     memset(buf, 0, BUF_SIZE);
-    recv(it_req->client_fd, buf, BUF_SIZE, MSG_WAITALL);
+    recv(it_req->client_fd, buf, BUF_SIZE, MSG_DONTWAIT);
 	return (filename.str());
 }
 
