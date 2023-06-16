@@ -42,6 +42,8 @@ class Request
 		void	CreateAutoindex();
 		bool	CheckPermissions();
 		bool	CheckBodySize();
+		void	generate_cgi_response(std::string path_to_HTML);
+		// void	ObtainCgiFileLength()
 
 		static int		nextId;
 		int		id;

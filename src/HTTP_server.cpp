@@ -167,6 +167,7 @@ void HTTP_server::server_port_listening(int i)
             if (fds[j].fd == -1)
             {
                 client_len = sizeof(client_addr);
+                //TODO add address to client struct
                 FdsClients[j].first = accept(FdsClients[i].first, (struct sockaddr *)&client_addr, &client_len);
                 activeClientIdx.insert(j);
                 if (FdsClients[j].first < 0)
@@ -176,6 +177,7 @@ void HTTP_server::server_port_listening(int i)
                 }
                 fds[j].fd = FdsClients[j].first;
                 FdsClients[j].second.socket = i;
+                FdsClients[j].second.ip_address = client_addr;
                 FdsClients[j].second.lastInteractionTime = time(nullptr);
                 if (j == MAX_CLIENTS + listening_port_no)
                     FdsClients[j].second.server_full = true;
@@ -215,17 +217,17 @@ size_t HTTP_server::findHeaderLength(int fd)
 {
     char buf[BUF_SIZE];
     memset(buf, 0, BUF_SIZE);
-    try{
-        int n = recv(fd, buf, BUF_SIZE, MSG_PEEK);
-        if (n < 0){
-            perror();
-            throw(HeaderLengthException());
-        }
+    // try{
+    int n = recv(fd, buf, BUF_SIZE, MSG_PEEK);
+    if (n < 0){
+        perror("Header lenght error:");
+        // throw(HeaderLengthException());
     }
-    catch (const std::exception &e){
-                std::cerr << e.what();
-    }
-    catch
+    // }
+    // catch (const std::exception &e){
+    //             std::cerr << e.what();
+    // }
+    // catch
     char *header = std::strstr(buf, "\r\n\r\n");
     size_t headerlength = header - buf + 4;
     return headerlength;

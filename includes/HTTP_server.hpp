@@ -115,12 +115,12 @@ private:
 					return("Invalid location exception\n");
 				}
 		};
-    class				GenericServerException : public std::exception
-    {
-        public:
-            virtual const char* what() const throw()
-            {
-                return("Error when determining header lenghth\n");
-            }
-    };
+    // class				GenericServerException : public std::exception
+    // {
+    //     public:
+    //         virtual const char* what() const throw()
+    //         {
+    //             return("Error when determining header lenghth\n");
+    //         }
+    // };
 };

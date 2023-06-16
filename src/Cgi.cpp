@@ -267,6 +267,7 @@ void Cgi::run(std::vector<Request>::iterator it_req)
 
 		// REMOTE_ADDR: "192.168.0.1" (represents the IP address of the client)
 		env_variable = "REMOTE_ADDR=127.0.0.1";
+		// env_variable = "REMOTE_ADDR=" + it_req->;
     	enviromentals.push_back(env_variable);
 
 		// SCRIPT_NAME: "/cgi-bin/script.cgi" (represents the path to the executed script)
@@ -274,11 +275,12 @@ void Cgi::run(std::vector<Request>::iterator it_req)
     	enviromentals.push_back(env_variable);
 
 		// SERVER_NAME: "example.com" (represents the server's hostname or domain name)
-		env_variable = "SERVER_NAME=Weebserver.com";
+		env_variable = "SERVER_NAME=" + it_req->config.getConfProps("server_name:");
 		enviromentals.push_back(env_variable);
 
 		// SERVER_PORT: "80" (represents the server's port number)
-		env_variable = "SERVER_PORT=9995";
+		// env_variable = "SERVER_PORT=9995";
+		env_variable = "SERVER_PORT=" + it_req->config.port;
     	enviromentals.push_back(env_variable);
 
 		// SERVER_PROTOCOL: "HTTP/1.1" (indicates the version of the HTTP protocol)
@@ -289,7 +291,7 @@ void Cgi::run(std::vector<Request>::iterator it_req)
     	env_variable = "SERVER_SOFTWARE=Weebserver";
     	enviromentals.push_back(env_variable);
 
-		print_enviromentals();
+		// print_enviromentals();
 
 		char *_env[enviromentals.size() + 1];
 
@@ -305,6 +307,8 @@ void Cgi::run(std::vector<Request>::iterator it_req)
 		throw(CgiException());
 	}
 	waitpid(-1, NULL, 0);
+	it_req->generate_cgi_response(out_filename);
+	std::cout << it_req->ResponseHeader;
 	// exit(EXIT_SUCCESS);
 	dup2(save_stdin, STDIN_FILENO);
 	close(save_stdin);

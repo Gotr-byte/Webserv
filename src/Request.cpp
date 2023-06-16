@@ -132,10 +132,15 @@ void	Request::GenerateUploadResponse()
 	BuildResponseHeader();
 }
 
-// void	Request::generate_cgi_response()
-// {
-
-// }
+void	Request::generate_cgi_response(std::string path_to_HTML)
+{
+	path = path_to_HTML;
+	ObtainFileLength();
+	contenttype = "text/html";
+	setDate();
+	BuildResponseHeader();
+	isCGI = false;
+}
 
 // void Request::setup_cgi_page(std::string file_to_upload){
 

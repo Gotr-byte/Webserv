@@ -1,21 +1,11 @@
-cgi: print the vector elements
-GATEWAY_INTERFACE=CGI/1.1
-QUERY_STRING=farm=17
-REQUEST_METHOD=GET
-REMOTE_ADDR=127.0.0.1
-SCRIPT_NAME=/cgi-bin/ziggurat_magi.py
-SERVER_NAME=Weebserver.com
-SERVER_PORT=9995
-SERVER_PROTOCOL=HTTP/1.1
-SERVER_SOFTWARE=Weebserver
-
-Content-Type: text/html
-
 <html>
 <head>
 <title>CGI Example</title>
 </head>
 <body>
-<h1>You built, 17 farms!</h1>
+<h1>You built, 33 farms!</h1>
+</body>
+</html>
+</h1>
 </body>
 </html>
