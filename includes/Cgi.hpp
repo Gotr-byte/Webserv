@@ -25,6 +25,7 @@
 #include <map>
 #include <vector>
 #include <algorithm>
+#include <sys/time.h>
 
 class Cgi
 {
@@ -40,6 +41,7 @@ public:
 	bool is_query_string(std::vector<Request>::iterator it_req);
 	void print_enviromentals();
 	std::string create_request_body_file(std::vector<Request>::iterator it_req);
+	void smart_sleep(long set_miliseconds);
 
 	class CgiException : public std::exception
 	{

@@ -177,7 +177,7 @@ void HTTP_server::server_port_listening(int i)
                 }
                 fds[j].fd = FdsClients[j].first;
                 FdsClients[j].second.socket = i;
-                FdsClients[j].second.ip_address = client_addr;
+                // FdsClients[j].second.ip_address = client_addr;
                 FdsClients[j].second.lastInteractionTime = time(nullptr);
                 if (j == MAX_CLIENTS + listening_port_no)
                     FdsClients[j].second.server_full = true;
