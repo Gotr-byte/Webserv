@@ -11,6 +11,8 @@
 //TODO a vector with the enviroment variables to creat
 //TODO maybe a JSON file reader
 //TODO handle post request
+//TODO get address and port form the server setup
+//
 	//TEST
 		// MUST
 		// _env[0] = const_cast<char*>("CONTENT_TYPE=text/html");  // Example value for Content-Type
@@ -297,11 +299,11 @@ void Cgi::run(std::vector<Request>::iterator it_req)
   	  	}
 		_env[i] = NULL;
 		execve(_args[0], const_cast<char* const*>(_args), _env);
-		exit(EXIT_SUCCESS);
+		// exit(EXIT_SUCCESS);
 		throw(CgiException());
 	}
 	waitpid(-1, NULL, 0);
-	exit(EXIT_SUCCESS);
+	// exit(EXIT_SUCCESS);
 	dup2(save_stdin, STDIN_FILENO);
 	close(save_stdin);
 	dup2(save_stdout, STDOUT_FILENO);
