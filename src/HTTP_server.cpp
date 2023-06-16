@@ -13,6 +13,8 @@
 //TODO same server port different name, different methods allowed, second server runs
 //TODO two servers sharing the same port, just ignore one of the servers
 //TODO possibly there is a necessity to reduce the number of recv
+//TODO remove perrors where it is not according to documentation
+
 
 size_t	ft_strlen(const char *s)
 {
@@ -84,7 +86,7 @@ void HTTP_server::print_request(std::map<std::string, std::string> my_map)
  * @param filename The name of the file to read.
  * @return The contents of the file as a string.
  */
-HTTP_server::HTTP_server(std::string path, char **env): _path(path), _env(env)
+HTTP_server::HTTP_server(std::string path, char **env): _env(env), _path(path)
 {
     InitFdsClients();
     timeoutDuration = TIMEOUT;
@@ -165,6 +167,7 @@ void HTTP_server::server_port_listening(int i)
             if (fds[j].fd == -1)
             {
                 client_len = sizeof(client_addr);
+                //TODO add address to client struct
                 FdsClients[j].first = accept(FdsClients[i].first, (struct sockaddr *)&client_addr, &client_len);
                 activeClientIdx.insert(j);
                 if (FdsClients[j].first < 0)
@@ -174,6 +177,7 @@ void HTTP_server::server_port_listening(int i)
                 }
                 fds[j].fd = FdsClients[j].first;
                 FdsClients[j].second.socket = i;
+                FdsClients[j].second.ip_address = client_addr;
                 FdsClients[j].second.lastInteractionTime = time(nullptr);
                 if (j == MAX_CLIENTS + listening_port_no)
                     FdsClients[j].second.server_full = true;
@@ -213,13 +217,17 @@ size_t HTTP_server::findHeaderLength(int fd)
 {
     char buf[BUF_SIZE];
     memset(buf, 0, BUF_SIZE);
-
-    int n = recv(fd, buf, BUF_SIZE, MSG_DONTWAIT | MSG_PEEK);
-    if (n < 0)
-    {
-        perror("Error receiving data from in server_mapping_request when obtaining header lenghth");
-        exit(EXIT_FAILURE);
+    // try{
+    int n = recv(fd, buf, BUF_SIZE, MSG_PEEK);
+    if (n < 0){
+        perror("Header lenght error:");
+        // throw(HeaderLengthException());
     }
+    // }
+    // catch (const std::exception &e){
+    //             std::cerr << e.what();
+    // }
+    // catch
     char *header = std::strstr(buf, "\r\n\r\n");
     size_t headerlength = header - buf + 4;
     return headerlength;
@@ -231,7 +239,7 @@ std::map<std::string, std::string> HTTP_server::mapping_request_header(int i)
     std::map<std::string, std::string> new_request;
     size_t headerlength = findHeaderLength(FdsClients[i].first);
     int new_line_count = 0;
-    char buf[headerlength];
+    char buf[BUF_SIZE];
     memset(buf, 0, headerlength);
 
     // Get lines of Header
@@ -242,7 +250,6 @@ std::map<std::string, std::string> HTTP_server::mapping_request_header(int i)
         perror("Error receiving data from in server_mapping_request");
         exit(EXIT_FAILURE);
     }
-
     std::string HTTP_request(buf);
     line = std::strtok(&HTTP_request[0], "\n");
     while (line != NULL)
@@ -256,26 +263,14 @@ std::map<std::string, std::string> HTTP_server::mapping_request_header(int i)
         new_request["method:"] = std::strtok(&lines.front()[0], " ");
         new_request["location:"] = std::strtok(NULL, " ");
         std::size_t found = new_request["location:"].find('?');
-        if (found != std::string::npos){
+        if (found != std::string::npos && new_request["method:"] == "GET"){
             new_request["HTTP_version:"] = std::strtok(NULL, " ");
             std::string temporary = std::strtok(&new_request["location:"][0], "?");
             new_request["query_string:"] = std::strtok(NULL, " ");
+            std::cout << "test1\n";
             new_request["location:"] = temporary;
+            std::cout << "test1\n";
         }
-        // else if(new_request["method:"] == "POST" &&
-        // new_request["location:"] == "/cgi-bin/ziggurat_magi.py"){
-        //     char buffy[4096];  // Buffer to store received data
-
-        //     memset(buffy, 0, sizeof(buffy));
-        //     ssize_t bytes_read_request_body;
-        //     while ((bytes_read_request_body = read(FdsClients[i].first, buffy, sizeof(buffy))) != 0) {
-        //         new_request["query_string"] = new_request["query_string"] + buffy;
-        //         memset(buffy, 0, sizeof(buffy));
-        //     }
-        //     if (bytes_read_request_body == -1) {
-        //         std::cerr << "Error reading from file descriptor\n";
-        //     }
-        // }
         else
             new_request["HTTP_version:"] = std::strtok(NULL, " ");
     }
@@ -283,18 +278,15 @@ std::map<std::string, std::string> HTTP_server::mapping_request_header(int i)
     {
         if (!lines.empty() &&
             lines.front() == "\n" &&
-            new_line_count == 1)
-        {
+            new_line_count == 1){
             lines.pop_front();
             break;
         }
         if (!lines.empty() &&
-            lines.front() == "\r")
-        {
+            lines.front() == "\r"){
             new_line_count++;
         }
-        else
-        {
+        else{
             tokenizing(new_request, lines.front());
         }
         lines.pop_front();
@@ -306,6 +298,11 @@ std::map<std::string, std::string> HTTP_server::mapping_request_header(int i)
         std::string value = new_request["Content-Type:"].substr(new_request["Content-Type:"].find("=") + 1);
         new_request[key] = value;
         new_request["Content-Type:"] = new_request["Content-Type:"].substr(0, new_request["Content-Type:"].find(";"));
+    }
+    if (new_request["method:"] != "POST")
+    {
+        memset(buf, 0, BUF_SIZE);
+        recv(FdsClients[i].first, buf, BUF_SIZE, MSG_DONTWAIT);
     }
     print_request(new_request);
     return new_request;
@@ -364,8 +361,8 @@ void HTTP_server::ProcessUpload(std::vector<Request>::iterator req)
 
     //Read rest of the request body and dicscard it
     memset(buf, 0, BUF_SIZE);
-    req->GenerateUploadResponse();
     recv(req->client_fd, buf, BUF_SIZE, MSG_DONTWAIT);
+    req->GenerateUploadResponse();
 }
 
 void HTTP_server::send_response(std::vector<Request>::iterator req)
@@ -482,7 +479,7 @@ void HTTP_server::server_loop()
                     std::cout << "*******************\n";
                     Cgi cgi("generic cgi", new_req.id);
                     try{
-                        cgi.run(new_req.requestHeader);
+                        cgi.run(FdsClients[*it_idx].second.Requests.end() - 1);
                     }
                     catch (const std::exception &e){
                         std::cerr << e.what();
@@ -539,7 +536,7 @@ void HTTP_server::deleteContent(std::vector<Request>::iterator req)
     int i = std::remove(req->path.c_str());
     if (i != 0)
     {
-        req->buildErrorResponse("409", "Conflict");
+        req->GenerateClientErrorResponse("409", "Conflict");
         return;
     }
     req->GenerateDeleteResponse();

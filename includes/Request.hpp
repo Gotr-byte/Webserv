@@ -20,6 +20,9 @@ class Request
 		void	GenerateServerErrorResponse(int errorcode, ServerConfig	conf);
 		void	GenerateUploadResponse();
 		void	GenerateDeleteResponse();
+		void	GenerateClientErrorResponse(std::string status, std::string issue);
+		// void	generate_cgi_response()
+
 
 		void	AssignLocation();
 		void	setDate();
@@ -33,13 +36,14 @@ class Request
 		bool	IsFile();
 		bool	IsDirectory();
 		void	SetResponseContentType();
-		void	buildErrorResponse(std::string status, std::string issue);
 		void	BuildResponseHeader();
 		void	SetupErrorPage(std::string status, std::string issue);
 		void	ObtainFileLength();
 		void	CreateAutoindex();
 		bool	CheckPermissions();
 		bool	CheckBodySize();
+		void	generate_cgi_response(std::string path_to_HTML);
+		// void	ObtainCgiFileLength()
 
 		static int		nextId;
 		int		id;
@@ -60,10 +64,10 @@ class Request
 		bool		isUpload;
 		bool		isDelete;
 		std::map<std::string, std::string>	requestHeader;
+		ServerConfig						config;
 
 	private:
 
-		ServerConfig						config;
 		std::string							clientpath;
 		bool								isdirectory;
 		bool								autoindex;
