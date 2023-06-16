@@ -132,6 +132,15 @@ void	Request::GenerateUploadResponse()
 	BuildResponseHeader();
 }
 
+// void	Request::generate_cgi_response()
+// {
+
+// }
+
+// void Request::setup_cgi_page(std::string file_to_upload){
+
+// }
+
 void Request::GenerateDeleteResponse()
 {
 	statuscode = "204 No Content";

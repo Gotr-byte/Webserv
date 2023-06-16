@@ -13,6 +13,8 @@
 //TODO same server port different name, different methods allowed, second server runs
 //TODO two servers sharing the same port, just ignore one of the servers
 //TODO possibly there is a necessity to reduce the number of recv
+//TODO remove perrors where it is not according to documentation
+
 
 size_t	ft_strlen(const char *s)
 {
@@ -213,13 +215,17 @@ size_t HTTP_server::findHeaderLength(int fd)
 {
     char buf[BUF_SIZE];
     memset(buf, 0, BUF_SIZE);
-
-    int n = recv(fd, buf, BUF_SIZE, MSG_PEEK);
-    if (n < 0)
-    {
-        perror("Error receiving data from client1");
-        exit(EXIT_FAILURE);
+    try{
+        int n = recv(fd, buf, BUF_SIZE, MSG_PEEK);
+        if (n < 0){
+            perror();
+            throw(HeaderLengthException());
+        }
     }
+    catch (const std::exception &e){
+                std::cerr << e.what();
+    }
+    catch
     char *header = std::strstr(buf, "\r\n\r\n");
     size_t headerlength = header - buf + 4;
     return headerlength;
@@ -263,20 +269,6 @@ std::map<std::string, std::string> HTTP_server::mapping_request_header(int i)
             new_request["location:"] = temporary;
             std::cout << "test1\n";
         }
-        // else if(new_request["method:"] == "POST" &&
-        // new_request["location:"] == "/cgi-bin/ziggurat_magi.py"){
-        //     char buffy[4096];  // Buffer to store received data
-
-        //     memset(buffy, 0, sizeof(buffy));
-        //     ssize_t bytes_read_request_body;
-        //     while ((bytes_read_request_body = read(FdsClients[i].first, buffy, sizeof(buffy))) != 0) {
-        //         new_request["query_string"] = new_request["query_string"] + buffy;
-        //         memset(buffy, 0, sizeof(buffy));
-        //     }
-        //     if (bytes_read_request_body == -1) {
-        //         std::cerr << "Error reading from file descriptor\n";
-        //     }
-        // }
         else
             new_request["HTTP_version:"] = std::strtok(NULL, " ");
     }
@@ -284,18 +276,15 @@ std::map<std::string, std::string> HTTP_server::mapping_request_header(int i)
     {
         if (!lines.empty() &&
             lines.front() == "\n" &&
-            new_line_count == 1)
-        {
+            new_line_count == 1){
             lines.pop_front();
             break;
         }
         if (!lines.empty() &&
-            lines.front() == "\r")
-        {
+            lines.front() == "\r"){
             new_line_count++;
         }
-        else
-        {
+        else{
             tokenizing(new_request, lines.front());
         }
         lines.pop_front();

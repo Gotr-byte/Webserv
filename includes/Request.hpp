@@ -21,6 +21,7 @@ class Request
 		void	GenerateUploadResponse();
 		void	GenerateDeleteResponse();
 		void	GenerateClientErrorResponse(std::string status, std::string issue);
+		// void	generate_cgi_response()
 
 
 		void	AssignLocation();
