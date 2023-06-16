@@ -131,7 +131,6 @@ std::string Cgi::get_file_name()
 
 std::string	Cgi::create_request_body_file(std::vector<Request>::iterator it_req)
 {
-	std::cout << "what the fuck\n";
     char buf[BUF_SIZE];
 	std::ostringstream	filename;
 
@@ -155,12 +154,10 @@ std::string	Cgi::create_request_body_file(std::vector<Request>::iterator it_req)
 		outFile.write(buf, read_bytes);
 		remaining_bytes -= chunk_bytes;
 	}
-	std::cout << "zero fucks\n";
 	outFile.close();
     memset(buf, 0, BUF_SIZE);
 	std::cout << "cgi: filename is" << filename.str() << "\n";
     recv(it_req->client_fd, buf, BUF_SIZE, MSG_DONTWAIT);
-	std::cout << "given\n";
 	return (filename.str());
 }
 
@@ -178,11 +175,10 @@ void Cgi::run(std::vector<Request>::iterator it_req)
 	int save_stdin = dup(STDIN_FILENO);
 	int save_stdout = dup(STDOUT_FILENO);
 	std::cout << "cgi: request header method [" << it_req->requestHeader["method:"] << "]\n";
-	if (it_req->requestHeader["method:"]== "POST")
+	if (!is_query_string(it_req))
 	{
 		body_path = create_request_body_file(it_req);
 		std::cout << "cgi: the body path is " << body_path << "\n";
-		// exit(EXIT_SUCCESS);
 		const char* in_filename = body_path.c_str();
 		infile = open(in_filename, O_RDONLY);
 		if (infile == -1) {
@@ -212,14 +208,10 @@ void Cgi::run(std::vector<Request>::iterator it_req)
 		//set standard output to file
 		dup2(outfile, STDOUT_FILENO);
 		close(outfile);
-		if(it_req->method == "POST"){
+		if(!is_query_string(it_req)){
 			dup2(infile, STDIN_FILENO);
 			close(infile);
 		}
-		char c;
-    	while (std::cin.get(c)) {
-        	std::cout.put(c);
-   		}
 
 		//create arguments for execve
 		std::string path_adder = "../HTML" + it_req->requestHeader["location:"];
@@ -237,8 +229,10 @@ void Cgi::run(std::vector<Request>::iterator it_req)
 		int i = 0;
 
 		//represents the length of the request body in bytes, only if there is a body
-		env_variable = "CONTENT_LENGTH=" + it_req->requestHeader["Content-Length:"];
-		enviromentals.push_back(env_variable);
+		if(!is_query_string(it_req)){
+			env_variable = "CONTENT_LENGTH=" + it_req->requestHeader["Content-Length:"];
+			enviromentals.push_back(env_variable);
+		}
 
 		// CONTENT_TYPE: "text/html" represents the media type of the request body
 		env_variable = "CONTENT_TYPE=" + it_req->requestHeader["Content-Type:"];
@@ -250,23 +244,21 @@ void Cgi::run(std::vector<Request>::iterator it_req)
 
 		// PATH_INFO: "/path/to/resource" (represents the path to the requested resource)
 		// env_variable = "PATH_INFO=../HTML/cgi-bin/ziggurat_magi_infile";
-		env_variable = "PATH_INFO=" + body_path;
-		enviromentals.push_back(env_variable);
+		if(!is_query_string(it_req)){
+			env_variable = "PATH_INFO=" + body_path;
+			enviromentals.push_back(env_variable);
+		}
 
 		// QUERY_STRING: "param1=value1&param2=value2" (represents the query string parameters)
 		// in case of POST this should be read from file
-		std::string keyToFind = "query_string:";
-		std::map<std::string, std::string>::iterator it = it_req->requestHeader.find(keyToFind);
-		if (it != it_req->requestHeader.end()) {
+		if (is_query_string(it_req)) {
 			env_variable = "QUERY_STRING=" + it_req->requestHeader["query_string:"];
 			enviromentals.push_back(env_variable);	
 		}
-		// env_variable = "QUERY_STRING=farm=13";
-		// enviromentals.push_back(env_variable);
 
 		// REQUEST_METHOD: "POST" (indicates the HTTP request method)
-		// env_variable = "REQUEST_METHOD=" + it_req->requestHeader["method:"];
-		env_variable = "REQUEST_METHOD=POST";
+		env_variable = "REQUEST_METHOD=" + it_req->requestHeader["method:"];
+		// env_variable = "REQUEST_METHOD=POST";
     	enviromentals.push_back(env_variable);
 
 		// REMOTE_ADDR: "192.168.0.1" (represents the IP address of the client)
@@ -293,14 +285,9 @@ void Cgi::run(std::vector<Request>::iterator it_req)
     	env_variable = "SERVER_SOFTWARE=Weebserver";
     	enviromentals.push_back(env_variable);
 
-		// std::cout << "cgi: print the vector elements\n";
-		// for (std::vector<std::string>::iterator it = enviromentals.begin(); it != enviromentals.end(); ++it) {
-		// 	std::cout << *it << "\n";
-		// }
-		// std::cout << std::endl;
+	
 
 		char *_env[enviromentals.size() + 1];
-		// std::cout << "cgi: enviromentals size equals " << enviromentals.size() << "\n";
 
 		//turn enviroment into array
 		for (std::vector<std::string>::iterator it = enviromentals.begin(); it != enviromentals.end(); it++)
@@ -310,10 +297,11 @@ void Cgi::run(std::vector<Request>::iterator it_req)
   	  	}
 		_env[i] = NULL;
 		execve(_args[0], const_cast<char* const*>(_args), _env);
-		// exit(EXIT_SUCCESS);
+		exit(EXIT_SUCCESS);
 		throw(CgiException());
 	}
-	// exit(EXIT_SUCCESS);
+	waitpid(-1, NULL, 0);
+	exit(EXIT_SUCCESS);
 	dup2(save_stdin, STDIN_FILENO);
 	close(save_stdin);
 	dup2(save_stdout, STDOUT_FILENO);
@@ -322,3 +310,16 @@ void Cgi::run(std::vector<Request>::iterator it_req)
 	close(outfile);
 }
 	
+bool Cgi::is_query_string(std::vector<Request>::iterator it_req) {
+    std::string key_to_find = "query_string:";
+    std::map<std::string, std::string>::iterator it = it_req->requestHeader.find(key_to_find);
+    return (it != it_req->requestHeader.end()) ? true : false;
+}
+
+void Cgi::print_enviromentals(){
+		std::cout << "cgi: print the vector elements\n";
+		for (std::vector<std::string>::iterator it = enviromentals.begin(); it != enviromentals.end(); ++it) {
+			std::cout << *it << "\n";
+		}
+		std::cout << std::endl;
+}
