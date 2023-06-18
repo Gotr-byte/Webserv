@@ -13,57 +13,32 @@
 //TODO handle post request
 //TODO get address and port form the server setup
 
-//TEST
-// MUST
-// _env[0] = const_cast<char*>("CONTENT_TYPE=text/html");  // Example value for Content-Type
-// _env[1] = const_cast<char*>("GATEWAY_INTERFACE=CGI/1.1");
-// _env[2] = const_cast<char*>("PATH_TRANSLATED=../HTML/cgi-bin/ziggurat_magi.py");
-// _env[3] = const_cast<char*>("REQUEST_METHOD=POST");
-// _env[4] = const_cast<char*>("CONTENT_LENGTH=1024");
-// _env[5] = const_cast<char*>("SERVER_SOFTWARE=Weebserver");
-// _env[6] = const_cast<char*>("SERVER_NAME=Weebserver.com");  // Example value for server name
-// _env[7] = const_cast<char*>("HTTP_ACCEPT=text/html");  // Example value for Accept header
-// _env[8] = const_cast<char*>("HTTP_ACCEPT_LANGUAGE=en-US");  // Example value for Accept-Language header
-// _env[9] = const_cast<char*>("HTTP_USER_AGENT=Mozilla/5.0");  // Example value for User-Agent header
-// _env[10] = const_cast<char*> ("SCRIPT_NAME=../HTML/cgi-bin/print_params.py");  // Example value for script name
-// _env[11] = const_cast<char*>("HTTP_REFERER=http://example.com"); 
-// _env[12] = const_cast<char*>("PATH_TRANSLATED=../HTML/cgi-bin/print_params.py");
-// _env[13] = const_cast<char*>("QUERY_STRING=param1=value3&param2=value4");
-// _env[14] = const_cast<char*>("REQUEST_METHOD=POST");
+long	get_time(void)
+{
+	struct timeval	tp;
 
-// _env[15] = const_cast<char*>("CONTENT_LENGTH=512"); //important one, it shows body lenght
-// _env[16] = const_cast<char*> ("SERVER_SOFTWARE=MyWeebserver");
-// _env[17] = NULL;
+	gettimeofday(&tp, NULL);
+	return (tp.tv_sec * 1000 + tp.tv_usec / 1000);
+}
 
-//END OF TEST
+void Cgi::smart_sleep(long set_miliseconds)
+{
+	long start_time = get_time();
+	while (true)
+	{
+		if (kill(_cgi_pid, 0) != 0){
+			std::cerr << "process ended before kill\n";
+			exit(EXIT_SUCCESS);
+		}
+		// if (start_time + set_miliseconds < get_time()){
+		// 	std::cerr << "process killed\n";
+		// 	kill(_cgi_pid,9);
+		// 	exit(EXIT_FAILURE);
+		// }
+		usleep(5000);
 
-// 	Servers MUST provide the following 12 meta-variables to scripts. See the individual descriptions for exceptions and semantics.
-
-// CONTENT_LENGTH
-// CONTENT_TYPE
-// GATEWAY_INTERFACE
-// PATH_INFO
-// QUERY_STRING
-// REQUEST_METHOD
-// REMOTE_ADDR
-// SCRIPT_NAME
-// SERVER_NAME
-// SERVER_PORT
-// SERVER_PROTOCOL
-// SERVER_SOFTWARE
-
-// CONTENT_LENGTH: "1024" (represents the length of the request body in bytes, only if there is a body)
-// CONTENT_TYPE: "text/html" (represents the media type of the request body)
-// GATEWAY_INTERFACE: "CGI/1.1" (indicates the CGI interface version)
-// PATH_INFO: "/path/to/resource" (represents the path to the requested resource)
-// QUERY_STRING: "param1=value1&param2=value2" (represents the query string parameters)
-// REQUEST_METHOD: "POST" (indicates the HTTP request method)
-// REMOTE_ADDR: "192.168.0.1" (represents the IP address of the client)
-// SCRIPT_NAME: "/cgi-bin/script.cgi" (represents the path to the executed script)
-// SERVER_NAME: "example.com" (represents the server's hostname or domain name)
-// SERVER_PORT: "80" (represents the server's port number)
-// SERVER_PROTOCOL: "HTTP/1.1" (indicates the version of the HTTP protocol)
-// SERVER_SOFTWARE: "Apache/2.4.18" (represents the server software version)
+	}
+}
 
 bool Cgi::is_python3_installed() {
     const char* pythonPath = "/usr/bin/python3";
@@ -306,6 +281,7 @@ void Cgi::run(std::vector<Request>::iterator it_req)
 		// exit(EXIT_SUCCESS);
 		throw(CgiException());
 	}
+	// smart_sleep(3000);
 	waitpid(-1, NULL, 0);
 	it_req->generate_cgi_response(out_filename);
 	std::cout << it_req->ResponseHeader;

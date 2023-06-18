@@ -14,6 +14,7 @@
 
 
 
+
 class Client
 {
     public:
@@ -33,7 +34,7 @@ class Client
 
         std::vector<Request>                Requests;
         bool                                cutoffClient;
-        struct sockaddr_in                  ip_address;
+        // struct sockaddr_in                  ip_address;
     private:
         std::string _cgi_filename;
 };

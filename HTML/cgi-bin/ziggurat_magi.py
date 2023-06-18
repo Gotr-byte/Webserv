@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import cgi
+import sys
 
 # Create a FieldStorage object to access the parameters
 form = cgi.FieldStorage()
@@ -26,3 +27,5 @@ print("<body>")
 print("<h1>You built, {} farms!</h1>".format(farm))
 print("</body>")
 print("</html>")
+
+sys.exit(0)
