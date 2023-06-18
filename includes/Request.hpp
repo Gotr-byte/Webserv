@@ -21,8 +21,6 @@ class Request
 		void	GenerateUploadResponse();
 		void	GenerateDeleteResponse();
 		void	GenerateClientErrorResponse(std::string status, std::string issue);
-		// void	generate_cgi_response()
-
 
 		void	AssignLocation();
 		void	setDate();
@@ -43,7 +41,6 @@ class Request
 		bool	CheckPermissions();
 		bool	CheckBodySize();
 		void	generate_cgi_response(std::string path_to_HTML);
-		// void	ObtainCgiFileLength()
 
 		static int		nextId;
 		int		id;

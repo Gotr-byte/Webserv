@@ -1,43 +1,20 @@
 #include "../includes/Cgi.hpp"
 #include <stdio.h>
 
+//TODO send error
 //TODO catch the moment when the file is uploaded
 //TODO have a timestamp to prevent the CGI to block the server
-//TODO the responses of the CGI
-//TODO check if python exists
 //TODO check if works remoteley
-//TODO test this if it works on a machine without python3
-//TODO change this to const
-//TODO a vector with the enviroment variables to creat
-//TODO maybe a JSON file reader
+//TODO test this if it does not work on a machine without python3
 //TODO handle post request
 //TODO get address and port form the server setup
 
-long	get_time(void)
-{
-	struct timeval	tp;
+// Global flag to track if timeout occurred
+volatile sig_atomic_t timeoutOccurred = 0;
 
-	gettimeofday(&tp, NULL);
-	return (tp.tv_sec * 1000 + tp.tv_usec / 1000);
-}
-
-void Cgi::smart_sleep(long set_miliseconds)
-{
-	long start_time = get_time();
-	while (true)
-	{
-		if (kill(_cgi_pid, 0) != 0){
-			std::cerr << "process ended before kill\n";
-			exit(EXIT_SUCCESS);
-		}
-		// if (start_time + set_miliseconds < get_time()){
-		// 	std::cerr << "process killed\n";
-		// 	kill(_cgi_pid,9);
-		// 	exit(EXIT_FAILURE);
-		// }
-		usleep(5000);
-
-	}
+// Signal handler for timeout
+void handleTimeout(int signum) {
+    timeoutOccurred = 1;
 }
 
 bool Cgi::is_python3_installed() {
@@ -138,12 +115,14 @@ std::string	Cgi::create_request_body_file(std::vector<Request>::iterator it_req)
 	return (filename.str());
 }
 
-// Use try while running
+// Use try while running.
 void Cgi::run(std::vector<Request>::iterator it_req)
 {
 	std::string env_variable;
 	int infile;
 	std::string body_path;
+
+	const int timeoutDuration = 3;
 
 	if(!is_python3_installed())
 		throw(CgiException());
@@ -277,21 +256,61 @@ void Cgi::run(std::vector<Request>::iterator it_req)
 			i++;
   	  	}
 		_env[i] = NULL;
+
+		// Child process
+        // Set up the signal handler for timeout
+		struct sigaction sa;
+        memset(&sa, 0, sizeof(sa));
+        sa.sa_handler = handleTimeout;
+        sigaction(SIGALRM, &sa, NULL);
+
+        // Set the timeout alarm
+        alarm(timeoutDuration);
+
 		execve(_args[0], const_cast<char* const*>(_args), _env);
-		// exit(EXIT_SUCCESS);
 		throw(CgiException());
 	}
-	// smart_sleep(3000);
-	waitpid(-1, NULL, 0);
-	it_req->generate_cgi_response(out_filename);
-	std::cout << it_req->ResponseHeader;
-	// exit(EXIT_SUCCESS);
-	dup2(save_stdin, STDIN_FILENO);
-	close(save_stdin);
-	dup2(save_stdout, STDOUT_FILENO);
-	close(save_stdout);
-	//close fds
-	close(outfile);
+	else{
+		// reinstatiate the standard file descriptors
+
+		dup2(save_stdin, STDIN_FILENO);
+		close(save_stdin);
+		dup2(save_stdout, STDOUT_FILENO);
+		close(save_stdout);
+
+		// Wait for the child process to exit or timeout.
+		int status;
+		pid_t terminatedPid = waitpid(_cgi_pid, &status, 0);
+
+		if (terminatedPid == -1) {
+			perror("waitpid");
+			exit(1);
+		}
+
+		if (timeoutOccurred) {
+			// Handle timeout
+			std::cout << "Timeout occurred. Child process was terminated." << std::endl;
+		} else {
+			// Handle normal exit
+			if (WIFEXITED(status)) {
+				std::cout << "Child process exited with status: " << WEXITSTATUS(status) << std::endl;
+				it_req->generate_cgi_response(out_filename);
+				std::cout << it_req->ResponseHeader;
+			} else if (WIFSIGNALED(status)) {
+				std::cout << "Child process terminated due to signal: " << WTERMSIG(status) << std::endl;
+				const char* cgi_error_path = "../HTML/cgi-bin/cgi_error.html";
+				it_req->generate_cgi_response(cgi_error_path);
+				std::cout << it_req->ResponseHeader;
+			}
+		}
+
+		//close fds
+		close(outfile);	
+		if (!is_query_string(it_req)){
+			close(infile);
+		}
+	}
+	
 }
 	
 bool Cgi::is_query_string(std::vector<Request>::iterator it_req) {

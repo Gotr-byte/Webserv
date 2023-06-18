@@ -227,7 +227,6 @@ size_t HTTP_server::findHeaderLength(int fd)
     // catch (const std::exception &e){
     //             std::cerr << e.what();
     // }
-    // catch
     char *header = std::strstr(buf, "\r\n\r\n");
     size_t headerlength = header - buf + 4;
     return headerlength;

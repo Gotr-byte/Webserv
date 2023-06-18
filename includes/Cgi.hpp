@@ -3,6 +3,11 @@
 #if defined(__APPLE__)
 #include <sys/types.h>
 #include <fcntl.h>
+#include <signal.h>
+#include <sys/wait.h>
+#include <cstdlib>
+#include <cstring>
+#include <signal.h>
 #endif
 #if defined(__linux__)
 #include <unistd.h>
@@ -26,6 +31,10 @@
 #include <vector>
 #include <algorithm>
 #include <sys/time.h>
+
+// for signal handling 
+
+
 
 class Cgi
 {
@@ -60,7 +69,7 @@ private:
 	std::vector<std::string> enviromentals;
 	int color_index;
 	std::string _type;
-	int _cgi_pid;
+	pid_t _cgi_pid;
 	int _file_fd;
 	std::string _file_name;
 };

@@ -15,8 +15,6 @@ else:
     farm = "Guest"
 
 # Print the HTTP response headers
-# print("Content-Type: text/html")
-# print()
 
 # Print the HTML response body
 print("<html>")
