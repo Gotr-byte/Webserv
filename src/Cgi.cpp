@@ -281,7 +281,7 @@ void Cgi::run(std::vector<Request>::iterator it_req)
 		// exit(EXIT_SUCCESS);
 		throw(CgiException());
 	}
-	smart_sleep(3000);
+	// smart_sleep(3000);
 	waitpid(-1, NULL, 0);
 	it_req->generate_cgi_response(out_filename);
 	std::cout << it_req->ResponseHeader;
