@@ -2,6 +2,15 @@
 
 #if defined(__APPLE__)
 #include <sys/types.h>
+#include "ServerConfig.hpp"
+#include "ConfigCheck.hpp"
+#include "ft_strlen.hpp"
+#include "ft_strchr.hpp"
+#include <cstddef>
+#include <limits>
+#include <algorithm>
+#include <fstream>
+#include <stdlib.h>
 #endif
 #if defined(__linux__)
 #include <unistd.h>
@@ -49,6 +58,7 @@ public:
     HTTP_server(std::string path, char **env);
     ~HTTP_server();
 
+    void add_to_pfds(struct pollfd *pfds, int newfd, unsigned int fd_count);
     void server_conducts_poll();
     void	InitFdsClients();
     void server_port_listening(int i);
@@ -76,6 +86,8 @@ private:
     HTTP_server(const HTTP_server &other);
     HTTP_server& operator = (const HTTP_server & other);
 
+    unsigned int fd_size;
+    // unsigned int fd_count;
     int color_index;
     char **_env;
     std::string _path;

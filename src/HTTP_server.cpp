@@ -1,11 +1,4 @@
 #include "../includes/HTTP_server.hpp"
-#include "../includes/ServerConfig.hpp"
-#include "../includes/ConfigCheck.hpp"
-#include <cstddef>
-#include <cstdlib>
-#include <limits>
-#include <algorithm>
-#include <fstream>
 
 #define BUF_SIZE 1024
 #define TIMEOUT 20
@@ -14,40 +7,56 @@
 //TODO two servers sharing the same port, just ignore one of the servers
 //TODO possibly there is a necessity to reduce the number of recv
 //TODO remove perrors where it is not according to documentation
+//TODO add address to client struct
+//TODO refactoring with Operation Integration functions
+//TODO move creating sockets and pollfd struct to the constructor
+//TODO consider dividinf the server into request tokenizer and server
+//TODO consider the entire server to be in a try catch scopes
+/*TODO maybe we can start of with creating a POLLIN element of the array
+to get the request, then depending on the request create a pollin and pollout array
+*/ 
+//TODO get rid of the defines
+//TODO when downloading a two big files then stopping dowload encountered a memory leak
+//TODO consider using the following funcions
+//TODO add address to client struct
+//TODO download/upload body only if there is a content length
+//TODO chunk only if type is chunked
+//TODO download/upload body only if it is in line with maximum body lenghth
+//TODO throw exceptions possibly on the entire server
+//TODO problem with parsing the request
 
 
-size_t	ft_strlen(const char *s)
+// Add a new file descriptor to the set
+void HTTP_server::add_to_pfds(struct pollfd *pfds, int newfd, unsigned int fd_count)
 {
-	size_t	i;
+    // If we don't have room, add more space in the pfds array
+    if (fd_count == fd_size) {
+        fd_size *= 2; // Double it
 
-	i = 0;
-	while (s[i] != '\0')
-		i++;
-	return (i);
+        pfds = (struct pollfd *)realloc(pfds, sizeof(*pfds) * (fd_size));
+    }
+
+    (pfds)[fd_count].fd = newfd;
+    (pfds)[fd_count].events = POLLIN|POLLOUT; // Check ready-to-read
+
+    (fd_count)++;
 }
 
+// Remove an index from the set
+// void del_from_pfds(struct pollfd pfds[], int i, int *fd_count)
+// {
+//     // Copy the one from the end over this one
+//     pfds[i] = pfds[*fd_count-1];
 
-char	*ft_strchr(const char *s, int c)
-{
-	size_t	i;
-	char	*h;
-	size_t	t;
-
-	t = ft_strlen(s);
-	h = (char *)s;
-	i = 0;
-	while (i <= t)
-	{
-		if (*(h + i) == (char)c)
-			return (h + i);
-		i++;
-	}
-	return (0);
-}
+//     (*fd_count)--;
+// }
 
 
-void HTTP_server::print_request(std::map<std::string, std::string> my_map)
-{
+
+/*
+* Prints the request in different colours.
+*/
+void HTTP_server::print_request(std::map<std::string, std::string> my_map){
     std::map<std::string, std::string>::iterator it;
     switch (color_index) {
         case 0:
@@ -86,13 +95,28 @@ void HTTP_server::print_request(std::map<std::string, std::string> my_map)
  * @param filename The name of the file to read.
  * @return The contents of the file as a string.
  */
-HTTP_server::HTTP_server(std::string path, char **env): _env(env), _path(path)
-{
+HTTP_server::HTTP_server(std::string path, char **env): _env(env), _path(path){
     InitFdsClients();
     timeoutDuration = TIMEOUT;
     color_index = 0;
+    fd_size = listening_port_no + 1 + MAX_CLIENTS;
+
+    //creating listening sockets
+    for (int i = 0; i < listening_port_no; i++)
+    {
+        ServerConfig tmp(_path, i);
+        Socket socket(std::atoi(tmp.port.c_str()), tmp.host);
+        FdsClients[i].first = socket.server_fd;
+        ConfigVec.push_back(tmp);
+        std::cout << "Socket " << (i + 1) << " (FD " << FdsClients[i].first
+                  << ") is listening on: " << tmp.getConfProps("listen:") << std::endl;
+    }
+    create_pollfd_struct();
 }
 
+/*
+* Destructor of server;
+*/
 HTTP_server::~HTTP_server(){}
 
 /**
@@ -101,18 +125,15 @@ HTTP_server::~HTTP_server(){}
  * @param filename The name of the file to read.
  * @return The contents of the file as a string.
  */
-std::string HTTP_server::read_file(const std::string &filename)
-{
+std::string HTTP_server::read_file(const std::string &filename){
     std::ifstream file(filename.c_str());
     std::string content;
     char c;
-    if (!file)
-    {
+    if (!file){
         std::cerr << "Error opening file " << filename << std::endl;
         return "";
     }
-    while (file.get(c))
-    {
+    while (file.get(c)){
         content += c;
     }
     file.close();
@@ -125,8 +146,7 @@ std::string HTTP_server::read_file(const std::string &filename)
  * @param request The map to store the key-value pair.
  * @param line_to_tokenize The line of text to tokenize.
  */
-void HTTP_server::tokenizing(std::map<std::string, std::string> &request, std::string line_to_tokenize)
-{
+void HTTP_server::tokenizing(std::map<std::string, std::string> &request, std::string line_to_tokenize){
     std::stringstream tokenize_stream(line_to_tokenize);
     std::string value;
     std::string key;
@@ -137,8 +157,7 @@ void HTTP_server::tokenizing(std::map<std::string, std::string> &request, std::s
     request[key] = value;
 }
 
-void HTTP_server::removeWhitespaces(std::string &string)
-{
+void HTTP_server::removeWhitespaces(std::string &string){
     string.erase(0, string.find_first_not_of(" \t"));
     string.erase(string.find_last_not_of(" \t") + 1);
 }
@@ -148,38 +167,30 @@ void HTTP_server::removeWhitespaces(std::string &string)
  *
  * The function initializes the `fds` array with the listening socket file descriptors and sets the events to poll for.
  */
-void HTTP_server::create_pollfd_struct(void)
-{
-    memset(fds, 0, MAX_CLIENTS + 1 * sizeof(fds));
-    for (int i = 0; i < listening_port_no + MAX_CLIENTS + 1; i++)
-    {
+void HTTP_server::create_pollfd_struct(void){
+    memset(fds, 0, fd_size * sizeof(fds));
+    for (int i = 0; i < fd_size; i++){
         fds[i].fd = FdsClients[i].first;
         fds[i].events = POLLIN | POLLOUT;
     }
 }
 
-void HTTP_server::server_port_listening(int i)
-{
-    if (fds[i].revents & POLLIN)
-    {
-        for (int j = listening_port_no; j < MAX_CLIENTS + listening_port_no + 1; j++)
-        {
-            if (fds[j].fd == -1)
-            {
+void HTTP_server::server_port_listening(int i){
+    if (fds[i].revents & POLLIN){
+        for (int j = listening_port_no; j < fd_size; j++){
+            if (fds[j].fd == -1){
                 client_len = sizeof(client_addr);
-                //TODO add address to client struct
                 FdsClients[j].first = accept(FdsClients[i].first, (struct sockaddr *)&client_addr, &client_len);
                 activeClientIdx.insert(j);
-                if (FdsClients[j].first < 0)
-                {
+                if (FdsClients[j].first < 0){
                     perror("Error accepting client connection on etc");
                     exit(EXIT_FAILURE);
                 }
                 fds[j].fd = FdsClients[j].first;
                 FdsClients[j].second.socket = i;
-                // FdsClients[j].second.ip_address = client_addr;
+                add_to_pfds(fds, FdsClients[j].first, j);
                 FdsClients[j].second.lastInteractionTime = time(nullptr);
-                if (j == MAX_CLIENTS + listening_port_no)
+                if (j == fd_size)
                     FdsClients[j].second.server_full = true;
                 break;
             }
@@ -194,12 +205,11 @@ void HTTP_server::server_port_listening(int i)
  */
 void HTTP_server::server_conducts_poll()
 {
-    nfds = MAX_CLIENTS + listening_port_no + 1;
+    nfds = fd_size;
     // timeout = (3 * 60 * 1000);
     timeout = -1;
     res = poll(fds, nfds, timeout);
-    if (res < 0)
-    {
+    if (res < 0){
         perror("Error polling sockets");
         exit(EXIT_FAILURE);
     }
@@ -221,19 +231,13 @@ size_t HTTP_server::findHeaderLength(int fd)
     int n = recv(fd, buf, BUF_SIZE, MSG_PEEK);
     if (n < 0){
         perror("Header lenght error:");
-        // throw(HeaderLengthException());
     }
-    // }
-    // catch (const std::exception &e){
-    //             std::cerr << e.what();
-    // }
     char *header = std::strstr(buf, "\r\n\r\n");
     size_t headerlength = header - buf + 4;
     return headerlength;
 }
 
-std::map<std::string, std::string> HTTP_server::mapping_request_header(int i)
-{
+std::map<std::string, std::string> HTTP_server::mapping_request_header(int i){
     std::string key;
     std::map<std::string, std::string> new_request;
     size_t headerlength = findHeaderLength(FdsClients[i].first);
@@ -244,21 +248,18 @@ std::map<std::string, std::string> HTTP_server::mapping_request_header(int i)
     // Get lines of Header
     int n;
     n = recv(FdsClients[i].first, buf, headerlength, MSG_DONTWAIT);
-    if (n < 0)
-    {
+    if (n < 0){
         perror("Error receiving data from in server_mapping_request");
         exit(EXIT_FAILURE);
     }
     std::string HTTP_request(buf);
     line = std::strtok(&HTTP_request[0], "\n");
-    while (line != NULL)
-    {
+    while (line != NULL){
         std::string strLine(line);
         lines.push_back(strLine);
         line = strtok(NULL, "\n");
     }
-    if (!lines.empty())
-    {
+    if (!lines.empty()){
         new_request["method:"] = std::strtok(&lines.front()[0], " ");
         new_request["location:"] = std::strtok(NULL, " ");
         std::size_t found = new_request["location:"].find('?');
@@ -266,15 +267,12 @@ std::map<std::string, std::string> HTTP_server::mapping_request_header(int i)
             new_request["HTTP_version:"] = std::strtok(NULL, " ");
             std::string temporary = std::strtok(&new_request["location:"][0], "?");
             new_request["query_string:"] = std::strtok(NULL, " ");
-            std::cout << "test1\n";
             new_request["location:"] = temporary;
-            std::cout << "test1\n";
         }
         else
             new_request["HTTP_version:"] = std::strtok(NULL, " ");
     }
-    while (!lines.empty())
-    {
+    while (!lines.empty()){
         if (!lines.empty() &&
             lines.front() == "\n" &&
             new_line_count == 1){
@@ -291,15 +289,13 @@ std::map<std::string, std::string> HTTP_server::mapping_request_header(int i)
         lines.pop_front();
     }
     size_t v;
-    if ((v = new_request["Content-Type:"].find("boundary=")) != std::string::npos)
-    {
+    if ((v = new_request["Content-Type:"].find("boundary=")) != std::string::npos){
         std::string key = new_request["Content-Type:"].substr(v, 8);
         std::string value = new_request["Content-Type:"].substr(new_request["Content-Type:"].find("=") + 1);
         new_request[key] = value;
         new_request["Content-Type:"] = new_request["Content-Type:"].substr(0, new_request["Content-Type:"].find(";"));
     }
-    if (new_request["method:"] != "POST")
-    {
+    if (new_request["method:"] != "POST"){
         memset(buf, 0, BUF_SIZE);
         recv(FdsClients[i].first, buf, BUF_SIZE, MSG_DONTWAIT);
     }
@@ -317,8 +313,7 @@ void HTTP_server::ProcessUpload(std::vector<Request>::iterator req)
     // Get lines of Header
     int n;
     n = recv(req->client_fd, buf, headerlength, MSG_DONTWAIT);
-    if (n < 0)
-    {
+    if (n < 0){
         perror("Error receiving data from in upload");
         exit(EXIT_FAILURE);
     }
@@ -330,8 +325,7 @@ void HTTP_server::ProcessUpload(std::vector<Request>::iterator req)
     req->path += filename;
     std::ofstream createFile(req->path, std::ios::binary | std::ios::trunc);
 
-    if (!createFile.is_open())
-    {
+    if (!createFile.is_open()){
         perror("error creating upload file");
         exit(1);
     }
@@ -341,18 +335,14 @@ void HTTP_server::ProcessUpload(std::vector<Request>::iterator req)
     size_t readbytes = 0;
     size_t remainingBytes = bodyLength - boundaryLength;
 
-    while (remainingBytes > boundaryLength)
-    {
+    while (remainingBytes > boundaryLength){
         size_t chunkBytes = std::min((size_t) BUF_SIZE, remainingBytes);
-
         memset(buf, 0, chunkBytes);
         readbytes = recv(req->client_fd, buf, chunkBytes, MSG_DONTWAIT);
-        if (readbytes < 0)
-        {
+        if (readbytes < 0){
             perror("Error receiving data from client in Upload");
             exit(EXIT_FAILURE);
         }
-
         createFile.write(buf, readbytes);
         remainingBytes -= readbytes;
     }
@@ -366,27 +356,20 @@ void HTTP_server::ProcessUpload(std::vector<Request>::iterator req)
 
 void HTTP_server::send_response(std::vector<Request>::iterator req)
 {
-    if (!req->initialResponseSent)
-    {
-        if (req->responsebody.empty())
-        {
+    if (!req->initialResponseSent){
+        if (req->responsebody.empty()){
             int file_fd = open(req->path.c_str(), O_RDONLY);
-            if (file_fd < 0)
-            {
+            if (file_fd < 0){
                 perror("Error opening file");
                 throw(InvalidFileDownloadException());
             }
             req->file_fd = file_fd;
         }
-
-        if (send(req->client_fd, req->ResponseHeader.c_str(), req->ResponseHeader.size(), 0) < 0)
-        {
+        if (send(req->client_fd, req->ResponseHeader.c_str(), req->ResponseHeader.size(), 0) < 0){
             perror("Error sending initial response headers");
             exit(EXIT_FAILURE);
         }
-
-        if (!req->responsebody.empty())
-        {
+        if (!req->responsebody.empty()){
             if (send(req->client_fd, req->responsebody.c_str(), req->responsebody.size(), 0) == -1)
                 perror("Autoindex send error");
             req->requestdone = true;
@@ -398,25 +381,21 @@ void HTTP_server::send_response(std::vector<Request>::iterator req)
     char buffer[chunkSize];
     ssize_t bytesRead;
     bytesRead = read(req->file_fd, buffer, chunkSize);
-    if (bytesRead > 0)
-    {
+    if (bytesRead > 0){
         std::stringstream chunkSizeHex;
         chunkSizeHex << std::hex << bytesRead << "\r\n";
         std::string chunkSizeHexStr = chunkSizeHex.str();
         std::string chunkData(buffer, bytesRead);
         std::string chunk = chunkSizeHexStr + chunkData + "\r\n";
         ssize_t bytesSent = send(req->client_fd, chunk.c_str(), chunk.length(), 0);
-        if (bytesSent < 0)
-        {
+        if (bytesSent < 0){
             perror("Error sending chunk");
             exit(EXIT_FAILURE);
         }
     }
-    else
-    {
+    else{
         std::string lastChunk = "0\r\n\r\n";
-        if (send(req->client_fd, lastChunk.c_str(), lastChunk.length(), 0) < 0)
-        {
+        if (send(req->client_fd, lastChunk.c_str(), lastChunk.length(), 0) < 0){
             perror("Error sending last chunk");
             exit(EXIT_FAILURE);
         }
@@ -424,15 +403,13 @@ void HTTP_server::send_response(std::vector<Request>::iterator req)
     }
 }
 
-std::string HTTP_server::toHex(int value)
-{
+std::string HTTP_server::toHex(int value){
     std::stringstream stream;
     stream << std::hex << value;
     return stream.str();
 }
 
-bool HTTP_server::CheckForClientTimeout(int i)
-{
+bool HTTP_server::CheckForClientTimeout(int i){
     currentTime = std::time(nullptr);
 
     time_t elapsedDuration = currentTime - FdsClients[i].second.lastInteractionTime;
@@ -441,28 +418,19 @@ bool HTTP_server::CheckForClientTimeout(int i)
     return false;
 }
 
-void HTTP_server::server_loop()
-{
-    while (true)
-    {
+void HTTP_server::server_loop(){
+    while (true){
         server_conducts_poll();
         for (int i = 0; i < listening_port_no; i++)
             server_port_listening(i);
-        for (std::set<int>::iterator it_idx = activeClientIdx.begin(); it_idx != activeClientIdx.end(); it_idx++)
-        {
-            if (fds[*it_idx].revents & POLLIN)
-            {
+        for (std::set<int>::iterator it_idx = activeClientIdx.begin(); it_idx != activeClientIdx.end(); it_idx++){
+            if (fds[*it_idx].revents & POLLIN){
                 Request new_req;
                 if (FdsClients[*it_idx].second.server_full)
                     new_req.GenerateServerErrorResponse(503, ConfigVec[FdsClients[*it_idx].second.socket]);
-                else
-                {
+                else{
                     new_req.requestHeader = mapping_request_header(*it_idx);
                     new_req.CreateResponse(ConfigVec[FdsClients[*it_idx].second.socket]);
-                    // if (new_req.requestHeaderMap["location:"] == "/cgi-bin/ziggurat_magi.py" &&
-                    // new_req.requestHeaderMap["method:"] == "POST"){
-                    //     new_req.isCGI = true;
-                    // }
                     FdsClients[*it_idx].second.lastInteractionTime = std::time(nullptr);
                 }
                 new_req.client_fd = FdsClients[*it_idx].first;
@@ -471,8 +439,7 @@ void HTTP_server::server_loop()
                     fds[*it_idx].events = POLLOUT;
                 else if (new_req.isUpload)
                     ProcessUpload(FdsClients[*it_idx].second.Requests.end() - 1);
-                else if (new_req.isCGI)
-                {
+                else if (new_req.isCGI){
                     std::cout << "*******************\n";
                     std::cout << "* Welcome to CGI! *\n";
                     std::cout << "*******************\n";
@@ -488,21 +455,16 @@ void HTTP_server::server_loop()
                 else if (new_req.isDelete)
                     deleteContent(FdsClients[*it_idx].second.Requests.end() - 1);
             }
-            if (fds[*it_idx].revents & POLLOUT)
-            {
-                for (std::vector<Request>::iterator it_req = FdsClients[*it_idx].second.Requests.begin(); it_req != FdsClients[*it_idx].second.Requests.end(); it_req++)
-                {
-                    try
-                    {
+            if (fds[*it_idx].revents & POLLOUT){
+                for (std::vector<Request>::iterator it_req = FdsClients[*it_idx].second.Requests.begin(); it_req != FdsClients[*it_idx].second.Requests.end(); it_req++){
+                    try{
                         send_response(it_req);
                         FdsClients[*it_idx].second.lastInteractionTime = std::time(nullptr);
                     }
-                    catch (const std::exception &e)
-                    {
+                    catch (const std::exception &e){
                         std::cerr << e.what();
                     }
-                    if (it_req->requestdone)
-                    {
+                    if (it_req->requestdone){
                         if (it_req->cutoffClient)
                             FdsClients[*it_idx].second.cutoffClient = true;
                         std::cout << "Response: " << it_req->id << " sent to client: " << *it_idx << std::endl;
@@ -511,8 +473,7 @@ void HTTP_server::server_loop()
                     }
                 }
             }
-            if (fds[*it_idx].revents & (POLLHUP | POLLERR) || FdsClients[*it_idx].second.cutoffClient || (FdsClients[*it_idx].second.Requests.empty() && (CheckForClientTimeout(*it_idx))))
-            {
+            if (fds[*it_idx].revents & (POLLHUP | POLLERR) || FdsClients[*it_idx].second.cutoffClient || (FdsClients[*it_idx].second.Requests.empty() && (CheckForClientTimeout(*it_idx)))){
                 close(fds[*it_idx].fd);
                 fds[*it_idx].events = POLLIN | POLLOUT;
                 fds[*it_idx].fd = -1;
@@ -523,8 +484,7 @@ void HTTP_server::server_loop()
             }
         }
     }
-    for (std::set<int>::iterator it_idx = activeClientIdx.begin(); it_idx != activeClientIdx.end(); it_idx++)
-    {
+    for (std::set<int>::iterator it_idx = activeClientIdx.begin(); it_idx != activeClientIdx.end(); it_idx++){
         close(FdsClients[*it_idx].first);
         close(fds[*it_idx].fd);
     }
@@ -533,44 +493,27 @@ void HTTP_server::server_loop()
 void HTTP_server::deleteContent(std::vector<Request>::iterator req)
 {
     int i = std::remove(req->path.c_str());
-    if (i != 0)
-    {
+    if (i != 0){
         req->GenerateClientErrorResponse("409", "Conflict");
         return;
     }
     req->GenerateDeleteResponse();
 }
 
-void HTTP_server::InitFdsClients()
-{
+void HTTP_server::InitFdsClients(){
     ConfigCheck check;
     listening_port_no = check.checkConfig(_path);
     
     fds = new struct pollfd[MAX_CLIENTS + listening_port_no + 1];
 
-    for (int i = 0; i < (MAX_CLIENTS + listening_port_no + 1); i++)
-    {
+    for (int i = 0; i < (MAX_CLIENTS + listening_port_no + 1); i++){
         Client init;
         std::pair<int, Client> tmp(-1, init);
         FdsClients.push_back(tmp);
     }
 }
 
-int HTTP_server::running()
-{
-    //creating listening sockets
-    for (int i = 0; i < listening_port_no; i++)
-    {
-        ServerConfig tmp(_path, i);
-        Socket socket(std::atoi(tmp.port.c_str()), tmp.host);
-        FdsClients[i].first = socket.server_fd;
-        ConfigVec.push_back(tmp);
-        std::cout << "Socket " << (i + 1) << " (FD " << FdsClients[i].first
-                  << ") is listening on: " << tmp.getConfProps("listen:") << std::endl;
-    }
-    create_pollfd_struct();
-
+int HTTP_server::running(){
     server_loop();
-
-    return 0;
+    return 1;
 }

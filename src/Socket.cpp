@@ -1,5 +1,9 @@
 #include "../includes/Socket.hpp"
 
+//TODO check these settings
+//TODO pay attention to backlog settings in listen
+//TODO maybe check with AF_INET6?
+
 Socket::Socket(){}
 Socket::Socket(int port, std::string ip){
 	server_fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -34,8 +38,7 @@ Socket::Socket(int port, std::string ip){
     }
 
     // Listen for incoming connections on the server socket
-    if (listen(server_fd, MAX_CLIENTS) < 0)
-    {
+    if (listen(server_fd, 20) < 0){
         perror("Error listening on server socket");
         exit(EXIT_FAILURE);
     }
