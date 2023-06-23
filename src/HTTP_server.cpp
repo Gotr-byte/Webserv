@@ -177,8 +177,6 @@ void HTTP_server::server_port_listening(int i)
                 }
                 fds[j].fd = FdsClients[j].first;
                 FdsClients[j].second.socket = i;
-                // FdsClients[j].second.ip_address = client_addr;
-                FdsClients[j].second.lastInteractionTime = time(nullptr);
                 if (j == MAX_CLIENTS + listening_port_no)
                     FdsClients[j].second.server_full = true;
                 break;
@@ -233,7 +231,7 @@ size_t HTTP_server::findHeaderLength(int fd)
     return headerlength;
 }
 
-std::map<std::string, std::string> HTTP_server::mapping_request_header(int i)
+std::map<std::string, std::string> HTTP_server::mapping_request_header(std::string Request)
 {
     std::string key;
     std::map<std::string, std::string> new_request;
@@ -303,7 +301,7 @@ std::map<std::string, std::string> HTTP_server::mapping_request_header(int i)
     {
         memset(buf, 0, BUF_SIZE);
         recv(FdsClients[i].first, buf, BUF_SIZE, MSG_DONTWAIT);
-    }
+   }
     print_request(new_request);
     return new_request;
 }
@@ -432,16 +430,6 @@ std::string HTTP_server::toHex(int value)
     return stream.str();
 }
 
-bool HTTP_server::CheckForClientTimeout(int i)
-{
-    currentTime = std::time(nullptr);
-
-    time_t elapsedDuration = currentTime - FdsClients[i].second.lastInteractionTime;
-    if (elapsedDuration >= timeoutDuration)
-        return true;
-    return false;
-}
-
 void HTTP_server::server_loop()
 {
     while (true)
@@ -453,21 +441,25 @@ void HTTP_server::server_loop()
         {
             if (fds[*it_idx].revents & POLLIN)
             {
-                Request new_req;
                 if (FdsClients[*it_idx].second.server_full)
-                    new_req.GenerateServerErrorResponse(503, ConfigVec[FdsClients[*it_idx].second.socket]);
+                    FdsClients[*it_idx].second.response.GenerateServerErrorResponse(503, ConfigVec[FdsClients[*it_idx].second.socket]);
                 else
                 {
-                    new_req.requestHeader = mapping_request_header(*it_idx);
+                    size_t recieved_size = recv(FdsClients[*it_idx].first, FdsClients[*it_idx].second.request_chunk, PACKAGE_SIZE, 0);
+                    FdsClients[*it_idx].second.request_size += recieved_size;
+
+                    for (size_t size = 0; size < recieved_size; size++)
+                        FdsClients[*it_idx].second.full_request.push_back(FdsClients[*it_idx].second.request_chunk[size]);
+                    // mapping request header and deleting request header
+                    if (FdsClients[*it_idx].second.request_header.empty())
+                        FdsClients[*it_idx].second.request_header = mapping_request_header(FdsClients[*it_idx].second.full_request);
                     new_req.CreateResponse(ConfigVec[FdsClients[*it_idx].second.socket]);
                     // if (new_req.requestHeaderMap["location:"] == "/cgi-bin/ziggurat_magi.py" &&
                     // new_req.requestHeaderMap["method:"] == "POST"){
                     //     new_req.isCGI = true;
                     // }
-                    FdsClients[*it_idx].second.lastInteractionTime = std::time(nullptr);
                 }
                 new_req.client_fd = FdsClients[*it_idx].first;
-                FdsClients[*it_idx].second.Requests.push_back(new_req);
                 if (new_req.cutoffClient)
                     fds[*it_idx].events = POLLOUT;
                 else if (new_req.isUpload)
@@ -496,7 +488,6 @@ void HTTP_server::server_loop()
                     try
                     {
                         send_response(it_req);
-                        FdsClients[*it_idx].second.lastInteractionTime = std::time(nullptr);
                     }
                     catch (const std::exception &e)
                     {

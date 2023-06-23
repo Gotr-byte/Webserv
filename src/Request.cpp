@@ -207,7 +207,7 @@ bool	Request::CheckPermissions()
 
 void	Request::SetupErrorPage(std::string status, std::string issue)
 {
-	path = "../error_pages/" + status + ".html";
+	path = config.getConfProps("error_page:") + status + ".html";
 	statuscode = status + " " + issue;
 	contenttype = "text/html";
 	error = true;

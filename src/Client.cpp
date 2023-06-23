@@ -2,8 +2,7 @@
 
 Client::Client():
 fd(-1), initialResponseSent(false), file_fd(-1),
-content_length(0), socket(-1), server_full(false),
-lastInteractionTime(time_t(-1)), cutoffClient(false){
+content_length(0), socket(-1), server_full(false), cutoffClient(false){
 }
 
 void Client::ResetClient(){
@@ -13,9 +12,9 @@ void Client::ResetClient(){
 	content_length = 0;
 	socket = -1;
 	server_full = false;
-	lastInteractionTime = time_t(-1);
 	cutoffClient = false;
-	Requests.clear();
+	full_request.clear();
+	memset(request_chunk, 0, PACKAGE_SIZE);
 }
 
 void Client::set_cgi_filename(Cgi &cgi){
