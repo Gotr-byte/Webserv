@@ -50,9 +50,7 @@ public:
     ~HTTP_server();
 
     void server_conducts_poll();
-    void	InitFdsClients();
     void server_port_listening(int i);
-    size_t  findHeaderLength(int fd);
     std::map<std::string, std::string> mapping_request_header(std::string Request);
     int running();
     void create_listening_sock(int port);
@@ -63,7 +61,6 @@ public:
     bool CheckForClientTimeout(int i);
     std::set<int> activeClientIdx;
     std::string read_file(const std::string &filename);
-    void tokenizing(std::map<std::string, std::string> & request, std::string line_to_tokenize);
     void place_in_file(std::string line_to_file);
     std::string toHex(int value);
     void removeWhitespaces(std::string &string);
@@ -82,7 +79,7 @@ private:
     std::string _path;
     int nfds;
     int res;
-    std::vector<std::pair<int, Client> >    FdsClients;
+    std::map<int, Client>    FdClients;
     std::vector<int>   fd_index;
     int currently_served_quantity;
     struct sockaddr_in client_addr;

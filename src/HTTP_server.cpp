@@ -88,8 +88,8 @@ void HTTP_server::print_request(std::map<std::string, std::string> my_map)
  */
 HTTP_server::HTTP_server(std::string path, char **env): _env(env), _path(path)
 {
-    InitFdsClients();
-    timeoutDuration = TIMEOUT;
+    ConfigCheck check;
+    listening_port_no = check.checkConfig(_path);
     color_index = 0;
 }
 
@@ -120,68 +120,40 @@ std::string HTTP_server::read_file(const std::string &filename)
 }
 
 /**
- * Tokenizes a line of text and stores the key-value pair in a map.
- *
- * @param request The map to store the key-value pair.
- * @param line_to_tokenize The line of text to tokenize.
- */
-void HTTP_server::tokenizing(std::map<std::string, std::string> &request, std::string line_to_tokenize)
-{
-    std::stringstream tokenize_stream(line_to_tokenize);
-    std::string value;
-    std::string key;
-    key = line_to_tokenize.substr(0, line_to_tokenize.find(":") + 1);
-    value = line_to_tokenize.substr(line_to_tokenize.find(":") + 1);
-    removeWhitespaces(key);
-    removeWhitespaces(value);
-    request[key] = value;
-}
-
-void HTTP_server::removeWhitespaces(std::string &string)
-{
-    string.erase(0, string.find_first_not_of(" \t"));
-    string.erase(string.find_last_not_of(" \t") + 1);
-}
-
-/**
  * Creates the pollfd structures for polling file descriptors.
  *
  * The function initializes the `fds` array with the listening socket file descriptors and sets the events to poll for.
  */
-void HTTP_server::create_pollfd_struct(void)
-{
-    memset(fds, 0, MAX_CLIENTS + 1 * sizeof(fds));
-    for (int i = 0; i < listening_port_no + MAX_CLIENTS + 1; i++)
-    {
-        fds[i].fd = FdsClients[i].first;
-        fds[i].events = POLLIN | POLLOUT;
-    }
-}
+// void HTTP_server::create_pollfd_struct(void)
+// {
+//     memset(fds, 0, MAX_CLIENTS + 1 * sizeof(fds));
+//     for (int i = 0; i < listening_port_no + MAX_CLIENTS + 1; i++)
+//     {
+//         fds[i].fd = FdsClients[i].first;
+//         fds[i].events = POLLIN | POLLOUT;
+//     }
+// }
 
 void HTTP_server::server_port_listening(int i)
 {
-    if (fds[i].revents & POLLIN)
+    if (pollfds[i].revents & POLLIN)
     {
-        for (int j = listening_port_no; j < MAX_CLIENTS + listening_port_no + 1; j++)
+        client_len = sizeof(client_addr);
+        //TODO add address to client struct
+        int client_fd;
+        client_fd = accept(pollfds[i].fd, (struct sockaddr *)&client_addr, &client_len);
+        if (client_fd < 0)
         {
-            if (fds[j].fd == -1)
-            {
-                client_len = sizeof(client_addr);
-                //TODO add address to client struct
-                FdsClients[j].first = accept(FdsClients[i].first, (struct sockaddr *)&client_addr, &client_len);
-                activeClientIdx.insert(j);
-                if (FdsClients[j].first < 0)
-                {
-                    perror("Error accepting client connection on etc");
-                    exit(EXIT_FAILURE);
-                }
-                fds[j].fd = FdsClients[j].first;
-                FdsClients[j].second.socket = i;
-                if (j == MAX_CLIENTS + listening_port_no)
-                    FdsClients[j].second.server_full = true;
-                break;
-            }
+            perror("Error accepting client connection on etc");
+            exit(EXIT_FAILURE);
         }
+        FdClients.insert(std::make_pair(client_fd, Client(i)));
+
+        struct pollfd pollstruct;
+        pollstruct.fd = client_fd;
+        pollstruct.events = POLLIN | POLLOUT;
+        pollstruct.revents = 0;
+        this->pollfds.push_back(pollstruct);
         std::cout << "New client connected\n";
     }
 }
@@ -192,10 +164,9 @@ void HTTP_server::server_port_listening(int i)
  */
 void HTTP_server::server_conducts_poll()
 {
-    nfds = MAX_CLIENTS + listening_port_no + 1;
     // timeout = (3 * 60 * 1000);
     timeout = -1;
-    res = poll(fds, nfds, timeout);
+    res = poll(pollfds.data(), pollfds.size(), timeout);
     if (res < 0)
     {
         perror("Error polling sockets");
@@ -211,104 +182,104 @@ void HTTP_server::generate_cgi_querry(std::map<std::string, std::string>&new_req
     new_request["location:"] = temporary;
 }
 
-size_t HTTP_server::findHeaderLength(int fd)
-{
-    char buf[BUF_SIZE];
-    memset(buf, 0, BUF_SIZE);
-    // try{
-    int n = recv(fd, buf, BUF_SIZE, MSG_PEEK);
-    if (n < 0){
-        perror("Header lenght error:");
-        // throw(HeaderLengthException());
-    }
-    // }
-    // catch (const std::exception &e){
-    //             std::cerr << e.what();
-    // }
-    // catch
-    char *header = std::strstr(buf, "\r\n\r\n");
-    size_t headerlength = header - buf + 4;
-    return headerlength;
-}
+// size_t HTTP_server::findHeaderLength(int fd)
+// {
+//     char buf[BUF_SIZE];
+//     memset(buf, 0, BUF_SIZE);
+//     // try{
+//     int n = recv(fd, buf, BUF_SIZE, MSG_PEEK);
+//     if (n < 0){
+//         perror("Header lenght error:");
+//         // throw(HeaderLengthException());
+//     }
+//     // }
+//     // catch (const std::exception &e){
+//     //             std::cerr << e.what();
+//     // }
+//     // catch
+//     char *header = std::strstr(buf, "\r\n\r\n");
+//     size_t headerlength = header - buf + 4;
+//     return headerlength;
+// }
 
-std::map<std::string, std::string> HTTP_server::mapping_request_header(std::string Request)
-{
-    std::string key;
-    std::map<std::string, std::string> new_request;
-    size_t headerlength = findHeaderLength(FdsClients[i].first);
-    int new_line_count = 0;
-    char buf[BUF_SIZE];
-    memset(buf, 0, headerlength);
+// std::map<std::string, std::string> HTTP_server::mapping_request_header(std::string Request)
+// {
+//     std::string key;
+//     std::map<std::string, std::string> new_request;
+//     size_t headerlength = findHeaderLength(FdsClients[i].first);
+//     int new_line_count = 0;
+//     char buf[BUF_SIZE];
+//     memset(buf, 0, headerlength);
 
-    // Get lines of Header
-    int n;
-    n = recv(FdsClients[i].first, buf, headerlength, MSG_DONTWAIT);
-    if (n < 0)
-    {
-        perror("Error receiving data from in server_mapping_request");
-        exit(EXIT_FAILURE);
-    }
-    std::string HTTP_request(buf);
-    line = std::strtok(&HTTP_request[0], "\n");
-    while (line != NULL)
-    {
-        std::string strLine(line);
-        lines.push_back(strLine);
-        line = strtok(NULL, "\n");
-    }
-    if (!lines.empty())
-    {
-        new_request["method:"] = std::strtok(&lines.front()[0], " ");
-        new_request["location:"] = std::strtok(NULL, " ");
-        std::size_t found = new_request["location:"].find('?');
-        if (found != std::string::npos && new_request["method:"] == "GET"){
-            new_request["HTTP_version:"] = std::strtok(NULL, " ");
-            std::string temporary = std::strtok(&new_request["location:"][0], "?");
-            new_request["query_string:"] = std::strtok(NULL, " ");
-            std::cout << "test1\n";
-            new_request["location:"] = temporary;
-            std::cout << "test1\n";
-        }
-        else
-            new_request["HTTP_version:"] = std::strtok(NULL, " ");
-    }
-    while (!lines.empty())
-    {
-        if (!lines.empty() &&
-            lines.front() == "\n" &&
-            new_line_count == 1){
-            lines.pop_front();
-            break;
-        }
-        if (!lines.empty() &&
-            lines.front() == "\r"){
-            new_line_count++;
-        }
-        else{
-            tokenizing(new_request, lines.front());
-        }
-        lines.pop_front();
-    }
-    size_t v;
-    if ((v = new_request["Content-Type:"].find("boundary=")) != std::string::npos)
-    {
-        std::string key = new_request["Content-Type:"].substr(v, 8);
-        std::string value = new_request["Content-Type:"].substr(new_request["Content-Type:"].find("=") + 1);
-        new_request[key] = value;
-        new_request["Content-Type:"] = new_request["Content-Type:"].substr(0, new_request["Content-Type:"].find(";"));
-    }
-    if (new_request["method:"] != "POST")
-    {
-        memset(buf, 0, BUF_SIZE);
-        recv(FdsClients[i].first, buf, BUF_SIZE, MSG_DONTWAIT);
-   }
-    print_request(new_request);
-    return new_request;
-}
+//     // Get lines of Header
+//     int n;
+//     n = recv(FdsClients[i].first, buf, headerlength, MSG_DONTWAIT);
+//     if (n < 0)
+//     {
+//         perror("Error receiving data from in server_mapping_request");
+//         exit(EXIT_FAILURE);
+//     }
+//     std::string HTTP_request(buf);
+//     line = std::strtok(&HTTP_request[0], "\n");
+//     while (line != NULL)
+//     {
+//         std::string strLine(line);
+//         lines.push_back(strLine);
+//         line = strtok(NULL, "\n");
+//     }
+//     if (!lines.empty())
+//     {
+//         new_request["method:"] = std::strtok(&lines.front()[0], " ");
+//         new_request["location:"] = std::strtok(NULL, " ");
+//         std::size_t found = new_request["location:"].find('?');
+//         if (found != std::string::npos && new_request["method:"] == "GET"){
+//             new_request["HTTP_version:"] = std::strtok(NULL, " ");
+//             std::string temporary = std::strtok(&new_request["location:"][0], "?");
+//             new_request["query_string:"] = std::strtok(NULL, " ");
+//             std::cout << "test1\n";
+//             new_request["location:"] = temporary;
+//             std::cout << "test1\n";
+//         }
+//         else
+//             new_request["HTTP_version:"] = std::strtok(NULL, " ");
+//     }
+//     while (!lines.empty())
+//     {
+//         if (!lines.empty() &&
+//             lines.front() == "\n" &&
+//             new_line_count == 1){
+//             lines.pop_front();
+//             break;
+//         }
+//         if (!lines.empty() &&
+//             lines.front() == "\r"){
+//             new_line_count++;
+//         }
+//         else{
+//             tokenizing(new_request, lines.front());
+//         }
+//         lines.pop_front();
+//     }
+//     size_t v;
+//     if ((v = new_request["Content-Type:"].find("boundary=")) != std::string::npos)
+//     {
+//         std::string key = new_request["Content-Type:"].substr(v, 8);
+//         std::string value = new_request["Content-Type:"].substr(new_request["Content-Type:"].find("=") + 1);
+//         new_request[key] = value;
+//         new_request["Content-Type:"] = new_request["Content-Type:"].substr(0, new_request["Content-Type:"].find(";"));
+//     }
+//     if (new_request["method:"] != "POST")
+//     {
+//         memset(buf, 0, BUF_SIZE);
+//         recv(FdsClients[i].first, buf, BUF_SIZE, MSG_DONTWAIT);
+//    }
+//     print_request(new_request);
+//     return new_request;
+// }
 
 void HTTP_server::ProcessUpload(std::vector<Request>::iterator req)
 {
-    size_t headerlength = findHeaderLength(req->client_fd);
+    size_t headerlength = 0;
 
     char buf[BUF_SIZE];
     memset(buf, 0, headerlength);
@@ -437,89 +408,80 @@ void HTTP_server::server_loop()
         server_conducts_poll();
         for (int i = 0; i < listening_port_no; i++)
             server_port_listening(i);
-        for (std::set<int>::iterator it_idx = activeClientIdx.begin(); it_idx != activeClientIdx.end(); it_idx++)
+        for (std::vector<struct pollfd>::iterator it = pollfds.begin() + listening_port_no; it != pollfds.end(); it++)
         {
-            if (fds[*it_idx].revents & POLLIN)
+            if (it->revents & POLLIN)
             {
-                if (FdsClients[*it_idx].second.server_full)
-                    FdsClients[*it_idx].second.response.GenerateServerErrorResponse(503, ConfigVec[FdsClients[*it_idx].second.socket]);
-                else
-                {
-                    size_t recieved_size = recv(FdsClients[*it_idx].first, FdsClients[*it_idx].second.request_chunk, PACKAGE_SIZE, 0);
-                    FdsClients[*it_idx].second.request_size += recieved_size;
-
-                    for (size_t size = 0; size < recieved_size; size++)
-                        FdsClients[*it_idx].second.full_request.push_back(FdsClients[*it_idx].second.request_chunk[size]);
-                    // mapping request header and deleting request header
-                    if (FdsClients[*it_idx].second.request_header.empty())
-                        FdsClients[*it_idx].second.request_header = mapping_request_header(FdsClients[*it_idx].second.full_request);
-                    new_req.CreateResponse(ConfigVec[FdsClients[*it_idx].second.socket]);
-                    // if (new_req.requestHeaderMap["location:"] == "/cgi-bin/ziggurat_magi.py" &&
-                    // new_req.requestHeaderMap["method:"] == "POST"){
-                    //     new_req.isCGI = true;
-                    // }
-                }
-                new_req.client_fd = FdsClients[*it_idx].first;
-                if (new_req.cutoffClient)
-                    fds[*it_idx].events = POLLOUT;
-                else if (new_req.isUpload)
-                    ProcessUpload(FdsClients[*it_idx].second.Requests.end() - 1);
-                else if (new_req.isCGI)
-                {
-                    std::cout << "*******************\n";
-                    std::cout << "* Welcome to CGI! *\n";
-                    std::cout << "*******************\n";
-                    Cgi cgi("generic cgi", new_req.id);
-                    try{
-                        cgi.run(FdsClients[*it_idx].second.Requests.end() - 1);
-                    }
-                    catch (const std::exception &e){
-                        std::cerr << e.what();
-                    }
-                    (void)fds;
-                }
-                else if (new_req.isDelete)
-                    deleteContent(FdsClients[*it_idx].second.Requests.end() - 1);
+                char request_chunk[PACKAGE_SIZE + 1];
+                memset(request_chunk, 0, PACKAGE_SIZE);
+                size_t recieved_size = recv(it->fd, request_chunk, PACKAGE_SIZE, 0);
+                FdClients.at(it->fd).set_request(request_chunk, recieved_size);
+                // mapping request header and deleting request header
+                if (FdClients.at(it->fd).request_header.empty())
+                    FdClients.at(it->fd).mapping_request_header();
+                // if (new_req.requestHeaderMap["location:"] == "/cgi-bin/ziggurat_magi.py" &&
+                // new_req.requestHeaderMap["method:"] == "POST"){
+                //     new_req.isCGI = true;
+                // }
             }
-            if (fds[*it_idx].revents & POLLOUT)
+            //     if (FdClients[it->fd].cutoffClient)
+            //         it->events = POLLOUT;
+            //     else if (new_req.isUpload)
+            //         ProcessUpload(FdsClients[*it_idx].second.Requests.end() - 1);
+            //     else if (new_req.isCGI)
+            //     {
+            //         std::cout << "*******************\n";
+            //         std::cout << "* Welcome to CGI! *\n";
+            //         std::cout << "*******************\n";
+            //         Cgi cgi("generic cgi", new_req.id);
+            //         try{
+            //             cgi.run(FdsClients[*it_idx].second.Requests.end() - 1);
+            //         }
+            //         catch (const std::exception &e){
+            //             std::cerr << e.what();
+            //         }
+            //         (void)fds;
+            //     }
+            //     else if (new_req.isDelete)
+            //         deleteContent(FdsClients[*it_idx].second.Requests.end() - 1);
+            // }
+            // if (fds[*it_idx].revents & POLLOUT)
+            // {
+            //     for (std::vector<Request>::iterator it_req = FdsClients[*it_idx].second.Requests.begin(); it_req != FdsClients[*it_idx].second.Requests.end(); it_req++)
+            //     {
+            //         try
+            //         {
+            //             send_response(it_req);
+            //         }
+            //         catch (const std::exception &e)
+            //         {
+            //             std::cerr << e.what();
+            //         }
+            //         if (it_req->requestdone)
+            //         {
+            //             if (it_req->cutoffClient)
+            //                 FdsClients[*it_idx].second.cutoffClient = true;
+            //             std::cout << "Response: " << it_req->id << " sent to client: " << *it_idx << std::endl;
+            //             FdsClients[*it_idx].second.Requests.erase(it_req);
+            //             break;
+            //         }
+            //     }
+            // }
+            if (it->revents & (POLLHUP | POLLERR) || FdClients.at(it->fd).cutoffClient)
             {
-                for (std::vector<Request>::iterator it_req = FdsClients[*it_idx].second.Requests.begin(); it_req != FdsClients[*it_idx].second.Requests.end(); it_req++)
-                {
-                    try
-                    {
-                        send_response(it_req);
-                    }
-                    catch (const std::exception &e)
-                    {
-                        std::cerr << e.what();
-                    }
-                    if (it_req->requestdone)
-                    {
-                        if (it_req->cutoffClient)
-                            FdsClients[*it_idx].second.cutoffClient = true;
-                        std::cout << "Response: " << it_req->id << " sent to client: " << *it_idx << std::endl;
-                        FdsClients[*it_idx].second.Requests.erase(it_req);
-                        break;
-                    }
-                }
-            }
-            if (fds[*it_idx].revents & (POLLHUP | POLLERR) || FdsClients[*it_idx].second.cutoffClient || (FdsClients[*it_idx].second.Requests.empty() && (CheckForClientTimeout(*it_idx))))
-            {
-                close(fds[*it_idx].fd);
-                fds[*it_idx].events = POLLIN | POLLOUT;
-                fds[*it_idx].fd = -1;
-                FdsClients[*it_idx].second.ResetClient();
-                std::cout << "Connection Timeout - Client " << *it_idx << " disconnected" << std::endl;
-                activeClientIdx.erase(it_idx);
+                close(it->fd);
+                FdClients.erase(it->fd);
+                pollfds.erase(it);
+                std::cout << "Connection Timeout - Client " << it->fd << " disconnected" << std::endl;
                 break;
             }
         }
     }
-    for (std::set<int>::iterator it_idx = activeClientIdx.begin(); it_idx != activeClientIdx.end(); it_idx++)
-    {
-        close(FdsClients[*it_idx].first);
-        close(fds[*it_idx].fd);
-    }
+    // for (std::set<int>::iterator it_idx = activeClientIdx.begin(); it_idx != activeClientIdx.end(); it_idx++)
+    // {
+    //     close(FdsClients[*it_idx].first);
+    //     close(fds[*it_idx].fd);
+    // }
 }
 
 void HTTP_server::deleteContent(std::vector<Request>::iterator req)
@@ -533,36 +495,39 @@ void HTTP_server::deleteContent(std::vector<Request>::iterator req)
     req->GenerateDeleteResponse();
 }
 
-void HTTP_server::InitFdsClients()
-{
-    ConfigCheck check;
-    listening_port_no = check.checkConfig(_path);
-    
-    fds = new struct pollfd[MAX_CLIENTS + listening_port_no + 1];
+// void HTTP_server::InitFdsClients()
+// {
+//     ConfigCheck check;
+//     listening_port_no = check.checkConfig(_path);
 
-    for (int i = 0; i < (MAX_CLIENTS + listening_port_no + 1); i++)
-    {
-        Client init;
-        std::pair<int, Client> tmp(-1, init);
-        FdsClients.push_back(tmp);
-    }
-}
+//     for (int i = 0; i < (MAX_CLIENTS + listening_port_no + 1); i++)
+//     {
+//         Client init;
+//         std::pair<int, Client> tmp(-1, init);
+//         FdsClients.push_back(tmp);
+//     }
+// }
 
 int HTTP_server::running()
 {
     //creating listening sockets
     for (int i = 0; i < listening_port_no; i++)
     {
+        struct pollfd listening_poll;
         ServerConfig tmp(_path, i);
         Socket socket(std::atoi(tmp.port.c_str()), tmp.host);
-        FdsClients[i].first = socket.server_fd;
+        listening_poll.fd = socket.server_fd;
+        listening_poll.events = POLLIN;
+        listening_poll.revents = 0;
+        pollfds.push_back(listening_poll);
         ConfigVec.push_back(tmp);
-        std::cout << "Socket " << (i + 1) << " (FD " << FdsClients[i].first
+        std::cout << "Socket " << (i + 1) << " (FD " << socket.server_fd
                   << ") is listening on: " << tmp.getConfProps("listen:") << std::endl;
     }
-    create_pollfd_struct();
 
     server_loop();
+
+    // create_pollfd_struct();
 
     return 0;
 }
