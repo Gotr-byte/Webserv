@@ -53,7 +53,7 @@ public:
     void	InitFdsClients();
     void server_port_listening(int i);
     size_t  findHeaderLength(int fd);
-    std::map<std::string, std::string> mapping_request_header(int i);
+    std::map<std::string, std::string> mapping_request_header(std::string Request);
     int running();
     void create_listening_sock(int port);
     void create_pollfd_struct();
@@ -78,6 +78,7 @@ private:
 
     int color_index;
     char **_env;
+    std::vector<struct pollfd>  pollfds;
     std::string _path;
     int nfds;
     int res;
@@ -89,7 +90,7 @@ private:
     time_t currentTime;
     time_t timeoutDuration;
     std::deque<int> pending_connections;
-    struct pollfd *fds;
+    // struct pollfd *fds;
     int timeout;
     Request tmp;
     std::vector<char *> HTTP_requests;

@@ -26,6 +26,7 @@
 #include <vector>
 #include <algorithm>
 #include <sys/time.h>
+#include <signal.h>
 
 class Cgi
 {
