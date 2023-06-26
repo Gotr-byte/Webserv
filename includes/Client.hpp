@@ -10,6 +10,7 @@
 
 #include "Request.hpp"
 #include "Cgi.hpp"
+#include "ServerConfig.hpp"
 
 #define PACKAGE_SIZE 65563
 
@@ -18,12 +19,15 @@
 class Client
 {
     public:
-        Client(int server_idx);
+        Client(int server_idx, ServerConfig conf);
         void    set_request(char *chunk, size_t buffer_length);
         void    mapping_request_header();
         void    tokenizing(std::map<std::string, std::string> & request, std::string line_to_tokenize);
         void    removeWhitespaces(std::string &string);
         void    print_request(std::map<std::string, std::string> my_map);
+        void    check_server_config(ServerConfig config);
+        void    check_request();
+        void    create_response();
 
 
         int color_index;
@@ -35,9 +39,11 @@ class Client
         int                             client_fd;
         void                            set_cgi_filename(Cgi &cgi);
 
+        ServerConfig                        config;
+        bool                                request_complete;
         std::map<std::string, std::string>  request_header;
         size_t                              request_size;
-        std::string                         full_request;
+        std::string                         request;
         Request                             response;
         bool                                cutoffClient;
         // struct sockaddr_in                  ip_address;

@@ -147,7 +147,7 @@ void HTTP_server::server_port_listening(int i)
             perror("Error accepting client connection on etc");
             exit(EXIT_FAILURE);
         }
-        FdClients.insert(std::make_pair(client_fd, Client(i)));
+        FdClients.insert(std::make_pair(client_fd, Client(i, ConfigVec[i])));
 
         struct pollfd pollstruct;
         pollstruct.fd = client_fd;
@@ -401,6 +401,14 @@ std::string HTTP_server::toHex(int value)
     return stream.str();
 }
 
+void HTTP_server::kill_client(std::vector<struct pollfd>::iterator it)
+{
+    close(it->fd);
+    FdClients.erase(it->fd);
+    pollfds.erase(it);
+    std::cout << "client disconnected" << std::endl;
+}
+
 void HTTP_server::server_loop()
 {
     while (true)
@@ -408,17 +416,35 @@ void HTTP_server::server_loop()
         server_conducts_poll();
         for (int i = 0; i < listening_port_no; i++)
             server_port_listening(i);
-        for (std::vector<struct pollfd>::iterator it = pollfds.begin() + listening_port_no; it != pollfds.end(); it++)
+        for (std::vector<struct pollfd>::iterator it = (pollfds.begin() + listening_port_no); it != pollfds.end(); it++)
         {
             if (it->revents & POLLIN)
             {
                 char request_chunk[PACKAGE_SIZE + 1];
                 memset(request_chunk, 0, PACKAGE_SIZE);
                 size_t recieved_size = recv(it->fd, request_chunk, PACKAGE_SIZE, 0);
+                if (recieved_size < 0)
+                    perror("Error occured");
+                else if (recieved_size == 0)
+                {
+                    kill_client(it);
+                    break;
+                }
+                std::cout << request_chunk << std::endl;
                 FdClients.at(it->fd).set_request(request_chunk, recieved_size);
                 // mapping request header and deleting request header
                 if (FdClients.at(it->fd).request_header.empty())
+                {
                     FdClients.at(it->fd).mapping_request_header();
+                    // FdClients.at(it->fd).check_server_config();
+                }
+                if (FdClients.at(it->fd).request.empty())
+                    std::cout << "empty" << std::endl;
+                if (FdClients.at(it->fd).request_complete)
+                {
+                    kill_client(it);
+                    break;
+                }
                 // if (new_req.requestHeaderMap["location:"] == "/cgi-bin/ziggurat_magi.py" &&
                 // new_req.requestHeaderMap["method:"] == "POST"){
                 //     new_req.isCGI = true;
@@ -467,14 +493,14 @@ void HTTP_server::server_loop()
             //         }
             //     }
             // }
-            if (it->revents & (POLLHUP | POLLERR) || FdClients.at(it->fd).cutoffClient)
-            {
-                close(it->fd);
-                FdClients.erase(it->fd);
-                pollfds.erase(it);
-                std::cout << "Connection Timeout - Client " << it->fd << " disconnected" << std::endl;
-                break;
-            }
+            // if (it->revents & (POLLHUP | POLLERR) || FdClients.at(it->fd).cutoffClient)
+            // {
+            //     close(it->fd);
+            //     FdClients.erase(it->fd);
+            //     pollfds.erase(it);
+            //     std::cout << "Connection Timeout - Client " << it->fd << " disconnected" << std::endl;
+            //     break;
+            // }
         }
     }
     // for (std::set<int>::iterator it_idx = activeClientIdx.begin(); it_idx != activeClientIdx.end(); it_idx++)

@@ -1,7 +1,17 @@
 #include "../includes/Client.hpp"
 
-Client::Client(int server_idx) : server_index(server_idx), initialResponseSent(false), file_fd(-1),
-content_length(0), cutoffClient(false){}
+Client::Client(int server_idx, ServerConfig conf) : server_index(server_idx), config(conf), initialResponseSent(false), file_fd(-1),
+content_length(0), cutoffClient(false), color_index(1) {}
+
+void    Client::create_response()
+{
+	response.CreateResponse(config);
+}
+
+void    Client::check_request()
+{
+	
+}
 
 void    Client::mapping_request_header()
 {
@@ -9,13 +19,13 @@ void    Client::mapping_request_header()
     // Get lines of Header
     int n;
 
-	std::size_t headerEnd = full_request.find("\r\n\r\n");
+	std::size_t headerEnd = request.find("\r\n\r\n");
     if (headerEnd == std::string::npos)
 		perror("no correct header format");
         // Handle error: invalid HTTP request without a 
 
-	std::string header = full_request.substr(0, headerEnd);
-	full_request = full_request.substr(headerEnd + 4);
+	std::string header = request.substr(0, headerEnd);
+	request = request.substr(headerEnd + 4);
 
 	request_size -= headerEnd + 4;
 
@@ -123,7 +133,10 @@ void	Client::set_request(char *chunk, size_t buffer_length)
 {
 	request_size += buffer_length;
     for (size_t size = 0; size < buffer_length; size++)
-        full_request.push_back(chunk[size]);
+        request.push_back(chunk[size]);
+	if (request_size < PACKAGE_SIZE)
+		request_complete = true;
+	std::cout << request << std::endl;
 }
 
 

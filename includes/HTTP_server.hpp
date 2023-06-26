@@ -60,6 +60,7 @@ public:
     void deleteContent(std::vector<Request>::iterator req);
     bool CheckForClientTimeout(int i);
     std::set<int> activeClientIdx;
+    void kill_client(std::vector<struct pollfd>::iterator it);
     std::string read_file(const std::string &filename);
     void place_in_file(std::string line_to_file);
     std::string toHex(int value);
