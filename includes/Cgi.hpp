@@ -20,7 +20,7 @@
 #include <errno.h>
 #include <stdio.h>
 #include "Colors.hpp"
-#include "Request.hpp"
+#include "Response.hpp"
 #include <string.h>
 #include <map>
 #include <vector>
@@ -35,13 +35,13 @@ public:
 	~Cgi();
 
 	std::string get_file_name();
-	void run(std::vector<Request>::iterator it_req);
+	void run(std::vector<Response>::iterator it_req);
 	void print_request(std::map<std::string, std::string> my_map);
 	bool is_python3_installed();
 	bool is_python_file(const std::string &str);
-	bool is_query_string(std::vector<Request>::iterator it_req);
+	bool is_query_string(std::vector<Response>::iterator it_req);
 	void print_enviromentals();
-	std::string create_request_body_file(std::vector<Request>::iterator it_req);
+	std::string create_request_body_file(std::vector<Response>::iterator it_req);
 	void smart_sleep(long set_miliseconds);
 
 	class CgiException : public std::exception

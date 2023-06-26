@@ -8,7 +8,7 @@
 #include <map>
 #include <time.h>
 
-#include "Request.hpp"
+#include "Response.hpp"
 #include "Cgi.hpp"
 #include "ServerConfig.hpp"
 
@@ -28,15 +28,26 @@ class Client
         void    check_server_config(ServerConfig config);
         void    check_request();
         void    create_response();
+        void	assign_location();
+        void	set_error(std::string code);
+        bool	check_method();
+        bool	check_existance();
+        void	prepare_get();
+        void	prepare_post();
+        void	prepare_delete();
+        bool	is_directory();
+        void    close_file_fd();
 
 
+		static int		nextId;
+		int		id;
         int color_index;
 
-        bool initialResponseSent;    // Flag indicating if initial response headers have been sent
-        int file_fd;                 // File descriptor for the requested file
+        bool header_sent;    // Flag indicating if initial response headers have been sent
         off_t content_length;        // Content length of the requested file
         int                             server_index;
         int                             client_fd;
+        int                             file_fd;
         void                            set_cgi_filename(Cgi &cgi);
 
         ServerConfig                        config;
@@ -44,8 +55,17 @@ class Client
         std::map<std::string, std::string>  request_header;
         size_t                              request_size;
         std::string                         request;
-        Request                             response;
-        bool                                cutoffClient;
+        Response                            response;
+        bool                                is_error;
+        std::string                         method;
+        std::string                         path_on_server;
+        std::string                         path_on_client;
+        bool                                autoindex;
+        bool                        		isCGI;
+		bool                        		isUpload;
+		bool                        		isDelete;
+        bool                                response_sent;
+        bool                                send_last_chunk;
         // struct sockaddr_in                  ip_address;
     private:
         std::string _cgi_filename;

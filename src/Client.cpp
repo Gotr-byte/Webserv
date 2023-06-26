@@ -1,7 +1,22 @@
 #include "../includes/Client.hpp"
 
-Client::Client(int server_idx, ServerConfig conf) : server_index(server_idx), config(conf), initialResponseSent(false), file_fd(-1),
-content_length(0), cutoffClient(false), color_index(1) {}
+int Client::nextId = 0;
+
+Client::Client(int server_idx, ServerConfig conf) : id(nextId++), color_index(id) , server_index(server_idx), config(conf), header_sent(false), file_fd(-1),
+content_length(0), is_error(false)
+{
+	isCGI = false;
+	isDelete = false;
+	isUpload = false;
+	response_sent = false;
+	send_last_chunk = false;
+}
+
+void    Client::close_file_fd()
+{
+	if (file_fd != -1)
+		close(file_fd);
+}
 
 void    Client::create_response()
 {
@@ -10,7 +25,156 @@ void    Client::create_response()
 
 void    Client::check_request()
 {
-	
+	this->assign_location();
+	if (this->check_method() && check_existance())
+	{
+		response.server_name = config.getConfProps("server_name:");
+		if (method == "GET")
+		{
+			prepare_get();
+		}
+		else if (method == "POST")
+			prepare_post();
+		else if (method == "DELETE")
+			prepare_delete();
+	}
+}
+
+void	Client::prepare_delete()
+{
+	if (is_directory()) //Operation is forbidden is client wants to delete a folder
+	{
+		set_error("403");
+		return;
+	}
+	else if (access(path_on_server.c_str(), W_OK) == -1)
+	{
+		set_error("403");
+		return;
+	}
+	isDelete = true;
+}
+
+void	Client::prepare_post()
+{
+	if (std::atol(config.getConfProps("limit_body_size:").c_str()) < std::atol(request_header["Content-Length:"].c_str()))
+		set_error("413");
+	else if (path_on_server.find(".py") != std::string::npos)
+	{
+		if (access(path_on_server.c_str(), X_OK) == -1)
+		{
+			set_error("403");
+			return;
+		}
+		this->isCGI = true;
+	}
+	else if (request_header["Content-Type:"] == "multipart/form-data")
+	{
+		if (access(path_on_server.c_str(), W_OK) == -1)
+		{
+			set_error("403");
+			return;
+		}
+		this->isUpload = true;
+	}
+	else
+		set_error("403");
+}
+
+void	Client::prepare_get()
+{
+	if (path_on_server.find(".py") != std::string::npos)
+	{
+		if (access(path_on_server.c_str(), X_OK))
+		{
+			set_error("403");
+			return ;
+		}
+		this->isCGI = true;
+	}
+	if (!is_directory())
+	{
+		response.SetResponseContentType(path_on_server);
+		response.ObtainFileLength(path_on_server);
+	}
+	else if (is_directory() && autoindex)
+		response.CreateAutoindex(path_on_server);
+	else
+		set_error("403");
+}
+
+bool	Client::is_directory()
+{
+	DIR *dir = opendir(path_on_server.c_str());
+	if (!dir)
+	{
+		return false;
+	}
+	closedir(dir);
+	return true;
+}
+
+bool	Client::check_method()
+{
+	if (config.getLocation(path_on_client, "allowed_methods:").find(request_header["method:"]) \
+		!= std::string::npos)
+		{
+			this->method = request_header["method:"];
+			return true;
+		}
+	set_error("405");
+	return false;
+}
+
+bool	Client::check_existance()
+{
+	if (access(path_on_server.c_str(), F_OK) == -1)
+	{
+		set_error("404");
+		return false;
+	}
+	if (access(path_on_server.c_str(), R_OK) == -1)
+	{
+		set_error("403");
+		return false;
+	}
+	return true;
+}
+
+void	Client::assign_location()
+{
+	for (std::map<std::string, std::map<std::string, std::string> >::iterator \
+		it = config.locations.begin(); it != config.locations.end(); it++)
+	{
+		// std::cout << it->first << std::endl; 
+		if (int pos = request_header["location:"].find(it->first) != std::string::npos)
+		{
+			this->path_on_client = it->first;
+			this->path_on_server = it->second["root:"];
+			if (request_header["location:"] == it->first)
+				this->path_on_server += it->second["index:"];
+			else
+				this->path_on_server += request_header["location:"].substr(1);
+			if (it->second["autoindex:"] == "on")
+				autoindex = true;
+		}
+	}
+}
+
+void	Client::set_error(std::string status)
+{
+	response.error_path = config.getConfProps("error_page:") + status + ".html";
+	this->is_error = true;
+	if (status == "403")
+		response.SetupErrorPage("403", "Forbidden");
+	else if (status == "404")
+		response.SetupErrorPage("404", "Not Found");
+	else if (status == "405")
+		response.SetupErrorPage("405", "Method Not Allowed");
+	else if (status == "413")
+		response.SetupErrorPage("413", "Payload Too Large");
+	else if (status == "500")
+		response.SetupErrorPage("500", "Internal Server Error");
 }
 
 void    Client::mapping_request_header()
@@ -131,6 +295,7 @@ void Client::removeWhitespaces(std::string &string)
 
 void	Client::set_request(char *chunk, size_t buffer_length)
 {
+	std::cout << buffer_length << std::endl;
 	request_size += buffer_length;
     for (size_t size = 0; size < buffer_length; size++)
         request.push_back(chunk[size]);
@@ -140,6 +305,6 @@ void	Client::set_request(char *chunk, size_t buffer_length)
 }
 
 
-void Client::set_cgi_filename(Cgi &cgi){
-	_cgi_filename = cgi.get_file_name();
-}
+// void Client::set_cgi_filename(Cgi &cgi){
+// 	_cgi_filename = cgi.get_file_name();
+// }

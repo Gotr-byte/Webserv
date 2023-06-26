@@ -277,120 +277,140 @@ void HTTP_server::generate_cgi_querry(std::map<std::string, std::string>&new_req
 //     return new_request;
 // }
 
-void HTTP_server::ProcessUpload(std::vector<Request>::iterator req)
-{
-    size_t headerlength = 0;
+// void HTTP_server::ProcessUpload(std::vector<Request>::iterator req)
+// {
+//     size_t headerlength = 0;
 
-    char buf[BUF_SIZE];
-    memset(buf, 0, headerlength);
+//     char buf[BUF_SIZE];
+//     memset(buf, 0, headerlength);
 
-    // Get lines of Header
-    int n;
-    n = recv(req->client_fd, buf, headerlength, MSG_DONTWAIT);
-    if (n < 0)
-    {
-        perror("Error receiving data from in upload");
-        exit(EXIT_FAILURE);
-    }
+//     // Get lines of Header
+//     int n;
+//     n = recv(req->client_fd, buf, headerlength, MSG_DONTWAIT);
+//     if (n < 0)
+//     {
+//         perror("Error receiving data from in upload");
+//         exit(EXIT_FAILURE);
+//     }
     
-    std::string fileheader(buf);
+//     std::string fileheader(buf);
 
-    std::string filename = fileheader.substr(fileheader.find("filename=") + 10);
-    filename = filename.substr(0, filename.find("\""));
-    req->path += filename;
-    std::ofstream createFile(req->path, std::ios::binary | std::ios::trunc);
+//     std::string filename = fileheader.substr(fileheader.find("filename=") + 10);
+//     filename = filename.substr(0, filename.find("\""));
+//     req->path += filename;
+//     std::ofstream createFile(req->path, std::ios::binary | std::ios::trunc);
 
-    if (!createFile.is_open())
-    {
-        perror("error creating upload file");
-        exit(1);
-    }
+//     if (!createFile.is_open())
+//     {
+//         perror("error creating upload file");
+//         exit(1);
+//     }
 
-    size_t bodyLength = std::atol(req->requestHeader["Content-Length:"].c_str()) - headerlength;
-    size_t boundaryLength = req->requestHeader["boundary"].size() + 7;
-    size_t readbytes = 0;
-    size_t remainingBytes = bodyLength - boundaryLength;
+//     size_t bodyLength = std::atol(req->requestHeader["Content-Length:"].c_str()) - headerlength;
+//     size_t boundaryLength = req->requestHeader["boundary"].size() + 7;
+//     size_t readbytes = 0;
+//     size_t remainingBytes = bodyLength - boundaryLength;
 
-    while (remainingBytes > boundaryLength)
-    {
-        size_t chunkBytes = std::min((size_t) BUF_SIZE, remainingBytes);
+//     while (remainingBytes > boundaryLength)
+//     {
+//         size_t chunkBytes = std::min((size_t) BUF_SIZE, remainingBytes);
 
-        memset(buf, 0, chunkBytes);
-        readbytes = recv(req->client_fd, buf, chunkBytes, MSG_DONTWAIT);
-        if (readbytes < 0)
-        {
-            perror("Error receiving data from client in Upload");
-            exit(EXIT_FAILURE);
-        }
+//         memset(buf, 0, chunkBytes);
+//         readbytes = recv(req->client_fd, buf, chunkBytes, MSG_DONTWAIT);
+//         if (readbytes < 0)
+//         {
+//             perror("Error receiving data from client in Upload");
+//             exit(EXIT_FAILURE);
+//         }
 
-        createFile.write(buf, readbytes);
-        remainingBytes -= readbytes;
-    }
-    createFile.close();
+//         createFile.write(buf, readbytes);
+//         remainingBytes -= readbytes;
+//     }
+//     createFile.close();
 
-    //Read rest of the request body and dicscard it
-    memset(buf, 0, BUF_SIZE);
-    recv(req->client_fd, buf, BUF_SIZE, MSG_DONTWAIT);
-    req->GenerateUploadResponse();
-}
+//     //Read rest of the request body and dicscard it
+//     memset(buf, 0, BUF_SIZE);
+//     recv(req->client_fd, buf, BUF_SIZE, MSG_DONTWAIT);
+//     req->GenerateUploadResponse();
+// }
 
-void HTTP_server::send_response(std::vector<Request>::iterator req)
+void HTTP_server::send_response(int client_fd)
 {
-    if (!req->initialResponseSent)
+    if (!FdClients.at(client_fd).header_sent)
     {
-        if (req->responsebody.empty())
+        if (FdClients.at(client_fd).response.body.empty())
         {
-            int file_fd = open(req->path.c_str(), O_RDONLY);
+            int file_fd = open(FdClients.at(client_fd).path_on_server.c_str(), O_RDONLY);
             if (file_fd < 0)
             {
                 perror("Error opening file");
                 throw(InvalidFileDownloadException());
             }
-            req->file_fd = file_fd;
+            FdClients.at(client_fd).file_fd = file_fd;
         }
-
-        if (send(req->client_fd, req->ResponseHeader.c_str(), req->ResponseHeader.size(), 0) < 0)
+        std::cout << FdClients.at(client_fd).response.header.c_str() << std::endl;
+        if (send(client_fd, FdClients.at(client_fd).response.header.c_str(), FdClients.at(client_fd).response.header.size(), 0) < 0)
         {
+            FdClients.at(client_fd).close_file_fd();
             perror("Error sending initial response headers");
             exit(EXIT_FAILURE);
         }
-
-        if (!req->responsebody.empty())
+        FdClients.at(client_fd).header_sent = true;
+        return;
+    }
+    else if (FdClients.at(client_fd).header_sent)
+    {
+        if (!FdClients.at(client_fd).response.body.empty())
         {
-            if (send(req->client_fd, req->responsebody.c_str(), req->responsebody.size(), 0) == -1)
-                perror("Autoindex send error");
-            req->requestdone = true;
+        std::cout << "TEST2" << std::endl;
+            if (send(client_fd, FdClients.at(client_fd).response.body.c_str(), FdClients.at(client_fd).response.body.size(), 0) < 0)
+                perror("Error sending custom body");
+            FdClients.at(client_fd).response_sent = true;
             return;
         }
-        req->initialResponseSent = true;
-    }
-    const int chunkSize = BUF_SIZE;
-    char buffer[chunkSize];
-    ssize_t bytesRead;
-    bytesRead = read(req->file_fd, buffer, chunkSize);
-    if (bytesRead > 0)
-    {
-        std::stringstream chunkSizeHex;
-        chunkSizeHex << std::hex << bytesRead << "\r\n";
-        std::string chunkSizeHexStr = chunkSizeHex.str();
-        std::string chunkData(buffer, bytesRead);
-        std::string chunk = chunkSizeHexStr + chunkData + "\r\n";
-        ssize_t bytesSent = send(req->client_fd, chunk.c_str(), chunk.length(), 0);
-        if (bytesSent < 0)
+        else
         {
-            perror("Error sending chunk");
-            exit(EXIT_FAILURE);
+            std::cout << "TEST3" << std::endl;
+            char buffer[PACKAGE_SIZE];
+            ssize_t bytesRead;
+            bytesRead = read(FdClients.at(client_fd).file_fd, buffer, PACKAGE_SIZE);
+            if (bytesRead > 0)
+            {
+                std::stringstream chunkSizeHex;
+                chunkSizeHex << std::hex << bytesRead << "\r\n";
+                std::string chunkSizeHexStr = chunkSizeHex.str();
+                std::string chunkData(buffer, bytesRead);
+                std::string chunk = chunkSizeHexStr + chunkData + "\r\n";
+                ssize_t bytesSent = send(client_fd, chunk.c_str(), chunk.length(), 0);
+                if (bytesSent < 0)
+                {
+                    FdClients.at(client_fd).close_file_fd();
+                    perror("Error sending chunk");
+                    exit(EXIT_FAILURE);
+                }
+                std::cout << chunk.c_str() << std::endl;
+            }
+            else
+            {
+                std::cout << "TEST 4" << std::endl;
+                FdClients.at(client_fd).close_file_fd();
+                 std::cout << FdClients.at(client_fd).send_last_chunk << std::endl;
+                FdClients.at(client_fd).send_last_chunk = true;
+                 std::cout << FdClients.at(client_fd).send_last_chunk << std::endl;
+            }
+            return;
         }
     }
-    else
+    else if (FdClients.at(client_fd).send_last_chunk)
     {
         std::string lastChunk = "0\r\n\r\n";
-        if (send(req->client_fd, lastChunk.c_str(), lastChunk.length(), 0) < 0)
+        if (send(client_fd, lastChunk.c_str(), lastChunk.length(), 0) < 0)
         {
             perror("Error sending last chunk");
             exit(EXIT_FAILURE);
         }
-        req->requestdone = true;
+        FdClients.at(client_fd).response_sent = true;
+        std::cout << "TEST5" << std::endl;
     }
 }
 
@@ -422,9 +442,12 @@ void HTTP_server::server_loop()
             {
                 char request_chunk[PACKAGE_SIZE + 1];
                 memset(request_chunk, 0, PACKAGE_SIZE);
-                size_t recieved_size = recv(it->fd, request_chunk, PACKAGE_SIZE, 0);
+                ssize_t recieved_size = recv(it->fd, request_chunk, PACKAGE_SIZE, 0);
                 if (recieved_size < 0)
-                    perror("Error occured");
+                {
+                    kill_client(it);
+                    break;
+                }
                 else if (recieved_size == 0)
                 {
                     kill_client(it);
@@ -436,24 +459,19 @@ void HTTP_server::server_loop()
                 if (FdClients.at(it->fd).request_header.empty())
                 {
                     FdClients.at(it->fd).mapping_request_header();
-                    // FdClients.at(it->fd).check_server_config();
+                    FdClients.at(it->fd).check_request();
                 }
-                if (FdClients.at(it->fd).request.empty())
-                    std::cout << "empty" << std::endl;
-                if (FdClients.at(it->fd).request_complete)
+                if (FdClients.at(it->fd).is_error)
+                    it->events = POLLOUT;
+                else if (FdClients.at(it->fd).request_complete && !FdClients.at(it->fd).autoindex)
                 {
-                    kill_client(it);
-                    break;
+                    if (FdClients.at(it->fd).method == "GET")
+                        FdClients.at(it->fd).response.BuildResponseHeader();
+                    std::cout << "perform delete, upload or cgi" << std::endl;
+                    // if (FdClients.at(it->fd).isUpload)
+                    //     ProcessUpload(FdClients.at(it->fd));
                 }
-                // if (new_req.requestHeaderMap["location:"] == "/cgi-bin/ziggurat_magi.py" &&
-                // new_req.requestHeaderMap["method:"] == "POST"){
-                //     new_req.isCGI = true;
-                // }
             }
-            //     if (FdClients[it->fd].cutoffClient)
-            //         it->events = POLLOUT;
-            //     else if (new_req.isUpload)
-            //         ProcessUpload(FdsClients[*it_idx].second.Requests.end() - 1);
             //     else if (new_req.isCGI)
             //     {
             //         std::cout << "*******************\n";
@@ -471,36 +489,23 @@ void HTTP_server::server_loop()
             //     else if (new_req.isDelete)
             //         deleteContent(FdsClients[*it_idx].second.Requests.end() - 1);
             // }
-            // if (fds[*it_idx].revents & POLLOUT)
-            // {
-            //     for (std::vector<Request>::iterator it_req = FdsClients[*it_idx].second.Requests.begin(); it_req != FdsClients[*it_idx].second.Requests.end(); it_req++)
-            //     {
-            //         try
-            //         {
-            //             send_response(it_req);
-            //         }
-            //         catch (const std::exception &e)
-            //         {
-            //             std::cerr << e.what();
-            //         }
-            //         if (it_req->requestdone)
-            //         {
-            //             if (it_req->cutoffClient)
-            //                 FdsClients[*it_idx].second.cutoffClient = true;
-            //             std::cout << "Response: " << it_req->id << " sent to client: " << *it_idx << std::endl;
-            //             FdsClients[*it_idx].second.Requests.erase(it_req);
-            //             break;
-            //         }
-            //     }
-            // }
-            // if (it->revents & (POLLHUP | POLLERR) || FdClients.at(it->fd).cutoffClient)
-            // {
-            //     close(it->fd);
-            //     FdClients.erase(it->fd);
-            //     pollfds.erase(it);
-            //     std::cout << "Connection Timeout - Client " << it->fd << " disconnected" << std::endl;
-            //     break;
-            // }
+            if (it->revents & POLLOUT)
+            {
+                try
+                {
+                    send_response(it->fd);
+                }
+                catch (const std::exception &e)
+                {
+                    std::cerr << e.what();
+                }
+                if (FdClients.at(it->fd).response_sent)
+                {
+                    std::cout << "Request: " << FdClients.at(it->fd).id << " sent to fd: " << it->fd << std::endl;
+                    kill_client(it);
+                    break;
+                }
+            }
         }
     }
     // for (std::set<int>::iterator it_idx = activeClientIdx.begin(); it_idx != activeClientIdx.end(); it_idx++)
@@ -510,16 +515,16 @@ void HTTP_server::server_loop()
     // }
 }
 
-void HTTP_server::deleteContent(std::vector<Request>::iterator req)
-{
-    int i = std::remove(req->path.c_str());
-    if (i != 0)
-    {
-        req->GenerateClientErrorResponse("409", "Conflict");
-        return;
-    }
-    req->GenerateDeleteResponse();
-}
+// void HTTP_server::deleteContent(std::vector<Response>::iterator req)
+// {
+//     int i = std::remove(req->path.c_str());
+//     if (i != 0)
+//     {
+//         req->GenerateClientErrorResponse("409", "Conflict");
+//         return;
+//     }
+//     req->GenerateDeleteResponse();
+// }
 
 // void HTTP_server::InitFdsClients()
 // {

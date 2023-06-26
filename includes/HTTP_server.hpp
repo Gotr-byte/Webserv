@@ -21,6 +21,7 @@
 #include <fcntl.h>
 #include <fstream>
 #include <string>
+#include <algorithm>
 #include <ctime>
 #include <stdio.h>
 #include <map>
@@ -34,7 +35,7 @@
 #include "ServerConfig.hpp"
 #include "Client.hpp"
 #include "Socket.hpp"
-#include "../includes/Request.hpp"
+#include "../includes/Response.hpp"
 #include "Colors.hpp"
 // #include <cstring.h>
 // #include <string.h>
@@ -55,9 +56,9 @@ public:
     int running();
     void create_listening_sock(int port);
     void create_pollfd_struct();
-    void ProcessUpload(std::vector<Request>::iterator req);
+    void ProcessUpload(std::vector<Response>::iterator req);
     void server_loop();
-    void deleteContent(std::vector<Request>::iterator req);
+    void deleteContent(std::vector<Response>::iterator req);
     bool CheckForClientTimeout(int i);
     std::set<int> activeClientIdx;
     void kill_client(std::vector<struct pollfd>::iterator it);
@@ -65,7 +66,7 @@ public:
     void place_in_file(std::string line_to_file);
     std::string toHex(int value);
     void removeWhitespaces(std::string &string);
-    void send_response(std::vector<Request>::iterator req);
+    void send_response(int client_fd);
     void print_request(std::map<std::string, std::string> my_map);
     void generate_cgi_querry(std::map<std::string, std::string> &new_request);
 
@@ -90,7 +91,7 @@ private:
     std::deque<int> pending_connections;
     // struct pollfd *fds;
     int timeout;
-    Request tmp;
+    Response tmp;
     std::vector<char *> HTTP_requests;
     socklen_t client_len;
     std::string http_response;
@@ -105,7 +106,7 @@ private:
     int sentBytes[20];
     std::vector<ServerConfig> ConfigVec;
     int listening_port_no;
-    void cgi_file_upload(std::vector<Request>::iterator req);
+    void cgi_file_upload(std::vector<Response>::iterator req);
     class				InvalidFileDownloadException : public std::exception
 		{
 			public:
