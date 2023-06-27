@@ -24,6 +24,7 @@ class Client
         
         
         int fd;                      // Client file descriptor
+        bool requestMapped;
         bool initialResponseSent;    // Flag indicating if initial response headers have been sent
         int file_fd;                 // File descriptor for the requested file
         off_t content_length;        // Content length of the requested file

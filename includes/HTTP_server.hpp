@@ -14,6 +14,7 @@
 #endif
 #if defined(__linux__)
 #include <unistd.h>
+#include "ConfigCheck.hpp"
 #endif
 
 #include <vector>

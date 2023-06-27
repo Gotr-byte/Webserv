@@ -283,8 +283,7 @@ void Cgi::run(std::vector<Request>::iterator it_req)
 		pid_t terminatedPid = waitpid(_cgi_pid, &status, 0);
 
 		if (terminatedPid == -1) {
-			perror("waitpid");
-			exit(1);
+			throw(CgiException());
 		}
 
 		if (timeoutOccurred) {

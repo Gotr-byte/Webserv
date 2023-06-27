@@ -9,6 +9,7 @@ lastInteractionTime(time_t(-1)), cutoffClient(false){
 void Client::ResetClient(){
 	fd = -1;
 	initialResponseSent = false;
+	requestMapped = false;
 	file_fd = -1;
 	content_length = 0;
 	socket = -1;

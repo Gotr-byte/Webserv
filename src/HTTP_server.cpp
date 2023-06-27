@@ -178,8 +178,11 @@ void HTTP_server::create_pollfd_struct(void){
 void HTTP_server::server_port_listening(int i){
     if (fds[i].revents & POLLIN){
         for (int j = listening_port_no; j < fd_size; j++){
+            int client_fd = accept(FdsClients[i].first, (struct sockaddr *)&client_addr, &client_len);
+
             if (fds[j].fd == -1){
                 client_len = sizeof(client_addr);
+
                 FdsClients[j].first = accept(FdsClients[i].first, (struct sockaddr *)&client_addr, &client_len);
                 activeClientIdx.insert(j);
                 if (FdsClients[j].first < 0){
@@ -288,6 +291,7 @@ std::map<std::string, std::string> HTTP_server::mapping_request_header(int i){
         }
         lines.pop_front();
     }
+    // 
     size_t v;
     if ((v = new_request["Content-Type:"].find("boundary=")) != std::string::npos){
         std::string key = new_request["Content-Type:"].substr(v, 8);
@@ -295,6 +299,7 @@ std::map<std::string, std::string> HTTP_server::mapping_request_header(int i){
         new_request[key] = value;
         new_request["Content-Type:"] = new_request["Content-Type:"].substr(0, new_request["Content-Type:"].find(";"));
     }
+    //A poll should occur here
     if (new_request["method:"] != "POST"){
         memset(buf, 0, BUF_SIZE);
         recv(FdsClients[i].first, buf, BUF_SIZE, MSG_DONTWAIT);
@@ -418,72 +423,175 @@ bool HTTP_server::CheckForClientTimeout(int i){
     return false;
 }
 
+
+std::string generateHttpResponse() {
+    // Get the current date and time
+    std::time_t now = std::time(nullptr);
+    std::string currentTime = std::asctime(std::localtime(&now));
+    
+    // Generate the HTTP response
+    std::stringstream response;
+    response << "HTTP/1.1 200 OK\r\n";
+    response << "Content-Type: text/html\r\n";
+    response << "Date: " << currentTime;
+    response << "Content-Length: 38\r\n";
+    response << "\r\n";
+    response << "<html><body>Hello, world!</body></html>\r\n";
+
+    return response.str();
+}
+
 void HTTP_server::server_loop(){
-    while (true){
-        server_conducts_poll();
-        for (int i = 0; i < listening_port_no; i++)
-            server_port_listening(i);
-        for (std::set<int>::iterator it_idx = activeClientIdx.begin(); it_idx != activeClientIdx.end(); it_idx++){
-            if (fds[*it_idx].revents & POLLIN){
-                Request new_req;
-                if (FdsClients[*it_idx].second.server_full)
-                    new_req.GenerateServerErrorResponse(503, ConfigVec[FdsClients[*it_idx].second.socket]);
-                else{
-                    new_req.requestHeader = mapping_request_header(*it_idx);
-                    new_req.CreateResponse(ConfigVec[FdsClients[*it_idx].second.socket]);
-                    FdsClients[*it_idx].second.lastInteractionTime = std::time(nullptr);
+    int clientSocket;
+    struct sockaddr_in clientAddress{};
+    socklen_t clientAddressLength;
+    std::vector<Client> clients(listening_port_no);
+    std::vector<pollfd> pollFds(listening_port_no);
+    pollFds[0].fd = FdsClients[0].first;
+    pollFds[0].events = POLLIN;
+    int buffer_size = 10000;
+      while (true) {
+        // Call poll and wait for events
+        if (poll(&pollFds[0], pollFds.size(), -1) == -1) {
+            std::cerr << "Error in poll" << std::endl;
+            exit(1);
+        }
+
+        // Check for events on each descriptor
+        for (size_t i = 0; i < pollFds.size(); ++i) {
+            // Handle new client connections
+            if (i == 0 && pollFds[i].revents & POLLIN) {
+                // Accept the new connection
+                clientAddressLength = sizeof(clientAddress);
+                if ((clientSocket = accept(FdsClients[i].first, (struct sockaddr *) &clientAddress, &clientAddressLength)) == -1) {
+                    std::cerr << "Failed to accept connection" << std::endl;
+                    continue;
                 }
-                new_req.client_fd = FdsClients[*it_idx].first;
-                FdsClients[*it_idx].second.Requests.push_back(new_req);
-                if (new_req.cutoffClient)
-                    fds[*it_idx].events = POLLOUT;
-                else if (new_req.isUpload)
-                    ProcessUpload(FdsClients[*it_idx].second.Requests.end() - 1);
-                else if (new_req.isCGI){
-                    std::cout << "*******************\n";
-                    std::cout << "* Welcome to CGI! *\n";
-                    std::cout << "*******************\n";
-                    Cgi cgi("generic cgi", new_req.id);
-                    try{
-                        cgi.run(FdsClients[*it_idx].second.Requests.end() - 1);
-                    }
-                    catch (const std::exception &e){
-                        std::cerr << e.what();
-                    }
-                    (void)fds;
-                }
-                else if (new_req.isDelete)
-                    deleteContent(FdsClients[*it_idx].second.Requests.end() - 1);
+
+                //Create client struct
+                struct pollfd clientPoll;
+                clientPoll.fd = clientSocket;
+                clientPoll.events = POLLIN;
+
+                //Create client 
+
+                Client client;
+
+                //clients and pollFds should be treated in parrarell
+                clients.push_back(client);
+                pollFds.push_back(clientPoll);
             }
-            if (fds[*it_idx].revents & POLLOUT){
-                for (std::vector<Request>::iterator it_req = FdsClients[*it_idx].second.Requests.begin(); it_req != FdsClients[*it_idx].second.Requests.end(); it_req++){
-                    try{
-                        send_response(it_req);
-                        FdsClients[*it_idx].second.lastInteractionTime = std::time(nullptr);
-                    }
-                    catch (const std::exception &e){
-                        std::cerr << e.what();
-                    }
-                    if (it_req->requestdone){
-                        if (it_req->cutoffClient)
-                            FdsClients[*it_idx].second.cutoffClient = true;
-                        std::cout << "Response: " << it_req->id << " sent to client: " << *it_idx << std::endl;
-                        FdsClients[*it_idx].second.Requests.erase(it_req);
-                        break;
+            // Handle data from existing clients
+            else if (pollFds[i].revents & POLLIN) {
+                char buffer[buffer_size];
+                memset(buffer, 0, sizeof(buffer));
+
+                // Receive data from the client
+                ssize_t bytesRead = recv(pollFds[i].fd, buffer, sizeof(buffer), 0);
+                if (bytesRead == 0) {
+                    // Connection closed or error occurred, close the client socket
+                    
+                    close(pollFds[i].fd);
+                    pollFds[i] = pollFds.back();
+                    pollFds.pop_back();
+                    clients[i] = clients.back();
+                    clients.pop_back();
+                } 
+                else if(bytesRead < 0){
+                    //error occured
+                    std::cerr << "Error with recieving data to server\n";
+                    exit(1);
+                }
+                else {
+                    // Process the received data
+                    std::cout << "Received data from client: " << buffer << std::endl;
+
+                    // Check if it's a GET request
+                    if (strncmp(buffer, "GET", 3) == 0) {
+                        // Generate the HTTP response
+                        std::string httpResponse = generateHttpResponse();
+
+                        // Send the response back to the client
+                        send(pollFds[i].fd, httpResponse.c_str(), httpResponse.length(), 0);
+                        // clients[i].setResponseSentTrue();
+                        close(pollFds[i].fd);
+                        pollFds[i] = pollFds.back();
+                        pollFds.pop_back();
+                        clients[i] = clients.back();
+                        clients.pop_back();
                     }
                 }
-            }
-            if (fds[*it_idx].revents & (POLLHUP | POLLERR) || FdsClients[*it_idx].second.cutoffClient || (FdsClients[*it_idx].second.Requests.empty() && (CheckForClientTimeout(*it_idx)))){
-                close(fds[*it_idx].fd);
-                fds[*it_idx].events = POLLIN | POLLOUT;
-                fds[*it_idx].fd = -1;
-                FdsClients[*it_idx].second.ResetClient();
-                std::cout << "Connection Timeout - Client " << *it_idx << " disconnected" << std::endl;
-                activeClientIdx.erase(it_idx);
-                break;
             }
         }
     }
+    // while (true){
+    //     server_conducts_poll();
+    //     for (int i = 0; i < listening_port_no; i++)
+    //         server_port_listening(i);
+    //     for (std::set<int>::iterator it_idx = activeClientIdx.begin(); it_idx != activeClientIdx.end(); it_idx++){
+    //         if (fds[*it_idx].revents & POLLIN){
+    //             Request new_req;
+    //             if (FdsClients[*it_idx].second.server_full)
+    //                 new_req.GenerateServerErrorResponse(503, ConfigVec[FdsClients[*it_idx].second.socket]);
+    //             else{
+    //                 std::cout << "Is the request mapped set?" << FdsClients[*it_idx].second.requestMapped << "\n";
+    //                 if(!FdsClients[*it_idx].second.requestMapped)
+    //                     new_req.requestHeader = mapping_request_header(*it_idx);
+    //                  std::cout << "Has the request been mapped?" << FdsClients[*it_idx].second.requestMapped << "\n";
+    //                 new_req.CreateResponse(ConfigVec[FdsClients[*it_idx].second.socket]);
+    //                 FdsClients[*it_idx].second.lastInteractionTime = std::time(nullptr);
+    //             }
+    //             new_req.client_fd = FdsClients[*it_idx].first;
+    //             FdsClients[*it_idx].second.Requests.push_back(new_req);
+    //             if (new_req.cutoffClient)
+    //                 fds[*it_idx].events = POLLOUT;
+    //             else if (new_req.isUpload)
+    //                 ProcessUpload(FdsClients[*it_idx].second.Requests.end() - 1);
+    //             else if (new_req.isCGI){
+    //                 std::cout << "*******************\n";
+    //                 std::cout << "* Welcome to CGI! *\n";
+    //                 std::cout << "*******************\n";
+    //                 Cgi cgi("generic cgi", new_req.id);
+    //                 try{
+    //                     cgi.run(FdsClients[*it_idx].second.Requests.end() - 1);
+    //                 }
+    //                 catch (const std::exception &e){
+    //                     std::cerr << e.what();
+    //                 }
+    //                 (void)fds;
+    //             }
+    //             else if (new_req.isDelete)
+    //                 deleteContent(FdsClients[*it_idx].second.Requests.end() - 1);
+    //         }
+    //         if (fds[*it_idx].revents & POLLOUT){
+    //             for (std::vector<Request>::iterator it_req = FdsClients[*it_idx].second.Requests.begin(); it_req != FdsClients[*it_idx].second.Requests.end(); it_req++){
+    //                 try{
+    //                     send_response(it_req);
+    //                     FdsClients[*it_idx].second.lastInteractionTime = std::time(nullptr);
+    //                 }
+    //                 catch (const std::exception &e){
+    //                     std::cerr << e.what();
+    //                 }
+    //                 if (it_req->requestdone){
+    //                     if (it_req->cutoffClient)
+    //                         FdsClients[*it_idx].second.cutoffClient = true;
+    //                     std::cout << "Response: " << it_req->id << " sent to client: " << *it_idx << std::endl;
+    //                     FdsClients[*it_idx].second.Requests.erase(it_req);
+    //                     break;
+    //                 }
+    //             }
+    //         }
+    //         if (fds[*it_idx].revents & (POLLHUP | POLLERR) || FdsClients[*it_idx].second.cutoffClient || (FdsClients[*it_idx].second.Requests.empty() && (CheckForClientTimeout(*it_idx)))){
+    //             close(fds[*it_idx].fd);
+    //             fds[*it_idx].events = POLLIN | POLLOUT;
+    //             fds[*it_idx].fd = -1;
+    //             FdsClients[*it_idx].second.ResetClient();
+    //             std::cout << "Connection Timeout - Client " << *it_idx << " disconnected" << std::endl;
+    //             activeClientIdx.erase(it_idx);
+    //             break;
+    //         }
+    //     }
+    // }
     for (std::set<int>::iterator it_idx = activeClientIdx.begin(); it_idx != activeClientIdx.end(); it_idx++){
         close(FdsClients[*it_idx].first);
         close(fds[*it_idx].fd);
