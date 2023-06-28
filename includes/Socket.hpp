@@ -17,8 +17,6 @@
 #include <stdio.h>
 #include <string>
 
-#define MAX_CLIENTS 3
-
 class Socket{
     public:
         Socket();

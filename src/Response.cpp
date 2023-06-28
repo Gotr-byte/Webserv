@@ -3,6 +3,9 @@
 Response::Response()
 {
 	protocoll = "HTTP/1.1";
+	contenttype = "application/octet-stream";
+	statuscode = "200 OK";
+	is_chunked = false;
 }
 
 void	Response::CreateResponse(ServerConfig	conf)
@@ -10,7 +13,6 @@ void	Response::CreateResponse(ServerConfig	conf)
 	contenttype = "application/octet-stream";
 	statuscode = "200 OK";
 	protocoll = "HTTP/1.1";
-	additionalinfo = "Transfer-Encoding: chunked";
 }
 
 void	Response::GenerateClientErrorResponse(std::string status, std::string issue)
@@ -41,7 +43,6 @@ void	Response::GenerateUploadResponse()
 	body = "File was uploaded succesfully\r\n\r\n";
 	contentlength = body.size();
 	additionalinfo.clear();
-	setDate();
 	BuildResponseHeader();
 }
 
@@ -62,7 +63,7 @@ void Response::GenerateDeleteResponse()
 	statuscode = "204 No Content";
 	contenttype = "text/plain";
 	additionalinfo.clear();
-	body = "The File was successfully deleted.";
+	body = "The File was successfully deleted.\r\n\r\n";
 	contentlength = body.size();
 	setDate();
 	BuildResponseHeader();
@@ -73,6 +74,7 @@ void	Response::SetupErrorPage(std::string status, std::string issue)
 	statuscode = status + " " + issue;
 	contenttype = "text/html";
 	this->ObtainFileLength(error_path);
+	BuildResponseHeader();
 	// std::cout << path << std::endl;
 	// std::cout << statuscode << std::endl;
 	// std::cout << contenttype << std::endl;
@@ -143,6 +145,12 @@ void	Response::BuildResponseHeader()
 {
 	std::ostringstream tmp;
 
+	if (BUF_SIZE < contentlength)
+	{
+		additionalinfo = "Transfer-Encoding: chunked";
+		is_chunked = true;
+	}
+
 	this->setDate();
 	tmp << protocoll << " " << statuscode << "\r\n";
 	tmp << "Server: " << server_name << "\r\n";
@@ -154,7 +162,7 @@ void	Response::BuildResponseHeader()
 	tmp << "\r\n";
 
 	header = tmp.str();
-	std::cout << header << std::endl;
+	// std::cout << header << std::endl;
 }
 
 void	Response::CreateAutoindex(std::string path)
@@ -171,7 +179,6 @@ void	Response::CreateAutoindex(std::string path)
     autoidx << "<ul>\n";
 
 	DIR* dir = opendir(path.c_str());
-	// std::cout << path << std::endl;
 
 	struct dirent* entry;
     while ((entry = readdir(dir)) != NULL)

@@ -34,7 +34,7 @@ Socket::Socket(int port, std::string ip){
     }
 
     // Listen for incoming connections on the server socket
-    if (listen(server_fd, MAX_CLIENTS) < 0)
+    if (listen(server_fd, 42) < 0)
     {
         perror("Error listening on server socket");
         exit(EXIT_FAILURE);

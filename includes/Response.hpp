@@ -8,6 +8,8 @@
 # include <cstdio>
 # include <unistd.h>
 
+#define BUF_SIZE 1024
+
 class Response
 {
 	public:
@@ -30,8 +32,6 @@ class Response
 		void	generate_cgi_response(std::string path_to_HTML);
 		// void	ObtainCgiFileLength()
 
-		static int		nextId;
-		int		id;
 		off_t		contentlength;
 		std::string	header;
 		std::string	body;
@@ -39,6 +39,7 @@ class Response
 		std::string	statuscode;
 		std::string	error_path;
 		std::string	server_name;
+		bool		is_chunked;
 
 	private:
 

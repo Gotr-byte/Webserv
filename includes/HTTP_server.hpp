@@ -40,8 +40,6 @@
 // #include <cstring.h>
 // #include <string.h>
 
-
-#define MAX_CLIENTS 3
 #define LISTENING_SOCKET
 
 class HTTP_server
@@ -56,9 +54,9 @@ public:
     int running();
     void create_listening_sock(int port);
     void create_pollfd_struct();
-    void ProcessUpload(std::vector<Response>::iterator req);
+    void file_upload(int client_fd);
     void server_loop();
-    void deleteContent(std::vector<Response>::iterator req);
+    void delete_content(int client_fd);
     bool CheckForClientTimeout(int i);
     std::set<int> activeClientIdx;
     void kill_client(std::vector<struct pollfd>::iterator it);

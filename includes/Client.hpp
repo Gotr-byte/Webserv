@@ -60,12 +60,14 @@ class Client
         std::string                         method;
         std::string                         path_on_server;
         std::string                         path_on_client;
+        bool                                kill_client;
         bool                                autoindex;
         bool                        		isCGI;
 		bool                        		isUpload;
 		bool                        		isDelete;
         bool                                response_sent;
         bool                                send_last_chunk;
+        bool                                request_processed;
         // struct sockaddr_in                  ip_address;
     private:
         std::string _cgi_filename;

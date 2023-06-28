@@ -2,20 +2,29 @@
 
 int Client::nextId = 0;
 
-Client::Client(int server_idx, ServerConfig conf) : id(nextId++), color_index(id) , server_index(server_idx), config(conf), header_sent(false), file_fd(-1),
+Client::Client(int server_idx, ServerConfig conf) : id(nextId++), color_index(id % 4) , server_index(server_idx), config(conf), header_sent(false), file_fd(-1),
 content_length(0), is_error(false)
 {
+	kill_client = false;
 	isCGI = false;
 	isDelete = false;
 	isUpload = false;
 	response_sent = false;
 	send_last_chunk = false;
+	request_processed = false;
+	request_size = 0;
 }
 
 void    Client::close_file_fd()
 {
 	if (file_fd != -1)
-		close(file_fd);
+	{
+		if ((close(file_fd)) < 0)
+			perror("Error closing File Fd");
+		else
+			std::cout << "CLOSED FILE FD: " << file_fd << std::endl;
+		file_fd = -1;
+	}
 }
 
 void    Client::create_response()
@@ -58,7 +67,9 @@ void	Client::prepare_delete()
 void	Client::prepare_post()
 {
 	if (std::atol(config.getConfProps("limit_body_size:").c_str()) < std::atol(request_header["Content-Length:"].c_str()))
+	{
 		set_error("413");
+	}	
 	else if (path_on_server.find(".py") != std::string::npos)
 	{
 		if (access(path_on_server.c_str(), X_OK) == -1)
@@ -163,7 +174,9 @@ void	Client::assign_location()
 
 void	Client::set_error(std::string status)
 {
-	response.error_path = config.getConfProps("error_page:") + status + ".html";
+	path_on_server =  config.getConfProps("error_page:") + status + ".html";
+	response.error_path = path_on_server;
+	
 	this->is_error = true;
 	if (status == "403")
 		response.SetupErrorPage("403", "Forbidden");
@@ -171,6 +184,8 @@ void	Client::set_error(std::string status)
 		response.SetupErrorPage("404", "Not Found");
 	else if (status == "405")
 		response.SetupErrorPage("405", "Method Not Allowed");
+	else if (status == "409")
+		response.SetupErrorPage("409", "Conflict");
 	else if (status == "413")
 		response.SetupErrorPage("413", "Payload Too Large");
 	else if (status == "500")
@@ -230,7 +245,7 @@ void    Client::mapping_request_header()
         request_header[key] = value;
         request_header["Content-Type:"] = request_header["Content-Type:"].substr(0, request_header["Content-Type:"].find(";"));
     }
-    print_request(request_header);
+    // print_request(request_header);
 }
 
 void Client::print_request(std::map<std::string, std::string> my_map)
@@ -295,13 +310,13 @@ void Client::removeWhitespaces(std::string &string)
 
 void	Client::set_request(char *chunk, size_t buffer_length)
 {
-	std::cout << buffer_length << std::endl;
 	request_size += buffer_length;
     for (size_t size = 0; size < buffer_length; size++)
         request.push_back(chunk[size]);
 	if (request_size < PACKAGE_SIZE)
+	{
 		request_complete = true;
-	std::cout << request << std::endl;
+	}
 }
 
 
