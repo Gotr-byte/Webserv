@@ -12,14 +12,14 @@
 #include "Cgi.hpp"
 #include "ServerConfig.hpp"
 
-#define PACKAGE_SIZE 65563
+#define PACKAGE_SIZE 5000
 
 
 
 class Client
 {
     public:
-        Client(int server_idx, ServerConfig conf);
+        Client(ServerConfig conf);
         void    set_request(char *chunk, size_t buffer_length);
         void    mapping_request_header();
         void    tokenizing(std::map<std::string, std::string> & request, std::string line_to_tokenize);

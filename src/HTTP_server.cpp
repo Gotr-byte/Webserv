@@ -97,45 +97,6 @@ std::string HTTP_server::read_file(const std::string &filename)
 //     }
 // }
 
-void HTTP_server::server_port_listening(int i)
-{
-    if (pollfds[i].revents & POLLIN)
-    {
-        client_len = sizeof(client_addr);
-        //TODO add address to client struct
-        int client_fd;
-        client_fd = accept(pollfds[i].fd, (struct sockaddr *)&client_addr, &client_len);
-        if (client_fd < 0)
-        {
-            perror("Error accepting client connection on etc");
-            exit(EXIT_FAILURE);
-        }
-        FdClients.insert(std::make_pair(client_fd, Client(i, ConfigVec[i])));
-
-        struct pollfd pollstruct;
-        pollstruct.fd = client_fd;
-        pollstruct.events = POLLIN | POLLOUT;
-        pollstruct.revents = 0;
-        this->pollfds.push_back(pollstruct);
-        // std::cout << "ACCEPT SOCKET FD:" << client_fd << "\n";
-    }
-}
-
-/*
- *We can use the timeout with try and reset the poll if the timeout is down because of stability
- *
- */
-void HTTP_server::server_conducts_poll()
-{
-    // timeout = (3 * 60 * 1000);
-    timeout = -1;
-    res = poll(pollfds.data(), pollfds.size(), timeout);
-    if (res < 0)
-    {
-        perror("Error polling sockets");
-        exit(EXIT_FAILURE);
-    }
-}
 
 //also update location request
 void HTTP_server::generate_cgi_querry(std::map<std::string, std::string>&new_request){
@@ -297,6 +258,153 @@ void HTTP_server::generate_cgi_querry(std::map<std::string, std::string>&new_req
 //     req->GenerateUploadResponse();
 // }
 
+void HTTP_server::accepting_clients(int server_fd)
+{
+    client_len = sizeof(client_addr);
+    //TODO add address to client struct
+    int client_fd;
+    client_fd = accept(server_fd, (struct sockaddr *)&client_addr, &client_len);
+    if (client_fd < 0)
+    {
+        perror("Error accepting client connection on etc");
+        exit(EXIT_FAILURE);
+    }
+
+    fcntl(client_fd, F_SETFL, O_NONBLOCK);
+
+    FdClients.insert(std::make_pair(client_fd, Client(Configs.at(server_fd))));
+    // std::cout << tmp.id << std::endl;
+    struct pollfd pollstruct;
+    pollstruct.fd = client_fd;
+    pollstruct.events = POLLIN | POLLOUT;
+    pollstruct.revents = 0;
+    this->pollfds.push_back(pollstruct);
+    // std::cout << "ACCEPT SOCKET FD:" << client_fd << "\n";
+}
+
+/*
+ *We can use the timeout with try and reset the poll if the timeout is down because of stability
+ *
+ */
+void HTTP_server::server_conducts_poll()
+{
+    // timeout = (3 * 60 * 1000);
+    timeout = -1;
+    res = poll(pollfds.data(), pollfds.size(), 200);
+    if (res < 0)
+    {
+        perror("Error polling sockets");
+        exit(EXIT_FAILURE);
+    }
+}
+
+void HTTP_server::server_loop()
+{
+    while (true)
+    {
+        server_conducts_poll();
+        for (std::vector<struct pollfd>::iterator it = pollfds.begin(); it != pollfds.end(); it++)
+        {
+            if (it->revents & POLLIN)
+            {
+                if (it < pollfds.begin() + listening_port_no)
+                {
+                    accepting_clients(it->fd);
+                    break;
+                }
+                else if (!FdClients.at(it->fd).is_error)
+                {
+                    char request_chunk[PACKAGE_SIZE + 1];
+                    memset(request_chunk, 0, PACKAGE_SIZE);
+                    ssize_t recieved_size = recv(it->fd, request_chunk, PACKAGE_SIZE, 0);
+                    if (recieved_size < 0)
+                    {
+                        std::cout << "recv error" << std::endl;
+                        kill_client(it--);
+                        continue;
+                    }
+                    else if (recieved_size == 0)
+                    {
+                        std::cout << "Client closed the connection\n";
+                        kill_client(it--);
+                        continue;
+                    }
+                    FdClients.at(it->fd).set_request(request_chunk, recieved_size);
+                    // mapping request header and deleting request header
+                    if (FdClients.at(it->fd).request_header.empty())
+                    {
+                        FdClients.at(it->fd).mapping_request_header();
+                        FdClients.at(it->fd).check_request();
+                    }
+                    if (FdClients.at(it->fd).request_complete && !FdClients.at(it->fd).is_error)
+                    {
+                        if (FdClients.at(it->fd).method == "GET")
+                        {
+                            FdClients.at(it->fd).response.BuildResponseHeader();
+                            FdClients.at(it->fd).request_processed = true;
+                        }
+                        // std::cout << "perform delete, upload or cgi" << std::endl;
+                        // if (FdClients.at(it->fd).isUpload)
+                        //     ProcessUpload(FdClients.at(it->fd));
+                    }
+                }
+        }
+
+            //     else if (new_req.isCGI)
+            //     {
+            //         std::cout << "*******************\n";
+            //         std::cout << "* Welcome to CGI! *\n";
+            //         std::cout << "*******************\n";
+            //         Cgi cgi("generic cgi", new_req.id);
+            //         try{
+            //             cgi.run(FdsClients[*it_idx].second.Requests.end() - 1);
+            //         }
+            //         catch (const std::exception &e){
+            //             std::cerr << e.what();
+            //         }
+            //         (void)fds;
+            //     }
+            //     else if (new_req.isDelete)
+            //         deleteContent(FdsClients[*it_idx].second.Requests.end() - 1);
+            // }
+            else if (it->revents & POLLOUT && (FdClients.at(it->fd).request_processed || FdClients.at(it->fd).is_error))
+            {
+                try
+                {
+                    send_response(it->fd);
+                }
+                catch (const std::exception &e)
+                {
+                    std::cerr << e.what();
+                }
+                if (FdClients.at(it->fd).response_sent)
+                {
+                    std::cout << "Response Sent\n";
+                    // std::cout << "Request: " << FdClients.at(it->fd).id << " sent to fd: " << it->fd << std::endl;
+                    kill_client(it--);
+                    continue;
+                }
+            }
+            else if (it->revents & POLLHUP ||it->revents & POLLNVAL || it->revents & POLLERR)
+            {
+                std::cout << "POLLERR\n";
+                kill_client(it--);
+                continue;
+            }
+        }
+        // for (std::vector<struct pollfd>::iterator it = pollfds.end() - 1; it >= pollfds.begin() + listening_port_no; --it)
+        // {
+        //     if (FdClients.at(it->fd).kill_client)
+        //         kill_client(it);
+        // }
+    }
+    // for (std::set<int>::iterator it_idx = activeClientIdx.begin(); it_idx != activeClientIdx.end(); it_idx++)
+    // {
+    //     close(FdsClients[*it_idx].first);
+    //     close(fds[*it_idx].fd);
+    // }
+}
+
 void HTTP_server::send_response(int client_fd)
 {
     if (!FdClients.at(client_fd).header_sent)
@@ -309,31 +417,23 @@ void HTTP_server::send_response(int client_fd)
             if (file_fd < 0)
             {
                 perror("Error Opening File: ");
-                exit(1);
                 throw(InvalidFileDownloadException());
             }
             FdClients.at(client_fd).file_fd = file_fd;
         }
-        if (send(client_fd, FdClients.at(client_fd).response.header.c_str(), FdClients.at(client_fd).response.header.size(), 0) < 0)
-        {
-            FdClients.at(client_fd).close_file_fd();
-            // perror("Error sending initial response headers"); 16380 hits
-            exit(EXIT_FAILURE);
-        }
         FdClients.at(client_fd).header_sent = true;
         return;
     }
-    else if (FdClients.at(client_fd).header_sent && !FdClients.at(client_fd).send_last_chunk)
+    else
     {
-        if (!FdClients.at(client_fd).response.body.empty())
+        if (send(client_fd, (FdClients.at(client_fd).response.header + FdClients.at(client_fd).response.body + "\r\n\r\n").c_str(), (FdClients.at(client_fd).response.header + FdClients.at(client_fd).response.body + "\r\n\r\n").size(), 0) < 0)
         {
-            if (send(client_fd, FdClients.at(client_fd).response.body.c_str(), FdClients.at(client_fd).response.body.size(), 0) < 0)
-                perror("Error sending custom body");
-            FdClients.at(client_fd).response_sent = true;
-            return;
+            std::cout << "Error sending custom Body\n";
+            FdClients.at(client_fd).set_error("500");
         }
-        else
-        {
+        FdClients.at(client_fd).response_sent = true;
+        return;
+    }
             char buffer[BUF_SIZE];
             ssize_t bytesRead;
             bytesRead = read(FdClients.at(client_fd).file_fd, buffer, BUF_SIZE);
@@ -347,9 +447,10 @@ void HTTP_server::send_response(int client_fd)
                 ssize_t bytesSent = send(client_fd, chunk.c_str(), chunk.length(), 0);
                 if (bytesSent < 0)
                 {
+                    std::cout << "2" << std::endl;
                     FdClients.at(client_fd).close_file_fd();
-                    perror("Error sending chunk");
-                    exit(EXIT_FAILURE);
+                    std::cout << "Error sending chunk\n";
+                    FdClients.at(client_fd).set_error("500");
                 }
             }
             if (bytesRead < BUF_SIZE)
@@ -357,16 +458,13 @@ void HTTP_server::send_response(int client_fd)
                 FdClients.at(client_fd).close_file_fd();
                 FdClients.at(client_fd).send_last_chunk = true;
             }
-            return;
-        }
-    }
     else if (FdClients.at(client_fd).send_last_chunk)
     {
         std::string lastChunk = "0\r\n\r\n";
         if (send(client_fd, lastChunk.c_str(), lastChunk.length(), 0) < 0)
         {
-            perror("Error sending last chunk");
-            exit(EXIT_FAILURE);
+            std::cout << "Error sending last chunk\n";
+            FdClients.at(client_fd).set_error("500");
         }
         FdClients.at(client_fd).response_sent = true;
         // std::cout << "Last Chunk sent" << std::endl;
@@ -386,110 +484,9 @@ void HTTP_server::kill_client(std::vector<struct pollfd>::iterator it)
 		perror("Error closing Socket Fd");
     else
         // std::cout << "CLOSED SOCKET FD: " << it->fd << std::endl;
+    // std::cout << FdClients.at(it->fd).id << " KILLED\n";
     FdClients.erase(it->fd);
     pollfds.erase(it);
-}
-
-void HTTP_server::server_loop()
-{
-    while (true)
-    {
-        server_conducts_poll();
-        for (int i = 0; i < listening_port_no; i++)
-            server_port_listening(i);
-        for (std::vector<struct pollfd>::iterator it = (pollfds.begin() + listening_port_no); it != pollfds.end(); it++)
-        {
-            if (it->revents & POLLIN)
-            {
-                char request_chunk[PACKAGE_SIZE + 1];
-                memset(request_chunk, 0, PACKAGE_SIZE);
-                ssize_t recieved_size = recv(it->fd, request_chunk, PACKAGE_SIZE, 0);
-                if (recieved_size < 0)
-                {
-                    FdClients.at(it->fd).kill_client = true;
-                    // std::cout << "Recv Error" << std::endl;
-                }
-                else if (recieved_size == 0)
-                {
-                    std::cout << "Client closed the connection\n";
-                    FdClients.at(it->fd).kill_client = true;
-                    continue;
-                }
-                FdClients.at(it->fd).set_request(request_chunk, recieved_size);
-                // mapping request header and deleting request header
-                if (FdClients.at(it->fd).request_header.empty())
-                {
-                    FdClients.at(it->fd).mapping_request_header();
-                    FdClients.at(it->fd).check_request();
-                }
-                if (FdClients.at(it->fd).is_error)
-                {
-                    it->events = POLLOUT;
-                    continue;
-                }
-                else if (FdClients.at(it->fd).request_complete)
-                {
-                    if (FdClients.at(it->fd).method == "GET")
-                    {
-                        FdClients.at(it->fd).response.BuildResponseHeader();
-                        FdClients.at(it->fd).request_processed = true;
-                    }
-                    // std::cout << "perform delete, upload or cgi" << std::endl;
-                    // if (FdClients.at(it->fd).isUpload)
-                    //     ProcessUpload(FdClients.at(it->fd));
-                }
-            }
-            //     else if (new_req.isCGI)
-            //     {
-            //         std::cout << "*******************\n";
-            //         std::cout << "* Welcome to CGI! *\n";
-            //         std::cout << "*******************\n";
-            //         Cgi cgi("generic cgi", new_req.id);
-            //         try{
-            //             cgi.run(FdsClients[*it_idx].second.Requests.end() - 1);
-            //         }
-            //         catch (const std::exception &e){
-            //             std::cerr << e.what();
-            //         }
-            //         (void)fds;
-            //     }
-            //     else if (new_req.isDelete)
-            //         deleteContent(FdsClients[*it_idx].second.Requests.end() - 1);
-            // }
-            if (it->revents & POLLOUT && (FdClients.at(it->fd).request_processed || FdClients.at(it->fd).is_error))
-            {
-                try
-                {
-                    send_response(it->fd);
-                }
-                catch (const std::exception &e)
-                {
-                    std::cerr << e.what();
-                }
-                if (FdClients.at(it->fd).response_sent)
-                {
-                    // std::cout << "Request: " << FdClients.at(it->fd).id << " sent to fd: " << it->fd << std::endl;
-                    FdClients.at(it->fd).kill_client = true;
-                    continue;
-                }
-            }
-            if (it->revents & POLLHUP ||it->revents & POLLNVAL || it->revents & POLLERR)
-            {
-                FdClients.at(it->fd).kill_client = true;
-                continue;
-            }
-        }
-        for (std::vector<struct pollfd>::iterator it = pollfds.end() - 1; it >= pollfds.begin() + listening_port_no; --it)
-        {
-            if (FdClients.at(it->fd).kill_client)
-                kill_client(it);
-        }
-    }
-    // for (std::set<int>::iterator it_idx = activeClientIdx.begin(); it_idx != activeClientIdx.end(); it_idx++)
-    // {
-    //     close(FdsClients[*it_idx].first);
-    //     close(fds[*it_idx].fd);
-    // }
 }
 
 // void HTTP_server::deleteContent(std::vector<Response>::iterator req)
@@ -528,7 +525,7 @@ int HTTP_server::running()
         listening_poll.events = POLLIN;
         listening_poll.revents = 0;
         pollfds.push_back(listening_poll);
-        ConfigVec.push_back(tmp);
+        Configs.insert(std::make_pair(listening_poll.fd, tmp));
         std::cout << "Socket " << (i + 1) << " (FD " << socket.server_fd
                   << ") is listening on: " << tmp.getConfProps("listen:") << std::endl;
     }

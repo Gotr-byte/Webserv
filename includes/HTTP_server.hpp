@@ -40,8 +40,6 @@
 // #include <cstring.h>
 // #include <string.h>
 
-#define LISTENING_SOCKET
-
 class HTTP_server
 {
 public:
@@ -49,7 +47,7 @@ public:
     ~HTTP_server();
 
     void server_conducts_poll();
-    void server_port_listening(int i);
+    void accepting_clients(int server_fd);
     std::map<std::string, std::string> mapping_request_header(std::string Request);
     int running();
     void create_listening_sock(int port);
@@ -102,7 +100,7 @@ private:
     std::string content_type;
     std::vector<int> listening_socket_fd;
     int sentBytes[20];
-    std::vector<ServerConfig> ConfigVec;
+    std::map<int, ServerConfig> Configs;
     int listening_port_no;
     void cgi_file_upload(std::vector<Response>::iterator req);
     class				InvalidFileDownloadException : public std::exception

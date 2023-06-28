@@ -2,7 +2,7 @@
 
 int Client::nextId = 0;
 
-Client::Client(int server_idx, ServerConfig conf) : id(nextId++), color_index(id % 4) , server_index(server_idx), config(conf), header_sent(false), file_fd(-1),
+Client::Client(ServerConfig conf) : id(nextId++), color_index(id % 4), config(conf), header_sent(false), file_fd(-1),
 content_length(0), is_error(false)
 {
 	kill_client = false;
@@ -22,8 +22,10 @@ void    Client::close_file_fd()
 		if ((close(file_fd)) < 0)
 			perror("Error closing File Fd");
 		else
-			std::cout << "CLOSED FILE FD: " << file_fd << std::endl;
+		{
+		std::cout << "CLOSED FILE FD: " << file_fd << std::endl;
 		file_fd = -1;
+		}
 	}
 }
 
