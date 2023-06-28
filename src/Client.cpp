@@ -10,7 +10,7 @@ content_length(0), is_error(false)
 	isDelete = false;
 	isUpload = false;
 	response_sent = false;
-	send_last_chunk = false;
+	last_chunk_sent = false;
 	request_processed = false;
 	request_size = 0;
 }

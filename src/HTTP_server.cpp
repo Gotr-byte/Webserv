@@ -312,7 +312,7 @@ void HTTP_server::server_loop()
                     accepting_clients(it->fd);
                     break;
                 }
-                else if (!FdClients.at(it->fd).is_error)
+                else if (!FdClients.at(it->fd).is_error && !FdClients.at(it->fd).request_complete)
                 {
                     char request_chunk[PACKAGE_SIZE + 1];
                     memset(request_chunk, 0, PACKAGE_SIZE);
@@ -407,13 +407,13 @@ void HTTP_server::server_loop()
 
 void HTTP_server::send_response(int client_fd)
 {
+    std::string chunk = "";
+
     if (!FdClients.at(client_fd).header_sent)
     {
-        // std::cout << "Sending Header" << std::endl;
         if (FdClients.at(client_fd).response.body.empty())
         {
             int file_fd = open(FdClients.at(client_fd).path_on_server.c_str(), O_RDONLY);
-            // std::cout << "OPENED FILE FD: " << file_fd << std::endl;
             if (file_fd < 0)
             {
                 perror("Error Opening File: ");
@@ -421,55 +421,59 @@ void HTTP_server::send_response(int client_fd)
             }
             FdClients.at(client_fd).file_fd = file_fd;
         }
+        else
+        {
+            chunk = FdClients.at(client_fd).response.header + FdClients.at(client_fd).response.body + "\r\n\r\n";
+            if (send(client_fd, chunk.c_str(), chunk.size(), 0) < 0)
+            {
+                std::cout << "Error sending custom Body\n";
+                FdClients.at(client_fd).set_error("500");
+            }
+            else
+                FdClients.at(client_fd).response_sent = true;
+            return;
+        }
+    }
+    char buffer[BUF_SIZE];
+    ssize_t bytesRead;
+    bytesRead = read(FdClients.at(client_fd).file_fd, buffer, BUF_SIZE);
+    if (bytesRead < 0)
+    {
+        FdClients.at(client_fd).close_file_fd();
+        FdClients.at(client_fd).set_error("500");
+        return;
+    }
+    std::stringstream chunkSizeHex;
+    chunkSizeHex << std::hex << bytesRead << "\r\n";
+    std::string chunkData(buffer, bytesRead);
+    if (!FdClients.at(client_fd).header_sent)
+    {
+        chunk += FdClients.at(client_fd).response.header;
         FdClients.at(client_fd).header_sent = true;
-        return;
     }
-    else
+    if (FdClients.at(client_fd).response.is_chunked)
     {
-        if (send(client_fd, (FdClients.at(client_fd).response.header + FdClients.at(client_fd).response.body + "\r\n\r\n").c_str(), (FdClients.at(client_fd).response.header + FdClients.at(client_fd).response.body + "\r\n\r\n").size(), 0) < 0)
-        {
-            std::cout << "Error sending custom Body\n";
-            FdClients.at(client_fd).set_error("500");
-        }
-        FdClients.at(client_fd).response_sent = true;
-        return;
+        chunk += chunkSizeHex.str();
     }
-            char buffer[BUF_SIZE];
-            ssize_t bytesRead;
-            bytesRead = read(FdClients.at(client_fd).file_fd, buffer, BUF_SIZE);
-            if (bytesRead > 0)
-            {
-                std::stringstream chunkSizeHex;
-                chunkSizeHex << std::hex << bytesRead << "\r\n";
-                std::string chunkSizeHexStr = chunkSizeHex.str();
-                std::string chunkData(buffer, bytesRead);
-                std::string chunk = chunkSizeHexStr + chunkData + "\r\n";
-                ssize_t bytesSent = send(client_fd, chunk.c_str(), chunk.length(), 0);
-                if (bytesSent < 0)
-                {
-                    std::cout << "2" << std::endl;
-                    FdClients.at(client_fd).close_file_fd();
-                    std::cout << "Error sending chunk\n";
-                    FdClients.at(client_fd).set_error("500");
-                }
-            }
-            if (bytesRead < BUF_SIZE)
-            {
-                FdClients.at(client_fd).close_file_fd();
-                FdClients.at(client_fd).send_last_chunk = true;
-            }
-    else if (FdClients.at(client_fd).send_last_chunk)
+    chunk += chunkData + "\r\n";
+    if (bytesRead < BUF_SIZE)
     {
-        std::string lastChunk = "0\r\n\r\n";
-        if (send(client_fd, lastChunk.c_str(), lastChunk.length(), 0) < 0)
-        {
-            std::cout << "Error sending last chunk\n";
-            FdClients.at(client_fd).set_error("500");
-        }
-        FdClients.at(client_fd).response_sent = true;
-        // std::cout << "Last Chunk sent" << std::endl;
+        if (FdClients.at(client_fd).response.is_chunked)
+            chunk += "0";
+        chunk += "\r\n\r\n";
+        FdClients.at(client_fd).close_file_fd();
+        FdClients.at(client_fd).last_chunk_sent = true;
     }
+    ssize_t bytesSent = send(client_fd, chunk.c_str(), chunk.size(), 0);
+    if (bytesSent < 0)
+    {
+        FdClients.at(client_fd).close_file_fd();
+        FdClients.at(client_fd).set_error("500");
+    }
+    if (FdClients.at(client_fd).last_chunk_sent)
+        FdClients.at(client_fd).response_sent = true;
 }
+
 
 std::string HTTP_server::toHex(int value)
 {

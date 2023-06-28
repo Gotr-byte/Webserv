@@ -66,7 +66,7 @@ class Client
 		bool                        		isUpload;
 		bool                        		isDelete;
         bool                                response_sent;
-        bool                                send_last_chunk;
+        bool                                last_chunk_sent;
         bool                                request_processed;
         // struct sockaddr_in                  ip_address;
     private:
