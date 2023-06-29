@@ -1,8 +1,10 @@
 #include "../includes/Socket.hpp"
 
 Socket::Socket(){}
-Socket::Socket(int port, std::string ip){
+Socket::Socket(int port, std::string ip)
+{
 	server_fd = socket(AF_INET, SOCK_STREAM, 0);
+    int opt = 1;
     if (server_fd < 0)
     {
         perror("Error creating server socket");
@@ -12,8 +14,7 @@ Socket::Socket(int port, std::string ip){
     // set the socket to non blocking
     fcntl(server_fd, F_SETFL, O_NONBLOCK);
 
-    opt = 1;
-    if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)))
+    if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0)
     {
         perror("Error setting server socket options");
         exit(EXIT_FAILURE);
@@ -40,5 +41,6 @@ Socket::Socket(int port, std::string ip){
         exit(EXIT_FAILURE);
     }
 }
+
 Socket::~Socket(){}
  

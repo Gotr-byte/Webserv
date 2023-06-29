@@ -16,36 +16,32 @@ class Response
 
 		Response();
 
-		void	CreateResponse(ServerConfig	conf);
-		void	GenerateServerErrorResponse(int errorcode, ServerConfig	conf);
-		void	GenerateUploadResponse();
-		void	GenerateDeleteResponse();
-		void	GenerateClientErrorResponse(std::string status, std::string issue);
+		void	generateUploadResponse(std::string file_path);
+		void	generateDeleteResponse();
+		void	generateErrorResponse(std::string status, std::string issue);
 		// void	generate_cgi_response()
 
 		void	setDate();
-		void	SetResponseContentType(std::string path);
-		void	BuildResponseHeader();
-		void	SetupErrorPage(std::string status, std::string issue);
-		void	ObtainFileLength(std::string path);
-		void	CreateAutoindex(std::string path);
-		void	generate_cgi_response(std::string path_to_HTML);
+		void	setResponseContentType(std::string path);
+		void	buildResponseHeader();
+		void	setupErrorPage(std::string status, std::string issue);
+		void	obtainFileLength(std::string path);
+		void	createAutoindex(std::string path);
+		void	generateCgiResponse(std::string path);
 		// void	ObtainCgiFileLength()
 
-		off_t		contentlength;
+		bool		is_chunked;
 		std::string	header;
 		std::string	body;
-		std::string	contenttype;
-		std::string	statuscode;
+		std::string	content_type;
+		std::string	status_code;
 		std::string	error_path;
 		std::string	server_name;
-		bool		is_chunked;
+		off_t		content_length;
 
 	private:
 
-		std::string	clientpath;
 		std::string	date;
 		std::string	protocoll;
-		std::string	port;
-		std::string additionalinfo;
+		std::string additional_info;
 };

@@ -1,4 +1,4 @@
-#include "../includes/HTTP_server.hpp"
+#include "../includes/WebServer.hpp"
 
 
 int main (int argc, char **argv, char **env)
@@ -9,7 +9,8 @@ int main (int argc, char **argv, char **env)
         return 1;
     }
 
-    HTTP_server server(argv[1], env);
+    WebServer server(argv[1], env);
 
-    server.running();
+    server.setupListeningSockets();
+    server.loopPollEvents();
 }

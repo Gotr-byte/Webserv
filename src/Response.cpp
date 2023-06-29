@@ -3,85 +3,60 @@
 Response::Response()
 {
 	protocoll = "HTTP/1.1";
-	contenttype = "application/octet-stream";
-	statuscode = "200 OK";
+	content_type = "application/octet-stream";
+	status_code = "200 OK";
 	is_chunked = false;
 }
 
-void	Response::CreateResponse(ServerConfig	conf)
+void	Response::generateErrorResponse(std::string status, std::string issue)
 {
-	contenttype = "application/octet-stream";
-	statuscode = "200 OK";
-	protocoll = "HTTP/1.1";
-}
-
-void	Response::GenerateClientErrorResponse(std::string status, std::string issue)
-{
-	protocoll = "HTTP/1.1", \
-	additionalinfo = "Connection: closed\nTransfer-Encoding: chunked";
-	SetupErrorPage(status, issue);
+	additional_info = "Connection: closed\nTransfer-Encoding: chunked";
+	setupErrorPage(status, issue);
 	setDate();
-	BuildResponseHeader();
+	buildResponseHeader();
 }
 
-void	Response::GenerateServerErrorResponse(int errorcode, ServerConfig	conf)
+void	Response::generateUploadResponse(std::string file_path)
 {
-	protocoll = "HTTP/1.1", \
-	additionalinfo = "Connection: closed\nTransfer-Encoding: chunked";
-
-	if (errorcode == 500)
-		SetupErrorPage("500", "Internal Server Error");
-	if (errorcode == 503)
-		SetupErrorPage("503", "Unavailable");
-	setDate();
-	BuildResponseHeader();
-}
-
-void	Response::GenerateUploadResponse()
-{
-	contenttype = "text/plain";
+	status_code = "201 Created";
+	content_type = "text/plain";
 	body = "File was uploaded succesfully\r\n\r\n";
-	contentlength = body.size();
-	additionalinfo.clear();
-	BuildResponseHeader();
+	content_length = body.size();
+	additional_info = "Location: " + file_path;
+	buildResponseHeader();
 }
 
-void	Response::generate_cgi_response(std::string path_to_HTML)
+void	Response::generateCgiResponse(std::string path)
 {
-	ObtainFileLength(path_to_HTML);
-	contenttype = "text/html";
+	obtainFileLength(path);
+	content_type = "text/html";
 	setDate();
-	BuildResponseHeader();
+	buildResponseHeader();
 }
 
-// void Response::setup_cgi_page(std::string file_to_upload){
-
-// }
-
-void Response::GenerateDeleteResponse()
+void Response::generateDeleteResponse()
 {
-	statuscode = "204 No Content";
-	contenttype = "text/plain";
-	additionalinfo.clear();
-	body = "The File was successfully deleted.\r\n\r\n";
-	contentlength = body.size();
+	status_code = "204 No Content";
+	content_type = "text/plain";
+	additional_info.clear();
+	content_length = body.size();
 	setDate();
-	BuildResponseHeader();
+	buildResponseHeader();
 }
 
-void	Response::SetupErrorPage(std::string status, std::string issue)
+void	Response::setupErrorPage(std::string status, std::string issue)
 {
-	statuscode = status + " " + issue;
-	contenttype = "text/html";
-	this->ObtainFileLength(error_path);
-	BuildResponseHeader();
+	status_code = status + " " + issue;
+	content_type = "text/html";
+	this->obtainFileLength(error_path);
+	buildResponseHeader();
 	// std::cout << path << std::endl;
-	// std::cout << statuscode << std::endl;
-	// std::cout << contenttype << std::endl;
+	// std::cout << status_code << std::endl;
+	// std::cout << content_type << std::endl;
 	// std::cout << method << std::endl;
 }
 
-void	Response::ObtainFileLength(std::string path)
+void	Response::obtainFileLength(std::string path)
 {
 	FILE* file = fopen(path.c_str(), "r");
 	if (file == nullptr)	
@@ -90,7 +65,7 @@ void	Response::ObtainFileLength(std::string path)
 		exit(EXIT_FAILURE);
 	}
 	std::fseek(file, 0, SEEK_END);
-	contentlength = std::ftell(file);
+	content_length = std::ftell(file);
 	std::fclose(file);
 }
 
@@ -107,65 +82,69 @@ void	Response::setDate()
 	// std::cout << date << std::endl;
 }
 
-void	Response::SetResponseContentType(std::string path)
+void	Response::setResponseContentType(std::string path)
 {
 	std::string suffix = path.substr(path.rfind(".") + 1);
 
 	if (path.find("/file/") != std::string::npos)
-		contenttype = "application/octet-stream";
+		content_type = "application/octet-stream";
 	else
 	{
 		if (suffix == "html")
-			contenttype = "text/html";
+			content_type = "text/html";
 		else if (suffix == "css")
-			contenttype = "text/css";
+			content_type = "text/css";
 		else if (suffix == "txt")
-			contenttype = "text/plain";
+			content_type = "text/plain";
 		else if (suffix == "ico")
-			contenttype = "image/x-icon";
+			content_type = "image/x-icon";
 		else if (suffix == "jpg" || suffix == "jpeg")
-			contenttype = "image/jpeg";
+			content_type = "image/jpeg";
 		else if (suffix == "png")
-			contenttype = "image/png";
+			content_type = "image/png";
 		else if (suffix == "gif")
-			contenttype = "image/gif";
+			content_type = "image/gif";
 		else if (suffix == "pdf")
-			contenttype = "application/pdf";
+			content_type = "application/pdf";
 		else if (suffix == "mp3")
-			contenttype = "audio/mpeg";
+			content_type = "audio/mpeg";
 		else if (suffix == "mp4")
-			contenttype = "audio/mpeg";
+			content_type = "audio/mpeg";
+		else if (suffix == "avi")
+			content_type = "video/x-msvideo";
 		else
-			contenttype = "application/octet-stream";
+			content_type = "application/octet-stream";
 	}
 	// std::cout << suffix << std::endl;
 }
 
-void	Response::BuildResponseHeader()
+void	Response::buildResponseHeader()
 {
 	std::ostringstream tmp;
 
-	if (BUF_SIZE < contentlength)
+	if (BUF_SIZE < content_length)
 	{
-		additionalinfo = "Transfer-Encoding: chunked";
+		additional_info = "Transfer-Encoding: chunked";
 		is_chunked = true;
 	}
 
 	this->setDate();
-	tmp << protocoll << " " << statuscode << "\r\n";
+	tmp << protocoll << " " << status_code << "\r\n";
 	tmp << "Server: " << server_name << "\r\n";
 	tmp << date << "\r\n";
-	tmp << "Content-Type: " << contenttype << "\r\n";
-	tmp << "Content-Length: " << contentlength << "\r\n";
-	if (!additionalinfo.empty())
-		tmp << additionalinfo << "\r\n";
+	if (status_code != "204 No Content")
+	{
+		tmp << "Content-Type: " << content_type << "\r\n";
+		tmp << "Content-Length: " << content_length << "\r\n";
+	}
+	if (!additional_info.empty())
+		tmp << additional_info << "\r\n";
 	tmp << "\r\n";
 
 	header = tmp.str();
-	// std::cout << header << std::endl;
 }
 
-void	Response::CreateAutoindex(std::string path)
+void	Response::createAutoindex(std::string path)
 {
 	std::ostringstream	autoidx;
 
@@ -194,7 +173,7 @@ void	Response::CreateAutoindex(std::string path)
         // Check if the entry is a file or directory
         bool isDir = (entry->d_type == DT_DIR);
         
-        // Generate the appropriate HTML entry
+        // generate the appropriate HTML entry
         if (isDir)
             autoidx << "<li><a href=\"" << itemName << "/\">" << itemName << "/</a></li>\n";
         else
@@ -211,9 +190,9 @@ void	Response::CreateAutoindex(std::string path)
 	autoidx << "\r\n\r\n";
 
 	body = autoidx.str();
-	additionalinfo = "";
-	contenttype = "text/html";
-	contentlength = body.size();
+	additional_info = "";
+	content_type = "text/html";
+	content_length = body.size();
 	// std::cout << autoindexbody << std::endl;
 }
 

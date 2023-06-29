@@ -3,120 +3,115 @@
 int Client::nextId = 0;
 
 Client::Client(ServerConfig conf) : id(nextId++), color_index(id % 4), config(conf), header_sent(false), file_fd(-1),
-content_length(0), is_error(false)
+content_length(0)
 {
-	kill_client = false;
-	isCGI = false;
-	isDelete = false;
-	isUpload = false;
-	response_sent = false;
-	last_chunk_sent = false;
-	request_processed = false;
-	request_size = 0;
+	this->autoindex = false;
+	this->kill_client = false;
+	this->is_cgi = false;
+	this->is_get = false;
+	this->cancel_recv = false;
+	this->is_delete = false;
+	this->is_upload = false;
+	this->response_sent = false;
+	this->last_chunk_sent = false;
+	this->request_processed = false;
+	this->request_size = 0;
 }
 
-void    Client::close_file_fd()
+void    Client::closeFileFd()
 {
 	if (file_fd != -1)
 	{
 		if ((close(file_fd)) < 0)
 			perror("Error closing File Fd");
 		else
-		{
-		std::cout << "CLOSED FILE FD: " << file_fd << std::endl;
 		file_fd = -1;
-		}
 	}
 }
 
-void    Client::create_response()
+void    Client::checkRequest()
 {
-	response.CreateResponse(config);
-}
-
-void    Client::check_request()
-{
-	this->assign_location();
-	if (this->check_method() && check_existance())
+	this->assignLocation();
+	response.server_name = config.getConfProps("server_name:");
+	if (this->checkMethod() && checkExistance())
 	{
-		response.server_name = config.getConfProps("server_name:");
 		if (method == "GET")
-		{
-			prepare_get();
-		}
+			prepareGet();
 		else if (method == "POST")
-			prepare_post();
+			preparePost();
 		else if (method == "DELETE")
-			prepare_delete();
+			prepareDelete();
 	}
 }
 
-void	Client::prepare_delete()
+void	Client::prepareDelete()
 {
-	if (is_directory()) //Operation is forbidden is client wants to delete a folder
+	if (isDirectory()) //Operation is forbidden is client wants to delete a folder
 	{
-		set_error("403");
+		setError("403");
 		return;
 	}
 	else if (access(path_on_server.c_str(), W_OK) == -1)
 	{
-		set_error("403");
+		setError("403");
 		return;
 	}
-	isDelete = true;
+	is_delete = true;
 }
 
-void	Client::prepare_post()
+void	Client::preparePost()
 {
 	if (std::atol(config.getConfProps("limit_body_size:").c_str()) < std::atol(request_header["Content-Length:"].c_str()))
 	{
-		set_error("413");
+		this->cancel_recv = true;
+		setError("413");
 	}	
 	else if (path_on_server.find(".py") != std::string::npos)
 	{
 		if (access(path_on_server.c_str(), X_OK) == -1)
 		{
-			set_error("403");
+			setError("403");
 			return;
 		}
-		this->isCGI = true;
+		this->is_cgi = true;
 	}
 	else if (request_header["Content-Type:"] == "multipart/form-data")
 	{
 		if (access(path_on_server.c_str(), W_OK) == -1)
 		{
-			set_error("403");
+			setError("403");
 			return;
 		}
-		this->isUpload = true;
+		this->is_upload = true;
 	}
 	else
-		set_error("403");
+		setError("403");
 }
 
-void	Client::prepare_get()
+void	Client::prepareGet()
 {
+	this->is_get = true;
 	if (path_on_server.find(".py") != std::string::npos)
 	{
 		if (access(path_on_server.c_str(), X_OK))
 		{
-			set_error("403");
+			setError("403");
 			return ;
 		}
-		this->isCGI = true;
+		this->is_cgi = true;
 	}
-	if (!is_directory())
+	if (!isDirectory())
 	{
-		response.SetResponseContentType(path_on_server);
-		response.ObtainFileLength(path_on_server);
+		response.setResponseContentType(path_on_server);
+		response.obtainFileLength(path_on_server);
 	}
-	else if (is_directory() && autoindex)
-		response.CreateAutoindex(path_on_server);
+	else if (isDirectory() && autoindex)
+		response.createAutoindex(path_on_server);
 	else
-		set_error("403");
+		setError("403");
 }
 
-bool	Client::is_directory()
+bool	Client::isDirectory()
 {
 	DIR *dir = opendir(path_on_server.c_str());
 	if (!dir)
@@ -127,7 +122,7 @@ bool	Client::is_directory()
 	return true;
 }
 
-bool	Client::check_method()
+bool	Client::checkMethod()
 {
 	if (config.getLocation(path_on_client, "allowed_methods:").find(request_header["method:"]) \
 		!= std::string::npos)
@@ -135,26 +130,26 @@ bool	Client::check_method()
 			this->method = request_header["method:"];
 			return true;
 		}
-	set_error("405");
+	setError("405");
 	return false;
 }
 
-bool	Client::check_existance()
+bool	Client::checkExistance()
 {
 	if (access(path_on_server.c_str(), F_OK) == -1)
 	{
-		set_error("404");
+		setError("404");
 		return false;
 	}
 	if (access(path_on_server.c_str(), R_OK) == -1)
 	{
-		set_error("403");
+		setError("403");
 		return false;
 	}
 	return true;
 }
 
-void	Client::assign_location()
+void	Client::assignLocation()
 {
 	for (std::map<std::string, std::map<std::string, std::string> >::iterator \
 		it = config.locations.begin(); it != config.locations.end(); it++)
@@ -174,40 +169,54 @@ void	Client::assign_location()
 	}
 }
 
-void	Client::set_error(std::string status)
+void	Client::resetProperties()
 {
+	this->is_cgi = false;
+	this->is_get = false;
+	this->is_upload = false;
+	this->is_delete = false;
+	this->response_sent = false;
+	this->last_chunk_sent = false;
+	this->request_processed = false;
+}
+
+void	Client::setError(std::string status)
+{
+	this->resetProperties();
+
 	path_on_server =  config.getConfProps("error_page:") + status + ".html";
 	response.error_path = path_on_server;
 	
-	this->is_error = true;
-	if (status == "403")
-		response.SetupErrorPage("403", "Forbidden");
+	this->request_processed = true;
+	if (status == "400")
+		response.setupErrorPage("400", "Bad Request");
+	else if (status == "403")
+		response.setupErrorPage("403", "Forbidden");
 	else if (status == "404")
-		response.SetupErrorPage("404", "Not Found");
+		response.setupErrorPage("404", "Not Found");
 	else if (status == "405")
-		response.SetupErrorPage("405", "Method Not Allowed");
+		response.setupErrorPage("405", "Method Not Allowed");
 	else if (status == "409")
-		response.SetupErrorPage("409", "Conflict");
+		response.setupErrorPage("409", "Conflict");
 	else if (status == "413")
-		response.SetupErrorPage("413", "Payload Too Large");
+		response.setupErrorPage("413", "Payload Too Large");
 	else if (status == "500")
-		response.SetupErrorPage("500", "Internal Server Error");
+		response.setupErrorPage("500", "Internal Server Error");
 }
 
-void    Client::mapping_request_header()
+void    Client::mapRequestHeader()
 {
-    int new_line_count = 0;
-    // Get lines of Header
-    int n;
-
 	std::size_t headerEnd = request.find("\r\n\r\n");
+
     if (headerEnd == std::string::npos)
-		perror("no correct header format");
+	{
+		std::cout << "no correct header format" << std::endl;
+		setError("400");
+	}
         // Handle error: invalid HTTP request without a 
 
 	std::string header = request.substr(0, headerEnd);
 	request = request.substr(headerEnd + 4);
-
 	request_size -= headerEnd + 4;
 
     std::size_t lineStart = 0;
@@ -236,7 +245,7 @@ void    Client::mapping_request_header()
 	while ((lineEnd = header.find("\r\n", lineStart)) != std::string::npos)
     {
 		std::string line = header.substr(lineStart, lineEnd - lineStart);
-        tokenizing(request_header, line);
+        tokenizeRequestHeader(request_header, line);
 		lineStart = lineEnd + 2;
     }
     size_t v;
@@ -247,41 +256,6 @@ void    Client::mapping_request_header()
         request_header[key] = value;
         request_header["Content-Type:"] = request_header["Content-Type:"].substr(0, request_header["Content-Type:"].find(";"));
     }
-    // print_request(request_header);
-}
-
-void Client::print_request(std::map<std::string, std::string> my_map)
-{
-    std::map<std::string, std::string>::iterator it;
-    switch (color_index) {
-        case 0:
-            for (it = my_map.begin(); it != my_map.end(); ++it) {
-                std::cout << RED << "Key: " << it->first << ", Value: " << it->second << DEF <<std::endl;
-            }
-            color_index++;
-            break;
-        case 1:
-            for (it = my_map.begin(); it != my_map.end(); ++it) {
-                std::cout << YELLOW << "Key: " << it->first << ", Value: " << it->second << DEF <<std::endl;
-            }
-            color_index++;
-            break;
-        case 2:
-            for (it = my_map.begin(); it != my_map.end(); ++it) {
-                std::cout << CYAN << "Key: " << it->first << ", Value: " << it->second << DEF <<std::endl;
-            }
-            color_index++;
-            break;
-        case 3:
-            for (it = my_map.begin(); it != my_map.end(); ++it) {
-                std::cout << CYAN << "Key: " << it->first << ", Value: " << it->second << DEF <<std::endl;
-            }
-            color_index = 0;
-            break;
-        default:
-            std::cout << "Invalid choice." << std::endl;
-            break;
-    }
 }
 
 /**
@@ -290,7 +264,7 @@ void Client::print_request(std::map<std::string, std::string> my_map)
  * @param request The map to store the key-value pair.
  * @param line_to_tokenize The line of text to tokenize.
  */
-void Client::tokenizing(std::map<std::string, std::string> &request, std::string line_to_tokenize)
+void Client::tokenizeRequestHeader(std::map<std::string, std::string> &request, std::string line_to_tokenize)
 {
     std::stringstream tokenize_stream(line_to_tokenize);
     std::string value;
@@ -310,15 +284,13 @@ void Client::removeWhitespaces(std::string &string)
 
 
 
-void	Client::set_request(char *chunk, size_t buffer_length)
+void	Client::setRequest(char *chunk, size_t buffer_length)
 {
 	request_size += buffer_length;
     for (size_t size = 0; size < buffer_length; size++)
         request.push_back(chunk[size]);
-	if (request_size < PACKAGE_SIZE)
-	{
+	if (buffer_length < PACKAGE_SIZE)
 		request_complete = true;
-	}
 }
 
 

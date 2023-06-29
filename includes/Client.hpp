@@ -20,23 +20,23 @@ class Client
 {
     public:
         Client(ServerConfig conf);
-        void    set_request(char *chunk, size_t buffer_length);
-        void    mapping_request_header();
-        void    tokenizing(std::map<std::string, std::string> & request, std::string line_to_tokenize);
+        void    setRequest(char *chunk, size_t buffer_length);
+        void    mapRequestHeader();
+        void    tokenizeRequestHeader(std::map<std::string, std::string> & request, std::string line_to_tokenize);
         void    removeWhitespaces(std::string &string);
-        void    print_request(std::map<std::string, std::string> my_map);
-        void    check_server_config(ServerConfig config);
-        void    check_request();
-        void    create_response();
-        void	assign_location();
-        void	set_error(std::string code);
-        bool	check_method();
-        bool	check_existance();
-        void	prepare_get();
-        void	prepare_post();
-        void	prepare_delete();
-        bool	is_directory();
-        void    close_file_fd();
+        void    printRequest(std::map<std::string, std::string> my_map);
+        void    checkServerConfig(ServerConfig config);
+        void    checkRequest();
+        void	assignLocation();
+        void	setError(std::string code);
+        bool	checkMethod();
+        void	resetProperties();
+        bool	checkExistance();
+        void	prepareGet();
+        void	preparePost();
+        void	prepareDelete();
+        bool	isDirectory();
+        void    closeFileFd();
 
 
 		static int		nextId;
@@ -62,9 +62,11 @@ class Client
         std::string                         path_on_client;
         bool                                kill_client;
         bool                                autoindex;
-        bool                        		isCGI;
-		bool                        		isUpload;
-		bool                        		isDelete;
+        bool                                cancel_recv;
+        bool                        		is_cgi;
+        bool                                is_get;
+		bool                        		is_upload;
+		bool                        		is_delete;
         bool                                response_sent;
         bool                                last_chunk_sent;
         bool                                request_processed;
