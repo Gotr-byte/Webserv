@@ -22,23 +22,23 @@ ServerConfig::~ServerConfig()
 
 void ServerConfig::setDefaultProps()
 {
-	this->properties.insert(std::make_pair("port", "1896"));
-	this->properties.insert(std::make_pair("host", "localhost"));
-	this->properties.insert(std::make_pair("server_name", "default_server"));
-	this->properties.insert(std::make_pair("error_page", "./www/errors/"));
-	this->properties.insert(std::make_pair("limit_body_size", "1000"));
-	this->properties.insert(std::make_pair("allowed_methods", "GET"));
+	this->properties.insert(std::make_pair("port:", "1896"));
+	this->properties.insert(std::make_pair("host:", "localhost"));
+	this->properties.insert(std::make_pair("server_name:", "default_server"));
+	this->properties.insert(std::make_pair("error_page:", "./www/errors/"));
+	this->properties.insert(std::make_pair("limit_body_size:", "100"));
+	this->properties.insert(std::make_pair("allowed_methods:", "GET"));
 }
 
 void ServerConfig::setDefaultLocation()
 {
 	std::map<std::string, std::string> l_props;
 
-	l_props.insert(std::make_pair("root", "./www/html/"));
-	l_props.insert(std::make_pair("index", "index.html"));
-	l_props.insert(std::make_pair("redirect", "https://google.com/"));
-	l_props.insert(std::make_pair("allowed_methods", "POST, GET"));
-	l_props.insert(std::make_pair("autoindex", "on"));
+	l_props.insert(std::make_pair("root:", "./www/html/"));
+	l_props.insert(std::make_pair("index:", "index.html"));
+	l_props.insert(std::make_pair("redirect:", "https://google.com/"));
+	l_props.insert(std::make_pair("allowed_methods:", "POST, GET"));
+	l_props.insert(std::make_pair("autoindex:", "on"));
 
 	this->locations.insert(std::make_pair("/", l_props));
 }
@@ -70,7 +70,7 @@ void ServerConfig::setConfProps(std::string path, int socket_no)
 				this->host = value.substr(0, value.find(":"));
 				this->port = value.substr(value.find(":") + 1);
 			}
-			this->properties.insert(std::make_pair(key, value));
+			this->properties[key] = value;
 		}
 		getline(config, line);
 	}
@@ -136,7 +136,7 @@ bool ServerConfig::setLocations(std::string path, int socket_no)
 				this->removeWhitespaces(key);
 				this->removeWhitespaces(value);
 
-				block.insert(std::make_pair(key, value));
+				block[key] = value;
 			}
 			getline(config, line);
 		}

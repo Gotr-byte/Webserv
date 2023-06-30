@@ -1,5 +1,4 @@
-#ifndef SERVERCONFIG_H
-#define SERVERCONFIG_H
+#pragma once
 
 # include <map>
 # include <vector>
@@ -39,5 +38,3 @@ class ServerConfig
 		bool										first_server;
 		std::map<std::string, std::string>			properties;
 };
-
-#endif

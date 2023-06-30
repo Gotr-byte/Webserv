@@ -10,6 +10,11 @@
 #define BUF_SIZE 1024
 #define POLL_TIMEOUT 200
 
+// TODO SIGKILL
+// CGI
+// LOCATIONS
+
+
 /**
  * Constructor of HTTP server, creates an array of client
  *
@@ -22,16 +27,17 @@ WebServer::WebServer(std::string path, char **env): _env(env), config_path(path)
     listening_port_no = check.checkConfig(config_path);
 }
 
-WebServer::~WebServer(){}
+WebServer::~WebServer()
+{}
 
 
 //also update location request
-void WebServer::generate_cgi_querry(std::map<std::string, std::string>&new_request){
-    char * temporary = std::strtok(&new_request["location:"][0], "?");
-    std::cout << "the temp file: "<< temporary << "\n";
-    new_request["query_string:"] = std::strtok(NULL, "");
-    new_request["location:"] = temporary;
-}
+// void WebServer::generate_cgi_querry(std::map<std::string, std::string>&new_request){
+//     char * temporary = std::strtok(&new_request["location:"][0], "?");
+//     std::cout << "the temp file: "<< temporary << "\n";
+//     new_request["query_string:"] = std::strtok(NULL, "");
+//     new_request["location:"] = temporary;
+// }
 
 bool    WebServer::validateFilename(std::string filename)
 {
@@ -98,9 +104,11 @@ void WebServer::performUpload(int client_fd)
 
 void WebServer::acceptClients(int server_fd)
 {
-    //TODO add address to client struct
+    struct sockaddr_in client_addr;
+    socklen_t client_addr_size = sizeof(client_addr);
+
     int client_fd;
-    client_fd = accept(server_fd, NULL, NULL);
+    client_fd = accept(server_fd, (struct sockaddr *)&client_addr, &client_addr_size);
     if (client_fd < 0)
     {
         perror("Error accepting client connection on etc");
@@ -109,7 +117,9 @@ void WebServer::acceptClients(int server_fd)
 
     fcntl(client_fd, F_SETFL, O_NONBLOCK);
 
-    fds_clients.insert(std::make_pair(client_fd, Client(configs.at(server_fd))));
+    std::string client_ip = convertIPv4ToString(client_addr.sin_addr);
+
+    fds_clients.insert(std::make_pair(client_fd, Client(configs.at(server_fd, client_ip))));
     // std::cout << tmp.id << std::endl;
     struct pollfd pollstruct;
     pollstruct.fd = client_fd;
@@ -117,6 +127,21 @@ void WebServer::acceptClients(int server_fd)
     pollstruct.revents = 0;
     this->poll_fds.push_back(pollstruct);
     // std::cout << "ACCEPT SOCKET FD:" << client_fd << "\n";
+
+}
+
+std::string WebServer::convertIPv4ToString(const struct in_addr& address)
+{
+    const unsigned char* bytes = reinterpret_cast<const unsigned char*>(&address.s_addr);
+    std::string ipAddress;
+    ipAddress += std::to_string(static_cast<int>(bytes[0]));
+    ipAddress += '.';
+    ipAddress += std::to_string(static_cast<int>(bytes[1]));
+    ipAddress += '.';
+    ipAddress += std::to_string(static_cast<int>(bytes[2]));
+    ipAddress += '.';
+    ipAddress += std::to_string(static_cast<int>(bytes[3]));
+    return ipAddress;
 }
 
 void WebServer::conductPolling()
@@ -148,9 +173,9 @@ void WebServer::loopPollEvents()
                     acceptClients(it->fd);
                     break;
                 }
-                else if (!fds_clients.at(it->fd).request_processed && !fds_clients.at(it->fd).request_complete)
+                else
                 {
-                    char request_chunk[PACKAGE_SIZE + 1];
+                    char request_chunk[PACKAGE_SIZE];
                     memset(request_chunk, 0, PACKAGE_SIZE);
                     ssize_t recieved_size = recv(it->fd, request_chunk, PACKAGE_SIZE, 0);
                     if (recieved_size < 0)
@@ -176,9 +201,9 @@ void WebServer::loopPollEvents()
                         it->events = POLLOUT;
                     if (!fds_clients.at(it->fd).request_processed && fds_clients.at(it->fd).request_complete)
                     {
-                        if (fds_clients.at(it->fd).is_cgi)
-                            performCgi(it->fd);
-                        else if (fds_clients.at(it->fd).is_get)
+                        // if (fds_clients.at(it->fd).is_cgi)
+                        //     performCgi(it->fd);
+                        if (fds_clients.at(it->fd).is_get)
                             performGet(it->fd);
                         else if (fds_clients.at(it->fd).is_delete)
                             performDelete(it->fd);
@@ -208,7 +233,7 @@ void WebServer::loopPollEvents()
                 sendResponse(it->fd);
                 if (fds_clients.at(it->fd).response_sent)
                 {
-                    std::cout << "Response Sent\n";
+                    // std::cout << "Response Sent\n";
                     killClient(it--);
                     continue;
                 }
@@ -223,15 +248,17 @@ void WebServer::loopPollEvents()
     }
 }
 
-void    WebServer::performCgi(int client_fd)
-{
-    
-}
+// void    WebServer::performCgi(int client_fd)
+// {
+//     Cgi cgi;
+//     cgi.run(fds_clients.at(client_fd))
+// }
 
 void WebServer::sendResponse(int client_fd)
 {
     std::string chunk = "";
 
+    // std::cout << fds_clients.at(client_fd).response.header
     if (!fds_clients.at(client_fd).header_sent)
     {
         if (fds_clients.at(client_fd).response.body.empty())
@@ -249,7 +276,7 @@ void WebServer::sendResponse(int client_fd)
         {
             chunk = fds_clients.at(client_fd).response.header;
             if (!fds_clients.at(client_fd).is_delete)
-                chunk += fds_clients.at(client_fd).response.body + "\r\n\r\n";
+                chunk += fds_clients.at(client_fd).response.body;
             if (send(client_fd, chunk.c_str(), chunk.size(), 0) < 0)
             {
                 std::cout << "Error sending custom Body\n";
@@ -261,32 +288,34 @@ void WebServer::sendResponse(int client_fd)
         }
     }
     char buffer[BUF_SIZE];
-    ssize_t bytesRead;
-    bytesRead = read(fds_clients.at(client_fd).file_fd, buffer, BUF_SIZE);
-    if (bytesRead < 0)
-    {
-        fds_clients.at(client_fd).closeFileFd();
-        fds_clients.at(client_fd).setError("500");
-        return;
-    }
-    std::stringstream chunkSizeHex;
-    chunkSizeHex << std::hex << bytesRead << "\r\n";
-    std::string chunkData(buffer, bytesRead);
+    ssize_t bytes_read;
+
     if (!fds_clients.at(client_fd).header_sent)
     {
         chunk += fds_clients.at(client_fd).response.header;
         fds_clients.at(client_fd).header_sent = true;
     }
+
+    bytes_read = read(fds_clients.at(client_fd).file_fd, buffer, BUF_SIZE);
+    if (bytes_read < 0)
+    {
+        fds_clients.at(client_fd).closeFileFd();
+        fds_clients.at(client_fd).setError("500");
+        return;
+    }
+    std::string read_data(buffer, bytes_read);
+
     if (fds_clients.at(client_fd).response.is_chunked)
     {
-        chunk += chunkSizeHex.str();
+        std::stringstream hex_chunk_size;
+        hex_chunk_size << std::hex << bytes_read << "\r\n";
+        chunk += hex_chunk_size.str() + read_data + "\r\n";
     }
-    chunk += chunkData + "\r\n";
-    if (bytesRead < BUF_SIZE)
+    else
+        chunk += read_data;
+
+    if (!fds_clients.at(client_fd).response.is_chunked || bytes_read == 0)
     {
-        if (fds_clients.at(client_fd).response.is_chunked)
-            chunk += "0";
-        chunk += "\r\n\r\n";
         fds_clients.at(client_fd).closeFileFd();
         fds_clients.at(client_fd).last_chunk_sent = true;
     }

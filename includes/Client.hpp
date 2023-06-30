@@ -1,5 +1,4 @@
-#ifndef CLIENT_HPP
-# define CLIENT_HPP
+#pragma once
 
 #include <sys/types.h>
 #include <string>
@@ -9,17 +8,14 @@
 #include <time.h>
 
 #include "Response.hpp"
-#include "Cgi.hpp"
 #include "ServerConfig.hpp"
 
 #define PACKAGE_SIZE 5000
 
-
-
 class Client
 {
     public:
-        Client(ServerConfig conf);
+        Client(ServerConfig conf, std::string ip);
         void    setRequest(char *chunk, size_t buffer_length);
         void    mapRequestHeader();
         void    tokenizeRequestHeader(std::map<std::string, std::string> & request, std::string line_to_tokenize);
@@ -36,10 +32,12 @@ class Client
         void	preparePost();
         void	prepareDelete();
         bool	isDirectory();
+        void	parseClientPath();
         void    closeFileFd();
 
+        // void                            set_cgi_filename(Cgi &cgi);
 
-		static int		nextId;
+		static int  nextId;
 		int		id;
         int color_index;
 
@@ -48,7 +46,6 @@ class Client
         int                             server_index;
         int                             client_fd;
         int                             file_fd;
-        void                            set_cgi_filename(Cgi &cgi);
 
         ServerConfig                        config;
         bool                                request_complete;
@@ -60,6 +57,10 @@ class Client
         std::string                         method;
         std::string                         path_on_server;
         std::string                         path_on_client;
+        std::string                         path_info;
+        std::string                         server_name;
+        std::string                         location;
+        std::string                         client_ip;
         bool                                kill_client;
         bool                                autoindex;
         bool                                cancel_recv;
@@ -67,6 +68,7 @@ class Client
         bool                                is_get;
 		bool                        		is_upload;
 		bool                        		is_delete;
+        bool                                query_string;
         bool                                response_sent;
         bool                                last_chunk_sent;
         bool                                request_processed;
@@ -74,5 +76,3 @@ class Client
     private:
         std::string _cgi_filename;
 };
-
-#endif

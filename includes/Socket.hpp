@@ -10,6 +10,8 @@
 
 #include <sys/wait.h>
 #include <sys/socket.h>
+#include <sys/types.h>
+#include <netdb.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <fcntl.h>
@@ -24,7 +26,7 @@ class Socket{
 		Socket(int port, std::string ip);
         int server_fd;
 		int opt;
-		struct sockaddr_in server_addr;
+		struct addrinfo hints, *server_info;
     private:
         Socket(const Socket &other);
         Socket &operator = (const Socket &other);

@@ -2,9 +2,10 @@
 
 int Client::nextId = 0;
 
-Client::Client(ServerConfig conf) : id(nextId++), color_index(id % 4), config(conf), header_sent(false), file_fd(-1),
+Client::Client(ServerConfig conf, std::string ip) : id(nextId++), color_index(id % 4), config(conf), header_sent(false), file_fd(-1),
 content_length(0)
 {
+	this->client_ip = ip;
 	this->autoindex = false;
 	this->kill_client = false;
 	this->is_cgi = false;
@@ -12,6 +13,7 @@ content_length(0)
 	this->cancel_recv = false;
 	this->is_delete = false;
 	this->is_upload = false;
+	this->query_string = false;
 	this->response_sent = false;
 	this->last_chunk_sent = false;
 	this->request_processed = false;
@@ -25,14 +27,28 @@ void    Client::closeFileFd()
 		if ((close(file_fd)) < 0)
 			perror("Error closing File Fd");
 		else
-		file_fd = -1;
+			file_fd = -1;
+	}
+}
+
+void	Client::parseClientPath()
+{
+	path_on_client = request_header.at("location:");
+	size_t i,j;
+	if ((i = path_on_client.find(".")) != std::string::npos && (j = path_on_client.substr(i).find("/")) != std::string::npos)
+	{
+		path_info = path_on_client.substr(i + j);
+		path_on_client = path_on_client.substr(0, i + j);
 	}
 }
 
 void    Client::checkRequest()
 {
+	this->parseClientPath();
 	this->assignLocation();
-	response.server_name = config.getConfProps("server_name:");
+	this->server_name = config.getConfProps("server_name:");
+	response.server_name = this->server_name;
+
 	if (this->checkMethod() && checkExistance())
 	{
 		if (method == "GET")
@@ -75,7 +91,7 @@ void	Client::preparePost()
 		}
 		this->is_cgi = true;
 	}
-	else if (request_header["Content-Type:"] == "multipart/form-data")
+	else if (request_header.at("Content-Type:") == "multipart/form-data")
 	{
 		if (access(path_on_server.c_str(), W_OK) == -1)
 		{
@@ -124,10 +140,10 @@ bool	Client::isDirectory()
 
 bool	Client::checkMethod()
 {
-	if (config.getLocation(path_on_client, "allowed_methods:").find(request_header["method:"]) \
+	if (config.getLocation(location, "allowed_methods:").find(request_header["method:"]) \
 		!= std::string::npos)
 		{
-			this->method = request_header["method:"];
+			this->method = request_header.at("method:");
 			return true;
 		}
 	setError("405");
@@ -155,15 +171,15 @@ void	Client::assignLocation()
 		it = config.locations.begin(); it != config.locations.end(); it++)
 	{
 		// std::cout << it->first << std::endl; 
-		if (int pos = request_header["location:"].find(it->first) != std::string::npos)
+		if (int pos = path_on_client.find(it->first) != std::string::npos)
 		{
-			this->path_on_client = it->first;
-			this->path_on_server = it->second["root:"];
-			if (request_header["location:"] == it->first)
+			this->location = it->first;
+			this->path_on_server = it->second.at("root:");
+			if (path_on_client == it->first)
 				this->path_on_server += it->second["index:"];
 			else
-				this->path_on_server += request_header["location:"].substr(1);
-			if (it->second["autoindex:"] == "on")
+				this->path_on_server += path_on_client.substr(1);
+			if (it->second.at("autoindex:") == "on")
 				autoindex = true;
 		}
 	}
@@ -213,7 +229,6 @@ void    Client::mapRequestHeader()
 		std::cout << "no correct header format" << std::endl;
 		setError("400");
 	}
-        // Handle error: invalid HTTP request without a 
 
 	std::string header = request.substr(0, headerEnd);
 	request = request.substr(headerEnd + 4);
@@ -231,11 +246,12 @@ void    Client::mapRequestHeader()
     {
         request_header["method:"] = std::strtok(&line[0], " ");
         request_header["location:"] = std::strtok(NULL, " ");
-        std::size_t found = request_header["location:"].find('?');
-        if (found != std::string::npos && request_header["method:"] == "GET")
+        std::size_t found = request_header.at("location:").find('?');
+        if (found != std::string::npos && request_header.at("method:") == "GET")
 		{
+			this->query_string = true;
             request_header["HTTP_version:"] = std::strtok(NULL, " ");
-            std::string temporary = std::strtok(&request_header["location:"][0], "?");
+            std::string temporary = std::strtok(&request_header.at("location:")[0], "?");
             request_header["query_string:"] = std::strtok(NULL, " ");
             request_header["location:"] = temporary;
         }
@@ -251,8 +267,8 @@ void    Client::mapRequestHeader()
     size_t v;
     if ((v = request_header["Content-Type:"].find("boundary=")) != std::string::npos)
     {
-        std::string key = request_header["Content-Type:"].substr(v, 8);
-        std::string value = request_header["Content-Type:"].substr(request_header["Content-Type:"].find("=") + 1);
+        std::string key = request_header.at("Content-Type:").substr(v, 8);
+        std::string value = request_header.at("Content-Type:").substr(request_header["Content-Type:"].find("=") + 1);
         request_header[key] = value;
         request_header["Content-Type:"] = request_header["Content-Type:"].substr(0, request_header["Content-Type:"].find(";"));
     }

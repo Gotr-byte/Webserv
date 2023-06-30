@@ -1,18 +1,41 @@
 #include "../includes/Socket.hpp"
 
-Socket::Socket(){}
+Socket::Socket()
+{}
+
 Socket::Socket(int port, std::string ip)
 {
-	server_fd = socket(AF_INET, SOCK_STREAM, 0);
     int opt = 1;
+
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_INET;       // IPv4
+    hints.ai_socktype = SOCK_STREAM; // TCP
+    hints.ai_flags = AI_PASSIVE;     // For server sockets
+
+    std::string port_str = std::to_string(port);
+
+    // Get address information for the server
+    int result = getaddrinfo(ip.c_str(), port_str.c_str(), &hints, &server_info);
+    if (result != 0)
+    {
+        fprintf(stderr, "getaddrinfo error: %s\n", gai_strerror(result));
+        exit(EXIT_FAILURE);
+    }
+
+    // Create server socket
+    server_fd = socket(server_info->ai_family, server_info->ai_socktype, server_info->ai_protocol);
     if (server_fd < 0)
     {
         perror("Error creating server socket");
         exit(EXIT_FAILURE);
     }
 
-    // set the socket to non blocking
-    fcntl(server_fd, F_SETFL, O_NONBLOCK);
+    // Set the socket to non-blocking
+    if (fcntl(server_fd, F_SETFL, O_NONBLOCK) < 0)
+    {
+        perror("Error setting server socket to non-blocking");
+        exit(EXIT_FAILURE);
+    }
 
     if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0)
     {
@@ -20,15 +43,7 @@ Socket::Socket(int port, std::string ip)
         exit(EXIT_FAILURE);
     }
 
-    memset(&server_addr, 0, sizeof(server_addr));
-    server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(port);
-    if (ip == "localhost")
-        server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-    else
-        server_addr.sin_addr.s_addr = inet_addr(ip.c_str());
-
-    if (bind(server_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
+    if (bind(server_fd, server_info->ai_addr, server_info->ai_addrlen) < 0)
     {
         perror("Error binding server socket port");
         exit(EXIT_FAILURE);
@@ -40,7 +55,11 @@ Socket::Socket(int port, std::string ip)
         perror("Error listening on server socket");
         exit(EXIT_FAILURE);
     }
+
+    // Free address info
+    freeaddrinfo(server_info);
 }
 
-Socket::~Socket(){}
+Socket::~Socket()
+{}
  

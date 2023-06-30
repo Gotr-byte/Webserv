@@ -20,7 +20,7 @@ void	Response::generateUploadResponse(std::string file_path)
 {
 	status_code = "201 Created";
 	content_type = "text/plain";
-	body = "File was uploaded succesfully\r\n\r\n";
+	body = "File was uploaded succesfully";
 	content_length = body.size();
 	additional_info = "Location: " + file_path;
 	buildResponseHeader();
@@ -186,8 +186,7 @@ void	Response::createAutoindex(std::string path)
     // Write the HTML footer
     autoidx << "</ul>\n";
     autoidx << "</body>\n";
-    autoidx << "</html>\n";
-	autoidx << "\r\n\r\n";
+    autoidx << "</html>";
 
 	body = autoidx.str();
 	additional_info = "";
