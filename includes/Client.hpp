@@ -2,6 +2,7 @@
 
 #include <sys/types.h>
 #include <string>
+#include <string.h>
 #include <vector>
 #include <ctime>
 #include <map>

@@ -244,19 +244,19 @@ void    Client::mapRequestHeader()
 	 // Extract a line from the header
     if (!line.empty())
     {
-        request_header["method:"] = std::strtok(&line[0], " ");
-        request_header["location:"] = std::strtok(NULL, " ");
+        request_header["method:"] = strtok(&line[0], " ");
+        request_header["location:"] = strtok(NULL, " ");
         std::size_t found = request_header.at("location:").find('?');
         if (found != std::string::npos && request_header.at("method:") == "GET")
 		{
 			this->query_string = true;
-            request_header["HTTP_version:"] = std::strtok(NULL, " ");
-            std::string temporary = std::strtok(&request_header.at("location:")[0], "?");
-            request_header["query_string:"] = std::strtok(NULL, " ");
+            request_header["HTTP_version:"] = strtok(NULL, " ");
+            std::string temporary = strtok(&request_header.at("location:")[0], "?");
+            request_header["query_string:"] = strtok(NULL, " ");
             request_header["location:"] = temporary;
         }
         else
-            request_header["HTTP_version:"] = std::strtok(NULL, " ");
+            request_header["HTTP_version:"] = strtok(NULL, " ");
     }
 	while ((lineEnd = header.find("\r\n", lineStart)) != std::string::npos)
     {

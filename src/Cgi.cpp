@@ -4,6 +4,14 @@
 #define WRITE_END 1
 #define READ_END 0
 
+// Global flag to track if timeout occurred
+volatile sig_atomic_t timeoutOccurred = 0;
+
+// Signal handler for timeout
+void handleTimeout(int signum) {
+    timeoutOccurred = 1;
+}
+
 // //TODO catch the moment when the file is uploaded
 // //TODO have a timestamp to prevent the CGI to block the server
 // //TODO the responses of the CGI
@@ -113,6 +121,8 @@ void Cgi::run()
 	std::string env_variable;
 	int infile;
 	std::string body_path;
+
+	const int timeoutDuration = 3;
 
 	if(!is_python3_installed())
 		throw(CgiException());
@@ -241,18 +251,51 @@ void Cgi::run()
 
         dup2(outfile, STDOUT_FILENO);
         close(outfile);
+		// Set up the signal handler for timeout
+		struct sigaction sa;
+        memset(&sa, 0, sizeof(sa));
+        sa.sa_handler = handleTimeout;
+        sigaction(SIGALRM, &sa, NULL);
 
+        // Set the timeout alarm
+        alarm(timeoutDuration);
 		execve(_args[0], const_cast<char* const*>(_args), _env);
 		// exit(EXIT_SUCCESS);
 		throw(CgiException());
 	}
 	// smart_sleep(3000);
-    int status;
-    close(pipe_d[READ_END]);
+    // int status;
+    // close(pipe_d[READ_END]);
+    // close(outfile);
+    // waitpid(_cgi_pid, &status, 0);
+	// client.path_on_server = out_filename;
+	// client.response.generateCgiResponse(out_filename);
+
+	int status;
+	close(pipe_d[READ_END]);
     close(outfile);
-    waitpid(_cgi_pid, &status, 0);
-	client.path_on_server = out_filename;
-	client.response.generateCgiResponse(out_filename);
+		pid_t terminatedPid = waitpid(_cgi_pid, &status, 0);
+
+		if (terminatedPid == -1) {
+			perror("waitpid");
+			exit(1);
+		}
+
+		if (timeoutOccurred) {
+			// Handle timeout
+			std::cout << "Timeout occurred. Child process was terminated." << std::endl;
+		} else {
+			// Handle normal exit
+			if (WIFEXITED(status)) {
+				std::cout << "Child process exited with status: " << WEXITSTATUS(status) << std::endl;
+				client.path_on_server = out_filename;
+				client.response.generateCgiResponse(out_filename);
+			} else if (WIFSIGNALED(status)) {
+				std::cerr << "Child process terminated due to signal: " << WTERMSIG(status) << std::endl;
+				const char* cgi_error_path = "../HTML/cgi-bin/cgi_error.html";
+				client.response.generateCgiResponse(out_filename);
+			}
+		}
 }
 
 void Cgi::print_enviromentals(){
