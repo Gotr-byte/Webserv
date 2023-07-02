@@ -10,6 +10,14 @@
 #define BUF_SIZE 1024
 #define POLL_TIMEOUT 200
 
+void print_map(std::map<std::string, std::string> myMap){
+for(std::map<std::string, std::string>::iterator it = myMap.begin();
+    it != myMap.end(); ++it)
+{
+    std::cout << it->first << " " << it->second <<" \n ";
+}
+}
+
 /**
  * Constructor of HTTP server, creates an array of client
  *
@@ -176,8 +184,11 @@ void WebServer::loopPollEvents()
                         it->events = POLLOUT;
                     if (!fds_clients.at(it->fd).request_processed && fds_clients.at(it->fd).request_complete)
                     {
-                        if (fds_clients.at(it->fd).is_cgi)
-                            performCgi(it->fd);
+                        print_map(fds_clients.at(it->fd).request_header);
+                        std::cout << "file descriptor equals: " << it->fd << "\n";
+                        if (fds_clients.at(it->fd).is_cgi){
+                            performCgi(fds_clients.at(it->fd).request_header, it->fd);
+                        }
                         else if (fds_clients.at(it->fd).is_get)
                             performGet(it->fd);
                         else if (fds_clients.at(it->fd).is_delete)
@@ -187,22 +198,6 @@ void WebServer::loopPollEvents()
                     }
                 }
             }
-            //     else if (new_req.isCGI)
-            //     {
-            //         std::cout << "*******************\n";
-            //         std::cout << "* Welcome to CGI! *\n";
-            //         std::cout << "*******************\n";
-            //         Cgi cgi("generic cgi", new_req.id);
-            //         try{
-            //             cgi.run(FdsClients[*it_idx].second.Requests.end() - 1);
-            //         }
-            //         catch (const std::exception &e){
-            //             std::cerr << e.what();
-            //         }
-            //         (void)fds;
-            //     }
-            //     else if (new_req.isDelete)
-            // }
             else if (it->revents & POLLOUT && fds_clients.at(it->fd).request_processed)
             {
                 sendResponse(it->fd);
@@ -223,9 +218,21 @@ void WebServer::loopPollEvents()
     }
 }
 
-void    WebServer::performCgi(int client_fd)
+void    WebServer::performCgi(std::map<std::string, std::string> requestHeader, int client_fd)
 {
-    
+    std::cout << "*******************\n";
+    std::cout << "* Welcome to CGI! *\n";
+    std::cout << "*******************\n";
+    Cgi cgi("generic cgi", 7);
+    // try{
+            cgi.run(requestHeader, client_fd);
+
+    // }
+    // catch (const std::exception &e){
+    //     std::cerr << e.what();
+    // }
+    // fds_clients.at(client_fd).response.buildResponseHeader();
+    // fds_clients.at(client_fd).request_processed = true;
 }
 
 void WebServer::sendResponse(int client_fd)
@@ -318,6 +325,8 @@ void WebServer::killClient(std::vector<struct pollfd>::iterator it)
     fds_clients.erase(it->fd);
     poll_fds.erase(it);
 }
+
+
 
 void WebServer::performDelete(int client_fd)
 {

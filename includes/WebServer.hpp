@@ -55,7 +55,7 @@ class WebServer
 			void		performGet(int client_fd);
 			void		performUpload(int client_fd);
 			void		performDelete(int client_fd);
-			void		performCgi(int client_fd);
+			void		performCgi(std::map<std::string, std::string> requestHeader, int client_fd);
 			void		sendResponse(int client_fd);
 			void		killClient(std::vector<struct pollfd>::iterator it);
 			bool		validateFilename(std::string filename);
