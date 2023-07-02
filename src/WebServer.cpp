@@ -119,7 +119,7 @@ void WebServer::acceptClients(int server_fd)
 
     std::string client_ip = convertIPv4ToString(client_addr.sin_addr);
 
-    fds_clients.insert(std::make_pair(client_fd, Client(configs.at(server_fd, client_ip))));
+    fds_clients.insert(std::make_pair(client_fd, Client(configs.at(server_fd), client_ip)));
     // std::cout << tmp.id << std::endl;
     struct pollfd pollstruct;
     pollstruct.fd = client_fd;
@@ -201,9 +201,9 @@ void WebServer::loopPollEvents()
                         it->events = POLLOUT;
                     if (!fds_clients.at(it->fd).request_processed && fds_clients.at(it->fd).request_complete)
                     {
-                        // if (fds_clients.at(it->fd).is_cgi)
-                        //     performCgi(it->fd);
-                        if (fds_clients.at(it->fd).is_get)
+                        if (fds_clients.at(it->fd).is_cgi)
+                            performCgi(it->fd);
+                        else if (fds_clients.at(it->fd).is_get)
                             performGet(it->fd);
                         else if (fds_clients.at(it->fd).is_delete)
                             performDelete(it->fd);
@@ -248,11 +248,12 @@ void WebServer::loopPollEvents()
     }
 }
 
-// void    WebServer::performCgi(int client_fd)
-// {
-//     Cgi cgi;
-//     cgi.run(fds_clients.at(client_fd))
-// }
+void    WebServer::performCgi(int client_fd)
+{
+    Cgi cgi(fds_clients.at(client_fd));
+    cgi.run();
+    fds_clients.at(client_fd).request_processed = true;
+    }
 
 void WebServer::sendResponse(int client_fd)
 {

@@ -36,6 +36,7 @@
 #include "ServerConfig.hpp"
 #include "Client.hpp"
 #include "Socket.hpp"
+#include "Cgi.hpp"
 #include "../includes/Response.hpp"
 #include "Colors.hpp"
 // #include <cstring.h>

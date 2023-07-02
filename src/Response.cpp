@@ -30,7 +30,6 @@ void	Response::generateCgiResponse(std::string path)
 {
 	obtainFileLength(path);
 	content_type = "text/html";
-	setDate();
 	buildResponseHeader();
 }
 
