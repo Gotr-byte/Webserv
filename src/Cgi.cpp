@@ -1,6 +1,5 @@
 #include "../includes/Cgi.hpp"
 
-
 #define WRITE_END 1
 #define READ_END 0
 
@@ -30,11 +29,6 @@ Cgi::Cgi(Client & c) : client(c)
 
 Cgi::~Cgi() {}
 
-// std::string Cgi::get_file_name()
-// {
-// 	return (_file_name);
-// }
-
 void Cgi::run()
 {
 	std::string env_variable;
@@ -43,8 +37,10 @@ void Cgi::run()
 
 	const int timeoutDuration = 3;
 
-	if(!is_python3_installed())
+	if(!is_python3_installed()){
+		client.setError("500");
 		throw(CgiException());
+	}
 	std::cout << "cgi: request header method [" << client.request_header["method:"] << "]\n";
 
 	//create an output file
@@ -52,13 +48,18 @@ void Cgi::run()
     int outfile = open(out_filename, O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR);
     if (outfile == -1) 
 	{
+		client.setError("500");
         std::cerr << "cgi: Error opening the outfile.\n";
         throw(CgiException());
     }
 
 	int pipe_d[2];
-	if (pipe(pipe_d) == -1)
+	if (pipe(pipe_d) == -1){
+		client.setError("500");
 		std::cout << "Pipe Error\n";
+		throw(CgiException());
+	}
+		
 	
     if (client.request.size() > 0)
         fcntl(pipe_d[WRITE_END], 0, client.request.size());
@@ -72,6 +73,7 @@ void Cgi::run()
 		close(pipe_d[READ_END]);
 		close(outfile);
 		std::cerr << "Error with fork\n";
+		client.setError("500");
 		throw(CgiException());
 	}
 	
@@ -175,6 +177,7 @@ void Cgi::run()
         // Set the timeout alarm
         alarm(timeoutDuration);
 		execve(_args[0], const_cast<char* const*>(_args), _env);
+		client.setError("500");
 		throw(CgiException());
 	}
 
@@ -184,6 +187,7 @@ void Cgi::run()
 		pid_t terminatedPid = waitpid(_cgi_pid, &status, 0);
 		if (terminatedPid == -1) {
 			std::cerr << "cgi: error with process handling\n";
+			client.setError("500");
 			throw(CgiException());
 		}
 
@@ -198,17 +202,17 @@ void Cgi::run()
 				client.response.generateCgiResponse(out_filename);
 			} else if (WIFSIGNALED(status)) {
 				std::cerr << "Child process terminated due to signal: " << WTERMSIG(status) << std::endl;
-				const char* cgi_error_path = "../HTML/cgi-bin/cgi_error.html";
-				client.response.generateCgiResponse(out_filename);
+				// const char* cgi_error_path = "../HTML/cgi-bin/cgi_error.html";
+				client.setError("500");
 				throw(CgiException());
 			}
 		}
 }
 
-void Cgi::print_enviromentals(){
-		std::cout << "cgi: print the vector elements\n";
-		for (std::vector<std::string>::iterator it = enviromentals.begin(); it != enviromentals.end(); ++it) {
-			std::cout << *it << "\n";
-		}
-		std::cout << std::endl;
-}
+// void Cgi::print_enviromentals(){
+// 		std::cout << "cgi: print the vector elements\n";
+// 		for (std::vector<std::string>::iterator it = enviromentals.begin(); it != enviromentals.end(); ++it) {
+// 			std::cout << *it << "\n";
+// 		}
+// 		std::cout << std::endl;
+// }
