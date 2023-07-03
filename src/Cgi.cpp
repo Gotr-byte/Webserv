@@ -69,6 +69,8 @@ void Cgi::run()
 	int _cgi_pid = fork();
 	if (_cgi_pid < 0)
 	{
+		close(pipe_d[READ_END]);
+		close(outfile);
 		std::cerr << "Error with fork\n";
 		throw(CgiException());
 	}
@@ -173,7 +175,6 @@ void Cgi::run()
         // Set the timeout alarm
         alarm(timeoutDuration);
 		execve(_args[0], const_cast<char* const*>(_args), _env);
-		// exit(EXIT_SUCCESS);
 		throw(CgiException());
 	}
 
