@@ -35,7 +35,7 @@ public:
 	bool is_python3_installed();
 	bool is_python_file(const std::string &str);
 	bool is_query_string(std::vector<Response>::iterator it_req);
-	void print_enviromentals();
+	// void print_enviromentals();
 	std::string create_request_body_file(std::vector<Response>::iterator it_req);
 	void smart_sleep(long set_miliseconds);
 
