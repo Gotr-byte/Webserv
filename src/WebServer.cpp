@@ -231,7 +231,7 @@ void WebServer::sendResponse(int client_fd)
 
     if (!fds_clients.at(client_fd).header_sent)
     {
-        if (fds_clients.at(client_fd).response.body.empty())
+        if (fds_clients.at(client_fd).response.body.empty() && !(fds_clients.at(client_fd).is_delete))
         {
             int file_fd = open(fds_clients.at(client_fd).path_on_server.c_str(), O_RDONLY);
             if (file_fd < 0)

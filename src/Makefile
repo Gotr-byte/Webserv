@@ -1,8 +1,8 @@
 NAME := Webserv
 INC_DIR = ../includes
 CC = c++
-# CFLAGS = -std=c++98 -Wextra -Werror -Wall -I$(INC_DIR) -g -fsanitize=address
-CFLAGS = -g -fsanitize=address
+CFLAGS = -std=c++98 -Wextra -Werror -Wall -I$(INC_DIR) -g -fsanitize=address
+# CFLAGS = -g -fsanitize=address
 SRCFILES := $(shell find . -iname "*.cpp")
 OBJS = $(SRCFILES:.cpp=.o)
 
