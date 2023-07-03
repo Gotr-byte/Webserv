@@ -211,22 +211,6 @@ void WebServer::loopPollEvents()
                     }
                 }
             }
-            //     else if (new_req.isCGI)
-            //     {
-            //         std::cout << "*******************\n";
-            //         std::cout << "* Welcome to CGI! *\n";
-            //         std::cout << "*******************\n";
-            //         Cgi cgi("generic cgi", new_req.id);
-            //         try{
-            //             cgi.run(FdsClients[*it_idx].second.Requests.end() - 1);
-            //         }
-            //         catch (const std::exception &e){
-            //             std::cerr << e.what();
-            //         }
-            //         (void)fds;
-            //     }
-            //     else if (new_req.isDelete)
-            // }
             else if (it->revents & POLLOUT && fds_clients.at(it->fd).request_processed)
             {
                 sendResponse(it->fd);
