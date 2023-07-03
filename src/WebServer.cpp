@@ -196,8 +196,8 @@ void WebServer::loopPollEvents()
                         fds_clients.at(it->fd).mapRequestHeader();
                         fds_clients.at(it->fd).checkRequest();
                     }
-                    // if (fds_clients.at(it->fd).cancel_recv)
-                    //     it->events = POLLOUT;
+                    if (fds_clients.at(it->fd).cancel_recv)
+                        it->events = POLLOUT;
                     if (!fds_clients.at(it->fd).request_processed && fds_clients.at(it->fd).request_complete)
                     {
                         if (fds_clients.at(it->fd).is_cgi)
