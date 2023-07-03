@@ -60,7 +60,7 @@ void	Response::obtainFileLength(std::string path)
 	FILE* file = fopen(path.c_str(), "r");
 	if (file == nullptr)	
 	{
-		perror("Error opening file");
+		std::cerr << ("response: Error opening file");
 		exit(EXIT_FAILURE);
 	}
 	std::fseek(file, 0, SEEK_END);

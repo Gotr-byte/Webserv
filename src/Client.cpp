@@ -25,7 +25,7 @@ void    Client::closeFileFd()
 	if (file_fd != -1)
 	{
 		if ((close(file_fd)) < 0)
-			perror("Error closing File Fd");
+			std::cerr << ("client: Error closing File Fd");
 		else
 			file_fd = -1;
 	}

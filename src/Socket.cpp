@@ -26,7 +26,7 @@ Socket::Socket(int port, std::string ip)
     server_fd = socket(server_info->ai_family, server_info->ai_socktype, server_info->ai_protocol);
     if (server_fd < 0)
     {
-        perror("Error creating server socket");
+        std::cout << "socket: Error creating server socket\n";
         exit(EXIT_FAILURE);
     }
 

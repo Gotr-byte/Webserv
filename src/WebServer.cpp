@@ -10,11 +10,6 @@
 #define BUF_SIZE 1024
 #define POLL_TIMEOUT 200
 
-// TODO SIGKILL
-// CGI
-// LOCATIONS
-
-
 /**
  * Constructor of HTTP server, creates an array of client
  *
@@ -29,15 +24,6 @@ WebServer::WebServer(std::string path, char **env): _env(env), config_path(path)
 
 WebServer::~WebServer()
 {}
-
-
-//also update location request
-// void WebServer::generate_cgi_querry(std::map<std::string, std::string>&new_request){
-//     char * temporary = std::strtok(&new_request["location:"][0], "?");
-//     std::cout << "the temp file: "<< temporary << "\n";
-//     new_request["query_string:"] = std::strtok(NULL, "");
-//     new_request["location:"] = temporary;
-// }
 
 bool    WebServer::validateFilename(std::string filename)
 {
@@ -111,7 +97,7 @@ void WebServer::acceptClients(int server_fd)
     client_fd = accept(server_fd, (struct sockaddr *)&client_addr, &client_addr_size);
     if (client_fd < 0)
     {
-        perror("Error accepting client connection on etc");
+        std::cerr << "webserver: Error accepting client connection\n";
         return;
     }
 
@@ -120,14 +106,11 @@ void WebServer::acceptClients(int server_fd)
     std::string client_ip = convertIPv4ToString(client_addr.sin_addr);
 
     fds_clients.insert(std::make_pair(client_fd, Client(configs.at(server_fd), client_ip)));
-    // std::cout << tmp.id << std::endl;
     struct pollfd pollstruct;
     pollstruct.fd = client_fd;
     pollstruct.events = POLLIN | POLLOUT;
     pollstruct.revents = 0;
     this->poll_fds.push_back(pollstruct);
-    // std::cout << "ACCEPT SOCKET FD:" << client_fd << "\n";
-
 }
 
 std::string WebServer::convertIPv4ToString(const struct in_addr& address)
@@ -148,7 +131,7 @@ void WebServer::conductPolling()
 {
     if (poll(poll_fds.data(), poll_fds.size(), POLL_TIMEOUT) < 0)
     {
-        perror("Error polling sockets");
+        std::cerr << "Error polling sockets\n";
         exit(EXIT_FAILURE);
     }
 }
@@ -211,28 +194,11 @@ void WebServer::loopPollEvents()
                     }
                 }
             }
-            //     else if (new_req.isCGI)
-            //     {
-            //         std::cout << "*******************\n";
-            //         std::cout << "* Welcome to CGI! *\n";
-            //         std::cout << "*******************\n";
-            //         Cgi cgi("generic cgi", new_req.id);
-            //         try{
-            //             cgi.run(FdsClients[*it_idx].second.Requests.end() - 1);
-            //         }
-            //         catch (const std::exception &e){
-            //             std::cerr << e.what();
-            //         }
-            //         (void)fds;
-            //     }
-            //     else if (new_req.isDelete)
-            // }
             else if (it->revents & POLLOUT && fds_clients.at(it->fd).request_processed)
             {
                 sendResponse(it->fd);
                 if (fds_clients.at(it->fd).response_sent)
                 {
-                    // std::cout << "Response Sent\n";
                     killClient(it--);
                     continue;
                 }
@@ -250,7 +216,12 @@ void WebServer::loopPollEvents()
 void    WebServer::performCgi(int client_fd)
 {
     Cgi cgi(fds_clients.at(client_fd));
+    try{
     cgi.run();
+    }
+    catch (const std::exception &e){
+        std::cerr << e.what();
+    }
     fds_clients.at(client_fd).request_processed = true;
     }
 
@@ -258,7 +229,6 @@ void WebServer::sendResponse(int client_fd)
 {
     std::string chunk = "";
 
-    // std::cout << fds_clients.at(client_fd).response.header
     if (!fds_clients.at(client_fd).header_sent)
     {
         if (fds_clients.at(client_fd).response.body.empty())
@@ -340,10 +310,7 @@ std::string WebServer::toHex(int value)
 void WebServer::killClient(std::vector<struct pollfd>::iterator it)
 {
     if ((close(it->fd)) < 0)
-		perror("Error closing Socket Fd");
-    else
-        // std::cout << "CLOSED SOCKET FD: " << it->fd << std::endl;
-    // std::cout << fds_clients.at(it->fd).id << " KILLED\n";
+		std::cerr << "webserver loop: Error closing Socket Fd\n";
     fds_clients.erase(it->fd);
     poll_fds.erase(it);
 }
@@ -359,19 +326,6 @@ void WebServer::performDelete(int client_fd)
     fds_clients.at(client_fd).response.generateDeleteResponse();
     fds_clients.at(client_fd).request_processed = true;
 }
-
-// void WebServer::InitFdsClients()
-// {
-//     ConfigCheck check;
-//     listening_port_no = check.checkConfig(_path);
-
-//     for (int i = 0; i < (MAX_CLIENTS + listening_port_no + 1); i++)
-//     {
-//         Client init;
-//         std::pair<int, Client> tmp(-1, init);
-//         FdsClients.push_back(tmp);
-//     }
-// }
 
 int WebServer::setupListeningSockets()
 {
