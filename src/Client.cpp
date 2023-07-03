@@ -172,7 +172,6 @@ void	Client::assignLocation()
 	for (std::map<std::string, std::map<std::string, std::string> >::iterator \
 		it = config.locations.begin(); it != config.locations.end(); it++)
 	{
-		// std::cout << it->first << std::endl; 
 		if (int pos = path_on_client.find(it->first) != std::string::npos)
 		{
 			this->location = it->first;
@@ -180,7 +179,7 @@ void	Client::assignLocation()
 			if (path_on_client == it->first)
 				this->path_on_server += it->second["index:"];
 			else
-				this->path_on_server += path_on_client.substr(1);
+				this->path_on_server += path_on_client.substr(it->first.size());
 			if (it->second.at("autoindex:") == "on")
 				autoindex = true;
 		}
