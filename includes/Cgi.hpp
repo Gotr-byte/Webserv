@@ -1,11 +1,12 @@
 #pragma once
 
-
+#include "WebServer.hpp"
+#include "Client.hpp"
+#include "Response.hpp"
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <fcntl.h>
-#include "WebServer.hpp"
 #include <iostream>
 #include <sstream>
 #include <fstream>
@@ -13,16 +14,14 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #include <errno.h>
-#include <stdio.h>
-#include "Client.hpp"
-#include "Colors.hpp"
-#include "Response.hpp"
 #include <string.h>
 #include <map>
 #include <vector>
 #include <algorithm>
 #include <sys/time.h>
 #include <signal.h>
+//#include "Colors.hpp"
+//#include <stdio.h>
 
 class Cgi
 {

@@ -18,6 +18,7 @@
 #include <cstdlib>
 #include <stdio.h>
 #include <string>
+#include <iostream>
 
 class Socket{
     public:
