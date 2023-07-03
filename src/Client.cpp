@@ -77,6 +77,8 @@ void	Client::prepareDelete()
 
 void	Client::preparePost()
 {
+	if (request_size < std::atol(request_header.at("Content-Length:").c_str()))
+		request_complete = false;
 	if (std::atol(config.getConfProps("limit_body_size:").c_str()) < std::atol(request_header["Content-Length:"].c_str()))
 	{
 		this->cancel_recv = true;
@@ -241,22 +243,21 @@ void    Client::mapRequestHeader()
 	std::string line = header.substr(lineStart, lineEnd - lineStart);
 	lineStart = lineEnd + 2;
 
-	 // Extract a line from the header
     if (!line.empty())
     {
-        request_header["method:"] = std::strtok(&line[0], " ");
-        request_header["location:"] = std::strtok(NULL, " ");
+        request_header["method:"] = strtok(&line[0], " ");
+        request_header["location:"] = strtok(NULL, " ");
         std::size_t found = request_header.at("location:").find('?');
         if (found != std::string::npos && request_header.at("method:") == "GET")
 		{
 			this->query_string = true;
-            request_header["HTTP_version:"] = std::strtok(NULL, " ");
-            std::string temporary = std::strtok(&request_header.at("location:")[0], "?");
-            request_header["query_string:"] = std::strtok(NULL, " ");
+            request_header["HTTP_version:"] = strtok(NULL, " ");
+            std::string temporary = strtok(&request_header.at("location:")[0], "?");
+            request_header["query_string:"] = strtok(NULL, " ");
             request_header["location:"] = temporary;
         }
         else
-            request_header["HTTP_version:"] = std::strtok(NULL, " ");
+            request_header["HTTP_version:"] = strtok(NULL, " ");
     }
 	while ((lineEnd = header.find("\r\n", lineStart)) != std::string::npos)
     {

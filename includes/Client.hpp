@@ -6,6 +6,7 @@
 #include <ctime>
 #include <map>
 #include <time.h>
+#include <string.h>
 
 #include "Response.hpp"
 #include "ServerConfig.hpp"

@@ -177,11 +177,10 @@ void WebServer::loopPollEvents()
                 {
                     char request_chunk[PACKAGE_SIZE];
                     memset(request_chunk, 0, PACKAGE_SIZE);
-                    ssize_t recieved_size = recv(it->fd, request_chunk, PACKAGE_SIZE, 0);
+                    ssize_t recieved_size = recv(it->fd, request_chunk, PACKAGE_SIZE, O_NONBLOCK);
                     if (recieved_size < 0)
                     {
-                        std::cout << "recv error" << std::endl;
-                        killClient(it--);
+                        fds_clients.at(it->fd).setError("500");
                         continue;
                     }
                     else if (recieved_size == 0)
@@ -197,8 +196,8 @@ void WebServer::loopPollEvents()
                         fds_clients.at(it->fd).mapRequestHeader();
                         fds_clients.at(it->fd).checkRequest();
                     }
-                    if (fds_clients.at(it->fd).cancel_recv)
-                        it->events = POLLOUT;
+                    // if (fds_clients.at(it->fd).cancel_recv)
+                    //     it->events = POLLOUT;
                     if (!fds_clients.at(it->fd).request_processed && fds_clients.at(it->fd).request_complete)
                     {
                         if (fds_clients.at(it->fd).is_cgi)
