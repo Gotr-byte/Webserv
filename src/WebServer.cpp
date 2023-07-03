@@ -10,6 +10,19 @@
 #define BUF_SIZE 1024
 #define POLL_TIMEOUT 200
 
+bool deleteIfExists(const char* filename) {
+    if (FILE* file = fopen(filename, "r")) {
+        fclose(file);
+        if (std::remove(filename) == 0) {
+            return true; // File deleted successfully
+        } else {
+            return false; // Failed to delete the file
+        }
+    } else {
+        return true; // File doesn't exist, consider it deleted
+    }
+}
+
 /**
  * Constructor of HTTP server, creates an array of client
  *
@@ -199,6 +212,7 @@ void WebServer::loopPollEvents()
                 sendResponse(it->fd);
                 if (fds_clients.at(it->fd).response_sent)
                 {
+                    deleteIfExists("../HTML/cgi-bin/city_of_brass");
                     killClient(it--);
                     continue;
                 }
@@ -207,6 +221,7 @@ void WebServer::loopPollEvents()
             {
                 std::cout << "POLLERR\n";
                 killClient(it--);
+                deleteIfExists("../HTML/cgi-bin/city_of_brass");
                 continue;
             }
         }

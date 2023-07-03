@@ -3,6 +3,14 @@
 #define WRITE_END 1
 #define READ_END 0
 
+bool deleteFile(const char* filename) {
+    if (std::remove(filename) == 0) {
+        return true; // File deleted successfully
+    } else {
+        return false; // Failed to delete the file
+    }
+}
+
 // Global flag to track if timeout occurred
 volatile sig_atomic_t timeoutOccurred = 0;
 
