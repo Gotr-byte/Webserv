@@ -15,7 +15,9 @@ bool deleteFile(const char* filename) {
 volatile sig_atomic_t timeoutOccurred = 0;
 
 // Signal handler for timeout
-void handleTimeout(int signum) {
+void handleTimeout(int signum)
+{
+	(void) signum;
     timeoutOccurred = 1;
 }
 
@@ -40,7 +42,7 @@ Cgi::~Cgi() {}
 void Cgi::run()
 {
 	std::string env_variable;
-	int infile;
+	int infile = 0;
 	std::string body_path;
 
 	const int timeoutDuration = 3;

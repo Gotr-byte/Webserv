@@ -159,6 +159,11 @@ void ServerConfig::checkLocationBlock(std::map<std::string, std::string> & block
 			std::cout << "LocationBlock: No root directory or redirect set\n";
 			exit(EXIT_FAILURE);
 		}
+		if (block.find("root:") != block.end() && block.find("redirect:") != block.end() )
+		{
+			std::cout << "LocationBlock: Either relocation or redirection is possible, not both in one location\n";
+			exit(EXIT_FAILURE);
+		}
 		if (block.find("allowed_methods:") == block.end())
 			block["allowed_methods:"] = this->properties["allowed_methods:"];
 		if (block.find("autoindex:") == block.end())

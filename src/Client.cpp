@@ -2,10 +2,10 @@
 
 int Client::nextId = 0;
 
-Client::Client(ServerConfig conf, std::string ip) : id(nextId++), color_index(id % 4), config(conf), header_sent(false), file_fd(-1),
-content_length(0)
+Client::Client(ServerConfig conf, std::string ip) : id(nextId++), content_length(0), file_fd(-1), config(conf)
 {
 	this->client_ip = ip;
+	this->header_sent = false;
 	this->autoindex = false;
 	this->kill_client = false;
 	this->is_cgi = false;
@@ -24,12 +24,8 @@ content_length(0)
 void    Client::closeFileFd()
 {
 	if (file_fd != -1)
-	{
-		if ((close(file_fd)) < 0)
-			std::cerr << ("client: Error closing File Fd");
-		else
-			file_fd = -1;
-	}
+		close(file_fd);
+	file_fd = -1;
 }
 
 void	Client::parseClientPath()
@@ -86,7 +82,7 @@ void	Client::prepareDelete()
 
 void	Client::preparePost()
 {
-	if (request_size < std::atol(request_header.at("Content-Length:").c_str()))
+	if ((long)request_size < std::atol(request_header.at("Content-Length:").c_str()))
 		request_complete = false;
 	if (std::atol(config.getConfProps("limit_body_size:").c_str()) < std::atol(request_header["Content-Length:"].c_str()))
 	{
@@ -285,7 +281,7 @@ bool    Client::mapRequestHeader()
 		return false;
 	}
     size_t v;
-    if ((v = request_header["Content-Type:"].find("boundary=")) != std::string::npos)
+    if (this->request_header.at("method:") == "POST" && (v = request_header["Content-Type:"].find("boundary=")) != std::string::npos)
     {
         std::string key = request_header.at("Content-Type:").substr(v, 8);
         std::string value = request_header.at("Content-Type:").substr(request_header["Content-Type:"].find("=") + 1);
