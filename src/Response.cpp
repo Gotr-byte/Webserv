@@ -8,11 +8,17 @@ Response::Response()
 	is_chunked = false;
 }
 
+void	Response::generateRedirectionResponse(std::string URL)
+{
+	status_code = "301 Moved Permanently";
+	additional_info = "Location: " + URL;
+	buildResponseHeader();
+}
+
 void	Response::generateErrorResponse(std::string status, std::string issue)
 {
 	additional_info = "Connection: closed\nTransfer-Encoding: chunked";
 	setupErrorPage(status, issue);
-	setDate();
 	buildResponseHeader();
 }
 
@@ -49,10 +55,6 @@ void	Response::setupErrorPage(std::string status, std::string issue)
 	content_type = "text/html";
 	this->obtainFileLength(error_path);
 	buildResponseHeader();
-	// std::cout << path << std::endl;
-	// std::cout << status_code << std::endl;
-	// std::cout << content_type << std::endl;
-	// std::cout << method << std::endl;
 }
 
 void	Response::obtainFileLength(std::string path)
@@ -131,7 +133,7 @@ void	Response::buildResponseHeader()
 	tmp << protocoll << " " << status_code << "\r\n";
 	tmp << "Server: " << server_name << "\r\n";
 	tmp << date << "\r\n";
-	if (status_code != "204 No Content")
+	if (status_code != "204 No Content" || status_code != "301 Moved Permanently")
 	{
 		tmp << "Content-Type: " << content_type << "\r\n";
 		tmp << "Content-Length: " << content_length << "\r\n";

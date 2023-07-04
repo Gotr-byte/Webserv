@@ -19,6 +19,7 @@ class Response
 		void	generateUploadResponse(std::string file_path);
 		void	generateDeleteResponse();
 		void	generateErrorResponse(std::string status, std::string issue);
+		void	generateRedirectionResponse(std::string URL);
 		// void	generate_cgi_response()
 
 		void	setDate();

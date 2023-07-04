@@ -32,6 +32,7 @@ class Client
         void	prepareGet();
         void	preparePost();
         void	prepareDelete();
+        void	prepareRedirect();
         bool	isDirectory();
         void	parseClientPath();
         void    closeFileFd();
@@ -61,6 +62,7 @@ class Client
         std::string                         server_name;
         std::string                         location;
         std::string                         client_ip;
+        std::string                         redirect_url;
         bool                                kill_client;
         bool                                autoindex;
         bool                                cancel_recv;

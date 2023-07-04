@@ -17,6 +17,7 @@ content_length(0)
 	this->response_sent = false;
 	this->last_chunk_sent = false;
 	this->request_processed = false;
+	this->is_redirect = false;
 	this->request_size = 0;
 }
 
@@ -49,7 +50,9 @@ void    Client::checkRequest()
 	this->server_name = config.getConfProps("server_name:");
 	response.server_name = this->server_name;
 
-	if (this->checkMethod() && checkExistance())
+	if (this->is_redirect)
+		prepareRedirect();
+	else if (this->checkMethod() && checkExistance())
 	{
 		if (method == "GET")
 			prepareGet();
@@ -58,6 +61,12 @@ void    Client::checkRequest()
 		else if (method == "DELETE")
 			prepareDelete();
 	}
+}
+
+void	Client::prepareRedirect()
+{
+	response.generateRedirectionResponse(redirect_url);
+	this->request_processed = true;
 }
 
 void	Client::prepareDelete()
@@ -167,11 +176,6 @@ bool	Client::checkExistance()
 	return true;
 }
 
-// bool	isRedirection()
-// {
-
-// }
-
 void	Client::assignLocation()
 {
 	for (std::map<std::string, std::map<std::string, std::string> >::iterator \
@@ -180,8 +184,12 @@ void	Client::assignLocation()
 		if (int pos = path_on_client.find(it->first) != std::string::npos)
 		{
 			this->location = it->first;
-			// if (it->second.find("redirect:") != it->)
-			// 	return;
+			if (it->second.find("redirect:") != it->second.end())
+			{
+				redirect_url = it->second.at("redirect:");
+				this->is_redirect = true;
+				return;
+			}
 			this->path_on_server = it->second.at("root:");
 			if (path_on_client == it->first)
 				this->path_on_server += it->second["index:"];
@@ -231,7 +239,6 @@ void	Client::setError(std::string status)
 bool    Client::mapRequestHeader()
 {
 	std::size_t headerEnd = request.find("\r\n\r\n");
-	std::cout << request << std::endl;
     if (headerEnd == std::string::npos)
 	{
 		std::cout << "no correct header format" << std::endl;
@@ -320,8 +327,6 @@ void Client::removeWhitespaces(std::string &string)
     string.erase(0, string.find_first_not_of(" \t"));
     string.erase(string.find_last_not_of(" \t") + 1);
 }
-
-
 
 void	Client::setRequest(char *chunk, size_t buffer_length)
 {
