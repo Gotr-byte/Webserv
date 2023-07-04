@@ -37,8 +37,6 @@ class Client
         void    closeFileFd();
         bool    isHeaderValid();
 
-        // void                            set_cgi_filename(Cgi &cgi);
-
 		static int  nextId;
 		int		id;
         int color_index;
@@ -66,6 +64,7 @@ class Client
         bool                                kill_client;
         bool                                autoindex;
         bool                                cancel_recv;
+        bool                                is_redirect;
         bool                        		is_cgi;
         bool                                is_get;
 		bool                        		is_upload;

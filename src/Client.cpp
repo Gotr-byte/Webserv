@@ -167,6 +167,11 @@ bool	Client::checkExistance()
 	return true;
 }
 
+// bool	isRedirection()
+// {
+
+// }
+
 void	Client::assignLocation()
 {
 	for (std::map<std::string, std::map<std::string, std::string> >::iterator \
@@ -175,6 +180,8 @@ void	Client::assignLocation()
 		if (int pos = path_on_client.find(it->first) != std::string::npos)
 		{
 			this->location = it->first;
+			// if (it->second.find("redirect:") != it->)
+			// 	return;
 			this->path_on_server = it->second.at("root:");
 			if (path_on_client == it->first)
 				this->path_on_server += it->second["index:"];
@@ -224,7 +231,7 @@ void	Client::setError(std::string status)
 bool    Client::mapRequestHeader()
 {
 	std::size_t headerEnd = request.find("\r\n\r\n");
-
+	std::cout << request << std::endl;
     if (headerEnd == std::string::npos)
 	{
 		std::cout << "no correct header format" << std::endl;
@@ -265,7 +272,7 @@ bool    Client::mapRequestHeader()
         tokenizeRequestHeader(request_header, line);
 		lineStart = lineEnd + 2;
     }
-	if (isHeaderValid())
+	if (!isHeaderValid())
 	{
 		setError("400");
 		return false;
@@ -283,9 +290,9 @@ bool    Client::mapRequestHeader()
 
 bool	Client::isHeaderValid()
 {
-	std::map<std::string, std::string>::iterator it = request_header.find("Content-Length:");
-	if (this->request_header.find("Content-Type:") != request_header.end() && \
-		this->request_header.find("Content-Length:") != request_header.end())
+	if (this->request_header.at("method:") == "POST" && \
+		this->request_header.find("Content-Type:") == request_header.end() && \
+		this->request_header.find("Content-Length:") == request_header.end())
 		return false;
 	return true;
 }

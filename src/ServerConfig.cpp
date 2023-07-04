@@ -17,8 +17,7 @@ ServerConfig::ServerConfig(std::string path, int socket_no)
 }
 
 ServerConfig::~ServerConfig()
-{
-}
+{}
 
 void ServerConfig::setDefaultProps()
 {
@@ -123,7 +122,7 @@ bool ServerConfig::setLocations(std::string path, int socket_no)
 				if (dir != "")
 				{
 					std::cout << "LocationBlock: Only one location per LocationBlock allowed\n";
-					exit(1);
+					exit(EXIT_FAILURE);
 				}
 				dir = line.substr(line.rfind(":") + 1);
 				this->removeWhitespaces(dir);
@@ -153,12 +152,12 @@ void ServerConfig::checkLocationBlock(std::map<std::string, std::string> & block
 		if (dir == "")
 		{
 			std::cout << "LocationBlock: Doesnt contain location\n";
-			exit(1);
+			exit(EXIT_FAILURE);
 		}
-		if (block.find("root:") == block.end())
+		if (block.find("root:") == block.end() && block.find("redirect:") == block.end() )
 		{
-			std::cout << "LocationBlock: No root directory set\n";
-			exit(1);
+			std::cout << "LocationBlock: No root directory or redirect set\n";
+			exit(EXIT_FAILURE);
 		}
 		if (block.find("allowed_methods:") == block.end())
 			block["allowed_methods:"] = this->properties["allowed_methods:"];
@@ -167,7 +166,7 @@ void ServerConfig::checkLocationBlock(std::map<std::string, std::string> & block
 		if (!this->locations.insert(std::make_pair(dir, block)).second)
 		{
 			std::cout << "LocationBlock: Location duplicate detected\n";
-			exit(1);
+			exit(EXIT_FAILURE);
 		}
 }
 
