@@ -16,4 +16,4 @@ An HTTP Webserver. Created as part of the 42 Curriculum.
 
 * Created HTML pages for an Internet in 2003 expierience.
 
-* Allows file upload, both txt files and jpg files. (in progress).
+* Allows file upload, both txt files and jpg files.
