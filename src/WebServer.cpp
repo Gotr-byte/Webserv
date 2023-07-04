@@ -216,7 +216,7 @@ void WebServer::loopPollEvents()
                 sendResponse(it->fd);
                 if (fds_clients.at(it->fd).response_sent)
                 {
-                    deleteIfExists("../HTML/cgi-bin/city_of_brass");
+                    deleteIfExists("./HTML/cgi-bin/city_of_brass");
                     killClient(it--);
                     continue;
                 }
@@ -225,7 +225,7 @@ void WebServer::loopPollEvents()
             {
                 std::cout << "POLLERR\n";
                 killClient(it--);
-                deleteIfExists("../HTML/cgi-bin/city_of_brass");
+                deleteIfExists("./HTML/cgi-bin/city_of_brass");
                 continue;
             }
         }
