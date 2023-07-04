@@ -221,7 +221,7 @@ void	Client::setError(std::string status)
 		response.setupErrorPage("500", "Internal Server Error");
 }
 
-void    Client::mapRequestHeader()
+bool    Client::mapRequestHeader()
 {
 	std::size_t headerEnd = request.find("\r\n\r\n");
 
@@ -229,6 +229,7 @@ void    Client::mapRequestHeader()
 	{
 		std::cout << "no correct header format" << std::endl;
 		setError("400");
+		return false;
 	}
 
 	std::string header = request.substr(0, headerEnd);
@@ -264,6 +265,11 @@ void    Client::mapRequestHeader()
         tokenizeRequestHeader(request_header, line);
 		lineStart = lineEnd + 2;
     }
+	if (isHeaderValid())
+	{
+		setError("400");
+		return false;
+	}
     size_t v;
     if ((v = request_header["Content-Type:"].find("boundary=")) != std::string::npos)
     {
@@ -272,6 +278,16 @@ void    Client::mapRequestHeader()
         request_header[key] = value;
         request_header["Content-Type:"] = request_header["Content-Type:"].substr(0, request_header["Content-Type:"].find(";"));
     }
+	return true;
+}
+
+bool	Client::isHeaderValid()
+{
+	std::map<std::string, std::string>::iterator it = request_header.find("Content-Length:");
+	if (this->request_header.find("Content-Type:") != request_header.end() && \
+		this->request_header.find("Content-Length:") != request_header.end())
+		return false;
+	return true;
 }
 
 /**
