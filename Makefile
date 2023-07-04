@@ -38,7 +38,6 @@ FILES	=	\
 			Response \
 			ServerConfig \
 			Socket \
-			ft_int_to_string\
 			WebServer
 
 SOURCES		=	$(addprefix $(SOURCES_DIR),$(addsuffix .cpp,$(FILES)))
@@ -50,6 +49,7 @@ SOURCES		=	$(addprefix $(SOURCES_DIR),$(addsuffix .cpp,$(FILES)))
 
 $(NAME):
 	@$(CC) $(CFLAGS) $(SOURCES) -o $@
+	@echo $(BGREEN) "WEBSERV COMPILED" $(EOC)
 
 $(OBJECTS_DIR)%.o : $(SOURCES_DIR)%.cpp
 	@$(MKDIR) $(OBJECTS_DIR)

@@ -20,45 +20,46 @@
 #include <algorithm>
 #include <sys/time.h>
 #include <signal.h>
-//#include "Colors.hpp"
 //#include <stdio.h>
+
+#define WRITE_END 1
+#define READ_END 0
 
 class Cgi
 {
-public:
-	Cgi(Client & c);
-	~Cgi();
-
-	std::string get_file_name();
-	void run();
-	void print_request(std::map<std::string, std::string> my_map);
-	bool is_python3_installed();
-	bool is_python_file(const std::string &str);
-	bool is_query_string(std::vector<Response>::iterator it_req);
-	// void print_enviromentals();
-	std::string create_request_body_file(std::vector<Response>::iterator it_req);
-	void smart_sleep(long set_miliseconds);
-
-	class CgiException : public std::exception
-	{
 	public:
-		virtual const char *what() const throw()
+		Cgi(Client & c);
+		~Cgi();
+
+		std::string get_file_name();
+		void run();
+		void print_request(std::map<std::string, std::string> my_map);
+		bool is_python3_installed();
+		bool is_python_file(const std::string &str);
+		bool is_query_string(std::vector<Response>::iterator it_req);
+		std::string create_request_body_file(std::vector<Response>::iterator it_req);
+		void smart_sleep(long set_miliseconds);
+
+		class CgiException : public std::exception
 		{
-			return ("exception: CGI\n");
-		}
-	};
+		public:
+			virtual const char *what() const throw()
+			{
+				return ("exception: CGI\n");
+			}
+		};
 
-	Client & client;
+		Client & client;
 
-private:
-	Cgi();
-	Cgi &operator=(const Cgi &other);
-	Cgi(const Cgi &other);
+	private:
+		Cgi();
+		Cgi &operator=(const Cgi &other);
+		Cgi(const Cgi &other);
 
-	std::string id;
-	std::vector<std::string> enviromentals;
-	std::string _type;
-	int _cgi_pid;
-	int _file_fd;
-	std::string _file_name;
+		std::string id;
+		std::vector<std::string> enviromentals;
+		std::string _type;
+		int _cgi_pid;
+		int _file_fd;
+		std::string _file_name;
 };

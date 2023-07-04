@@ -7,6 +7,6 @@
 
 class ConfigCheck
 {
-    public:
-    int     checkConfig(std::string path);
+	public:
+	int		checkConfig(std::string path);
 };
