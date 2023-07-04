@@ -18,7 +18,7 @@ class Client
     public:
         Client(ServerConfig conf, std::string ip);
         void    setRequest(char *chunk, size_t buffer_length);
-        void    mapRequestHeader();
+        bool    mapRequestHeader();
         void    tokenizeRequestHeader(std::map<std::string, std::string> & request, std::string line_to_tokenize);
         void    removeWhitespaces(std::string &string);
         void    printRequest(std::map<std::string, std::string> my_map);
@@ -35,6 +35,7 @@ class Client
         bool	isDirectory();
         void	parseClientPath();
         void    closeFileFd();
+        bool    isHeaderValid();
 
         // void                            set_cgi_filename(Cgi &cgi);
 
