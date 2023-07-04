@@ -1,0 +1,9 @@
+<html>
+<head>
+<title>CGI Example</title>
+</head>
+<body>
+<h1>You built 1234 farms!</h1>
+<p>Please subscribe to our premium plan to build more than 10 farms.</p>
+</body>
+</html>

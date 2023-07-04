@@ -67,7 +67,7 @@ void	Client::prepareRedirect()
 
 void	Client::prepareDelete()
 {
-	if (isDirectory()) //Operation is forbidden is client wants to delete a folder
+	if (isDirectory())
 	{
 		setError("403");
 		return;
@@ -332,8 +332,3 @@ void	Client::setRequest(char *chunk, size_t buffer_length)
 	if (buffer_length < PACKAGE_SIZE)
 		request_complete = true;
 }
-
-
-// void Client::set_cgi_filename(Cgi &cgi){
-// 	_cgi_filename = cgi.get_file_name();
-// }
