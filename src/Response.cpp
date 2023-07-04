@@ -89,7 +89,7 @@ void	Response::setResponseContentType(std::string path)
 {
 	std::string suffix = path.substr(path.rfind(".") + 1);
 
-	if (path.find("/file/") != std::string::npos)
+	if (path.find("file/") != std::string::npos)
 		content_type = "application/octet-stream";
 	else
 	{
@@ -118,7 +118,6 @@ void	Response::setResponseContentType(std::string path)
 		else
 			content_type = "application/octet-stream";
 	}
-	// std::cout << suffix << std::endl;
 }
 
 void	Response::buildResponseHeader()

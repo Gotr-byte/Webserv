@@ -53,8 +53,8 @@ void Cgi::run()
 	}
 	std::cout << "cgi: request header method [" << client.request_header["method:"] << "]\n";
 
-	//create an output file
-	const char* out_filename = "HTML/cgi-bin/city_of_brass"; //dynamic filename 
+	std::string tmp = client.cgi_path + "city_of_brass";
+	const char* out_filename = tmp.c_str(); //dynamic filename 
     int outfile = open(out_filename, O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR);
     if (outfile == -1) 
 	{
@@ -99,8 +99,7 @@ void Cgi::run()
 		}
 
 		//create arguments for execve
-		std::string path_adder = "HTML" + client.request_header["location:"];
-		char* script_path = (char*)(path_adder).c_str();
+		char* script_path = (char*)(client.path_on_server.c_str());
 
 		const char* path_to_python = "/usr/bin/python3";
     	char* _args[3];

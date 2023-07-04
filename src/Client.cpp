@@ -89,7 +89,7 @@ void	Client::preparePost()
 		this->cancel_recv = true;
 		setError("413");
 	}	
-	else if (path_on_server.find(".py") != std::string::npos)
+	else if (path_on_server.find(cgi_extension) != std::string::npos)
 	{
 		if (access(path_on_server.c_str(), X_OK) == -1)
 		{
@@ -114,7 +114,7 @@ void	Client::preparePost()
 void	Client::prepareGet()
 {
 	this->is_get = true;
-	if (path_on_server.find(".py") != std::string::npos)
+	if (path_on_server.find(cgi_extension) != std::string::npos)
 	{
 		if (access(path_on_server.c_str(), X_OK))
 		{
@@ -187,6 +187,11 @@ void	Client::assignLocation()
 				this->is_redirect = true;
 				return;
 			}
+			if (it->second.find("cgi_path:") != it->second.end() && it->second.find("cgi_path:") != it->second.end())
+			{
+				cgi_path = it->second.at("cgi_path:");
+				cgi_extension = it->second.at("cgi_ext:");
+			}
 			this->path_on_server = it->second.at("root:");
 			if (path_on_client == it->first)
 				this->path_on_server += it->second["index:"];
@@ -235,7 +240,7 @@ void	Client::setError(std::string status)
 
 bool    Client::mapRequestHeader()
 {
-	std::size_t headerEnd = request.find("\r\n\r\n");
+	std::size_t headerEnd = request.find("\r\n\r\n") + 2;
     if (headerEnd == std::string::npos)
 	{
 		std::cout << "no correct header format" << std::endl;
@@ -244,8 +249,8 @@ bool    Client::mapRequestHeader()
 	}
 
 	std::string header = request.substr(0, headerEnd);
-	request = request.substr(headerEnd + 4);
-	request_size -= headerEnd + 4;
+	request = request.substr(headerEnd + 2);
+	request_size -= headerEnd + 2;
 
     std::size_t lineStart = 0;
     std::size_t lineEnd;
