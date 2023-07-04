@@ -1,13 +1,5 @@
 #include "../includes/Cgi.hpp"
 
-bool deleteFile(const char* filename) {
-	if (std::remove(filename) == 0) {
-		return true; // File deleted successfully
-	} else {
-		return false; // Failed to delete the file
-	}
-}
-
 // Global flag to track if timeout occurred
 volatile sig_atomic_t timeoutOccurred = 0;
 
@@ -44,10 +36,8 @@ void Cgi::run()
 
 	const int timeoutDuration = 3;
 
-	if(!is_python3_installed()){
-		client.setError("500");
+	if(!is_python3_installed())
 		throw(CgiException());
-	}
 	std::cout << "cgi: request header method [" << client.request_header["method:"] << "]\n";
 
 	std::string tmp = client.cgi_path + "city_of_brass";
@@ -55,14 +45,13 @@ void Cgi::run()
 	int outfile = open(out_filename, O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR);
 	if (outfile == -1) 
 	{
-		client.setError("500");
 		std::cerr << "cgi: Error opening the outfile.\n";
 		throw(CgiException());
 	}
 
 	int pipe_d[2];
-	if (pipe(pipe_d) == -1){
-		client.setError("500");
+	if (pipe(pipe_d) == -1)
+	{
 		std::cout << "Pipe Error\n";
 		throw(CgiException());
 	}
@@ -80,7 +69,6 @@ void Cgi::run()
 		close(pipe_d[READ_END]);
 		close(outfile);
 		std::cerr << "Error with fork\n";
-		client.setError("500");
 		throw(CgiException());
 	}
 	
@@ -183,7 +171,6 @@ void Cgi::run()
 		// Set the timeout alarm
 		alarm(timeoutDuration);
 		execve(_args[0], const_cast<char* const*>(_args), _env);
-		client.setError("500");
 		throw(CgiException());
 	}
 
@@ -191,25 +178,27 @@ void Cgi::run()
 	close(pipe_d[READ_END]);
 	close(outfile);
 		pid_t terminatedPid = waitpid(_cgi_pid, &status, 0);
-		if (terminatedPid == -1) {
+		if (terminatedPid == -1)
+		{
 			std::cerr << "cgi: error with process handling\n";
-			client.setError("500");
 			throw(CgiException());
 		}
 
-		if (timeoutOccurred) {
-			// Handle timeout
+		if (timeoutOccurred)
 			std::cerr << "Timeout occurred. Child process was terminated." << std::endl;
-		} else {
+		else
+		{
 			// Handle normal exit
-			if (WIFEXITED(status)) {
+			if (WIFEXITED(status)) 
+			{
 				// std::cout << "Child process exited with status: " << WEXITSTATUS(status) << std::endl;
 				client.path_on_server = out_filename;
 				client.response.generateCgiResponse(out_filename);
-			} else if (WIFSIGNALED(status)) {
+			}
+			else if (WIFSIGNALED(status))
+			{
 				std::cerr << "Child process terminated due to signal: " << WTERMSIG(status) << std::endl;
 				// const char* cgi_error_path = "../HTML/cgi-bin/cgi_error.html";
-				client.setError("500");
 				throw(CgiException());
 			}
 		}

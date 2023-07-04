@@ -333,10 +333,8 @@ void Client::removeWhitespaces(std::string &string)
 void	Client::setRequest(char *chunk, size_t buffer_length)
 {
 	request_size += buffer_length;
-    for (size_t size = 0; size < buffer_length; size++){
+    for (size_t size = 0; size < buffer_length; size++)
         request.push_back(chunk[size]);
-	}
-	if (buffer_length < PACKAGE_SIZE){
+	if (buffer_length < PACKAGE_SIZE)
 		request_complete = true;
-	}
 }
