@@ -165,7 +165,21 @@ void ServerConfig::checkLocationBlock(std::map<std::string, std::string> & block
 			exit(EXIT_FAILURE);
 		}
 		if (block.find("allowed_methods:") == block.end())
-			block["allowed_methods:"] = this->properties["allowed_methods:"];
+			block["allowed_methods:"] = this->properties.at("allowed_methods:");
+		if (block.find("redirect:") == block.end() && \
+			(block.at("allowed_methods:").find("GET") != std::string::npos || block.at("allowed_methods:").find("POST") != std::string::npos))
+		{
+			if (block.find("cgi_ext:") == block.end() && block.find("cgi_path:") == block.end())
+			{
+				std::cout << "LocationBlock: POST & GET method require cgi_path and cgi_ext\n";
+				exit(EXIT_FAILURE);
+			}
+			else if (block.find("cgi_ext:") == block.end() && block.at("cgi_ext") != ".py")
+			{
+				std::cout << "LocationBlock: This webserver just support .py cgi scripts\n";
+				exit(EXIT_FAILURE);
+			}
+		}
 		if (block.find("autoindex:") == block.end())
 			block["autoindex:"] = "on";
 		if (!this->locations.insert(std::make_pair(dir, block)).second)

@@ -63,6 +63,8 @@ class Client
         std::string                         location;
         std::string                         client_ip;
         std::string                         redirect_url;
+        std::string                         cgi_extension;
+        std::string                         cgi_path;
         bool                                kill_client;
         bool                                autoindex;
         bool                                cancel_recv;
