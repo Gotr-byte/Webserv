@@ -26,28 +26,30 @@ WHITE	=	"\033[1;37m"
 EOC		=	"\033[0;0m"
 #====================
 
-#						 #
-#--- VECTOR VARIABLES ---#
-#						 #
+#					  #
+#--- Program Files ---#
+#					  #
 
 FILES	=	\
 			Cgi \
 			Client \
-			configCheck \
+			ConfigCheck \
 			main \
 			Response \
 			ServerConfig \
 			Socket \
 			WebServer
 
+#------Paths---------
 SOURCES		=	$(addprefix $(SOURCES_DIR),$(addsuffix .cpp,$(FILES)))
+OBJECTS		=	$(addprefix $(OBJECTS_DIR),$(addsuffix .o,$(FILES)))
 #====================
 
 #					 #
 #--- GLOBAL RULES ---#
 #					 #
 
-$(NAME):
+$(NAME): $(OBJECTS)
 	@$(CC) $(CFLAGS) $(SOURCES) -o $@
 	@echo $(BGREEN) "WEBSERV COMPILED" $(EOC)
 
@@ -62,7 +64,7 @@ clean:
 	@echo $(YELLOW) "OBJECT FILES CLEANED" $(EOC)
 
 fclean: clean
-	@rm -f $(NAME)*
+	@rm -f $(NAME)
 	@echo $(RED)" EXECUTABLE DELETED" $(EOC)
 
 re: fclean all

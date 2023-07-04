@@ -177,7 +177,6 @@ void	Client::assignLocation()
 	for (std::map<std::string, std::map<std::string, std::string> >::iterator \
 		it = config.locations.begin(); it != config.locations.end(); it++)
 	{
-		// if (int pos = path_on_client.find(it->first) != std::string::npos)
 		if (path_on_client.find(it->first) != std::string::npos)
 		{
 			this->location = it->first;
@@ -306,12 +305,6 @@ bool	Client::isHeaderValid()
 	return true;
 }
 
-/**
- * Tokenizes a line of text and stores the key-value pair in a map.
- *
- * @param request The map to store the key-value pair.
- * @param line_to_tokenize The line of text to tokenize.
- */
 void Client::tokenizeRequestHeader(std::map<std::string, std::string> &request, std::string line_to_tokenize)
 {
     std::stringstream tokenize_stream(line_to_tokenize);
@@ -333,8 +326,8 @@ void Client::removeWhitespaces(std::string &string)
 void	Client::setRequest(char *chunk, size_t buffer_length)
 {
 	request_size += buffer_length;
-    for (size_t size = 0; size < buffer_length; size++)
-        request.push_back(chunk[size]);
 	if (buffer_length < PACKAGE_SIZE)
 		request_complete = true;
+    for (size_t size = 0; size < buffer_length; size++)
+        request.push_back(chunk[size]);
 }
