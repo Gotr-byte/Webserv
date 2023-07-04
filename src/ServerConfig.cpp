@@ -122,7 +122,7 @@ bool ServerConfig::setLocations(std::string path, int socket_no)
 				if (dir != "")
 				{
 					std::cout << "LocationBlock: Only one location per LocationBlock allowed\n";
-					exit(EXIT_FAILURE);
+					exit(1);
 				}
 				dir = line.substr(line.rfind(":") + 1);
 				this->removeWhitespaces(dir);

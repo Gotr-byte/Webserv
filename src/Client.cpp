@@ -82,7 +82,7 @@ void	Client::prepareDelete()
 
 void	Client::preparePost()
 {
-	if ((long)request_size < std::atol(request_header.at("Content-Length:").c_str()))
+	if ((long)request_size < atol(request_header.at("Content-Length:").c_str()))
 		request_complete = false;
 	if (std::atol(config.getConfProps("limit_body_size:").c_str()) < std::atol(request_header["Content-Length:"].c_str()))
 	{
@@ -177,7 +177,8 @@ void	Client::assignLocation()
 	for (std::map<std::string, std::map<std::string, std::string> >::iterator \
 		it = config.locations.begin(); it != config.locations.end(); it++)
 	{
-		if (int pos = path_on_client.find(it->first) != std::string::npos)
+		// if (int pos = path_on_client.find(it->first) != std::string::npos)
+		if (path_on_client.find(it->first) != std::string::npos)
 		{
 			this->location = it->first;
 			if (it->second.find("redirect:") != it->second.end())
@@ -327,8 +328,10 @@ void Client::removeWhitespaces(std::string &string)
 void	Client::setRequest(char *chunk, size_t buffer_length)
 {
 	request_size += buffer_length;
-    for (size_t size = 0; size < buffer_length; size++)
+    for (size_t size = 0; size < buffer_length; size++){
         request.push_back(chunk[size]);
-	if (buffer_length < PACKAGE_SIZE)
+	}
+	if (buffer_length < PACKAGE_SIZE){
 		request_complete = true;
+	}
 }

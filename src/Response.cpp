@@ -60,10 +60,12 @@ void	Response::setupErrorPage(std::string status, std::string issue)
 void	Response::obtainFileLength(std::string path)
 {
 	FILE* file = fopen(path.c_str(), "r");
-	if (file == nullptr)	
+	// if (file == nullptr)
+	if (!file)	
+
 	{
 		std::cerr << ("response: Error opening file");
-		exit(EXIT_FAILURE);
+		// exit(EXIT_FAILURE);
 	}
 	std::fseek(file, 0, SEEK_END);
 	content_length = std::ftell(file);
@@ -72,7 +74,7 @@ void	Response::obtainFileLength(std::string path)
 
 void	Response::setDate()
 {
-	time_t currentTime = time(nullptr);
+	time_t currentTime = time(NULL);
     tm* timeinfo = gmtime(&currentTime);
     
     char buffer[80];

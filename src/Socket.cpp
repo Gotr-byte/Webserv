@@ -1,4 +1,11 @@
 #include "../includes/Socket.hpp"
+#include "../includes/ft_int_to_string.hpp"
+
+// std::string int_to_string(int value) {
+//     std::stringstream ss;
+//     ss << value;
+//     return ss.str();
+// }
 
 Socket::Socket()
 {}
@@ -12,7 +19,7 @@ Socket::Socket(int port, std::string ip)
     hints.ai_socktype = SOCK_STREAM; // TCP
     hints.ai_flags = AI_PASSIVE;     // For server sockets
 
-    std::string port_str = std::to_string(port);
+    std::string port_str = ft_int_to_string(port);
 
     // Get address information for the server
     int result = getaddrinfo(ip.c_str(), port_str.c_str(), &hints, &server_info);

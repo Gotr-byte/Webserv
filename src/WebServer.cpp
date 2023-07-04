@@ -1,6 +1,7 @@
 #include "../includes/WebServer.hpp"
 #include "../includes/ServerConfig.hpp"
 #include "../includes/ConfigCheck.hpp"
+#include "../includes/ft_int_to_string.hpp"
 #include <cstddef>
 #include <cstdlib>
 #include <limits>
@@ -9,6 +10,12 @@
 
 #define BUF_SIZE 1024
 #define POLL_TIMEOUT 200
+
+// std::string int_to_string(int value) {
+//     std::stringstream ss;
+//     ss << value;
+//     return ss.str();
+// }
 
 bool deleteIfExists(const char* filename) {
     if (FILE* file = fopen(filename, "r")) {
@@ -74,8 +81,8 @@ void WebServer::performUpload(int client_fd)
         return;
     }
     std::string file_path = fds_clients.at(client_fd).path_on_server + filename;
-    std::ofstream createFile(file_path, std::ios::binary | std::ios::trunc);
-
+    // std::ofstream createFile(file_path, std::ios::binary | std::ios::trunc);
+    std::ofstream createFile(file_path.c_str(), std::ios::binary | std::ios::trunc);
     if (!createFile.is_open())
     {
         fds_clients.at(client_fd).setError("500");
@@ -130,13 +137,13 @@ std::string WebServer::convertIPv4ToString(const struct in_addr& address)
 {
     const unsigned char* bytes = reinterpret_cast<const unsigned char*>(&address.s_addr);
     std::string ipAddress;
-    ipAddress += std::to_string(static_cast<int>(bytes[0]));
+    ipAddress += ft_int_to_string(static_cast<int>(bytes[0]));
     ipAddress += '.';
-    ipAddress += std::to_string(static_cast<int>(bytes[1]));
+    ipAddress += ft_int_to_string(static_cast<int>(bytes[1]));
     ipAddress += '.';
-    ipAddress += std::to_string(static_cast<int>(bytes[2]));
+    ipAddress += ft_int_to_string(static_cast<int>(bytes[2]));
     ipAddress += '.';
-    ipAddress += std::to_string(static_cast<int>(bytes[3]));
+    ipAddress += ft_int_to_string(static_cast<int>(bytes[3]));
     return ipAddress;
 }
 

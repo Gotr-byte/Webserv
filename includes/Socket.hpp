@@ -6,6 +6,8 @@
 #if defined(__linux__)
 #include <unistd.h>
 #include <string.h>
+#include <string>
+#include <sstream>
 #endif
 
 #include <sys/wait.h>

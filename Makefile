@@ -33,11 +33,12 @@ EOC		=	"\033[0;0m"
 FILES	=	\
 			Cgi \
 			Client \
-			ConfigCheck \
+			configCheck \
 			main \
 			Response \
 			ServerConfig \
 			Socket \
+			ft_int_to_string\
 			WebServer
 
 SOURCES		=	$(addprefix $(SOURCES_DIR),$(addsuffix .cpp,$(FILES)))

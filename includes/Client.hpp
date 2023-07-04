@@ -7,7 +7,7 @@
 #include <map>
 #include <time.h>
 #include <string.h>
-
+#include <stdlib.h>
 #include "Response.hpp"
 #include "ServerConfig.hpp"
 
