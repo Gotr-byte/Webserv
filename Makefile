@@ -11,7 +11,7 @@ OBJECTS_DIR		=	./obj/
 SOURCES_DIR		=	./src/
 
 IFLAGS		=	-I $(HEADER_DIR)
-CFLAGS		=	-std=c++98 -Werror -Wextra -Wall $(IFLAGS)
+CFLAGS		=	-std=c++98 -Werror -Wextra -Wall $(IFLAGS) -g -fsanitize=address
 
 #------Colors--------
 BLACK	=	"\033[1;30m"
@@ -33,7 +33,7 @@ EOC		=	"\033[0;0m"
 FILES	=	\
 			Cgi \
 			Client \
-			ConfigCheck \
+			configCheck \
 			main \
 			Response \
 			ServerConfig \
