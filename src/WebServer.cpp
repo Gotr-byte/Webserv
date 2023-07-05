@@ -1,19 +1,6 @@
 #include "../includes/WebServer.hpp"
 
-bool WebServer::deleteIfExists(std::string filename) {
-	if (FILE* file = fopen(filename.c_str(), "r")) {
-		fclose(file);
-		if (std::remove(filename.c_str()) == 0) {
-			return true; // File deleted successfully
-		} else {
-			return false; // Failed to delete the file
-		}
-	} else {
-		return true; // File doesn't exist, consider it deleted
-	}
-}
-
-WebServer::WebServer(std::string path, char **env): _env(env), config_path(path)
+WebServer::WebServer(std::string path): config_path(path)
 {
 	ConfigCheck check;
 	listening_port_no = check.checkConfig(config_path);
@@ -22,13 +9,45 @@ WebServer::WebServer(std::string path, char **env): _env(env), config_path(path)
 WebServer::~WebServer()
 {}
 
+int WebServer::setupListeningSockets()
+{
+	for (int i = 0; i < listening_port_no; i++)
+	{
+		struct pollfd listening_poll;
+		SocketConfig tmp(config_path, i);
+		Socket socket(std::atoi(tmp.port.c_str()), tmp.host);
+		listening_poll.fd = socket.server_fd;
+		listening_poll.events = POLLIN;
+		listening_poll.revents = 0;
+		poll_fds.push_back(listening_poll);
+		configs.insert(std::make_pair(listening_poll.fd, tmp));
+		std::cout << "Socket " << (i + 1) << " (FD " << socket.server_fd
+				  << ") is listening on: " << tmp.host << ":" << tmp.port << std::endl;
+	}
+	return 0;
+}
+
+bool WebServer::deleteIfExists(std::string filename) 
+{
+	if (FILE* file = fopen(filename.c_str(), "r"))
+	{
+		fclose(file);
+		if (std::remove(filename.c_str()) == 0)
+			return true;
+		else
+			return false;
+	} 
+	else 
+		return true;
+}
+
 bool    WebServer::validateFilename(std::string filename)
 {
 	if (filename.empty() || 50 < filename.size())
 		return false;
 	for (std::size_t i = 0; i < filename.length(); i++) 
 	{
-		if (!isprint(static_cast<unsigned char>(filename[i])))
+		if (!std::isprint(static_cast<unsigned char>(filename[i])))
 			return false;
 	}
 	if (filename.find("\\") != std::string::npos || filename.find("/") != std::string::npos)
@@ -321,22 +340,4 @@ void WebServer::performDelete(int client_fd)
 	}
 	fds_clients.at(client_fd).response.generateDeleteResponse();
 	fds_clients.at(client_fd).request_processed = true;
-}
-
-int WebServer::setupListeningSockets()
-{
-	for (int i = 0; i < listening_port_no; i++)
-	{
-		struct pollfd listening_poll;
-		SocketConfig tmp(config_path, i);
-		Socket socket(std::atoi(tmp.port.c_str()), tmp.host);
-		listening_poll.fd = socket.server_fd;
-		listening_poll.events = POLLIN;
-		listening_poll.revents = 0;
-		poll_fds.push_back(listening_poll);
-		configs.insert(std::make_pair(listening_poll.fd, tmp));
-		std::cout << "Socket " << (i + 1) << " (FD " << socket.server_fd
-				  << ") is listening on: " << tmp.host << ":" << tmp.port << std::endl;
-	}
-	return 0;
 }

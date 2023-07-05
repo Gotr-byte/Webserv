@@ -18,36 +18,6 @@ SocketConfig::SocketConfig(std::string path, int socket_no) : servers_on_port(-1
 SocketConfig::~SocketConfig()
 {}
 
-void	SocketConfig::setServerConfigs(std::string path, int socket_no, int server_no)
-{
-	std::fstream config;
-	std::string line;
-	std::string server_name = "";
-	std::string value;
-
-	config.open(path.c_str(), std::fstream::in);
-
-	this->accessSocketBlock(config, socket_no);
-	this->accessServerBlock(config, server_no);
-	getline(config, line);
-	while (line.find("</server>") == std::string::npos)
-	{
-		if (line.find("server_name:") != std::string::npos)
-		{
-			server_name = line.substr(line.find(":") + 1);
-			this->removeWhitespaces(server_name);
-			this->servers.insert(std::make_pair(server_name, ServerConfig(path, socket_no, server_no)));
-		}
-		getline(config, line);
-	}
-	if (server_name.empty())
-	{
-		std::cerr << "Config File: missing server_name\n";
-		exit(EXIT_FAILURE);
-	}
-	config.close();
-}
-
 void	SocketConfig::setupPortHostServerNo(std::string path, int socket_no)
 {
 	std::fstream config;
@@ -74,7 +44,37 @@ void	SocketConfig::setupPortHostServerNo(std::string path, int socket_no)
 	}
 	if (this->host.empty() || this->port.empty())
 	{
-		std::cerr << "Config File: invalid or missing listen: entry\n";
+		std::cerr << "Config file: invalid or missing listen: entry\n";
+		exit(EXIT_FAILURE);
+	}
+	config.close();
+}
+
+void	SocketConfig::setServerConfigs(std::string path, int socket_no, int server_no)
+{
+	std::fstream config;
+	std::string line;
+	std::string server_name = "";
+	std::string value;
+
+	config.open(path.c_str(), std::fstream::in);
+
+	this->accessSocketBlock(config, socket_no);
+	this->accessServerBlock(config, server_no);
+	getline(config, line);
+	while (line.find("</server>") == std::string::npos)
+	{
+		if (line.find("server_name:") != std::string::npos)
+		{
+			server_name = line.substr(line.find(":") + 1);
+			this->removeWhitespaces(server_name);
+			this->servers.insert(std::make_pair(server_name, ServerConfig(path, socket_no, server_no)));
+		}
+		getline(config, line);
+	}
+	if (server_name.empty())
+	{
+		std::cerr << "Config File: missing server_name\n";
 		exit(EXIT_FAILURE);
 	}
 	config.close();
@@ -164,7 +164,7 @@ void SocketConfig::ServerConfig::setConfProps(std::string path, int socket_no, i
 	while ((line != "</server>") &&
 		   (line.find("<location>") == std::string::npos))
 	{
-		if (line.find(":") != std::string::npos)
+		if (line.find(":") != std::string::npos && line.find("listen:") == std::string::npos)
 		{
 			key = line.substr(0, line.find(":") + 1);
 			value = line.substr(line.find(":") + 1);
@@ -172,12 +172,7 @@ void SocketConfig::ServerConfig::setConfProps(std::string path, int socket_no, i
 			SocketConfig::removeWhitespaces(key);
 			SocketConfig::removeWhitespaces(value);
 
-			if (key == "listen:")
-			{
-				this->host = value.substr(0, value.find(":"));
-				this->port = value.substr(value.find(":") + 1);
-			}
-			this->properties[key] = value;
+			this->properties.insert(std::make_pair(key, value));
 		}
 		getline(config, line);
 	}
@@ -201,7 +196,7 @@ bool SocketConfig::ServerConfig::setLocations(std::string path, int socket_no, i
 	{
 		if (line == "</server>")
 		{
-			std::cout << "No LocationBlock exisiting, using default location settings\n";
+			std::cerr << "Config file: No LocationBlock exisiting, using default location settings\n";
 			return false;
 		}
 		getline(config, line);
@@ -232,7 +227,7 @@ bool SocketConfig::ServerConfig::setLocations(std::string path, int socket_no, i
 				SocketConfig::removeWhitespaces(key);
 				SocketConfig::removeWhitespaces(value);
 
-				block[key] = value;
+				block.insert(std::make_pair(key, value));
 			}
 			getline(config, line);
 		}
@@ -286,12 +281,12 @@ void SocketConfig::ServerConfig::checkLocationBlock(std::map<std::string, std::s
 
 std::string	SocketConfig::ServerConfig::getConfProps(std::string key)
 {
-	return this->properties[key];
+	return this->properties.at(key);
 }
 
 std::string	SocketConfig::ServerConfig::getLocation(std::string location, std::string key)
 {
-	return this->locations[location][key];
+	return this->locations.at(location).at(key);
 }
 
 std::map<std::string, \

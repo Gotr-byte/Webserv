@@ -8,6 +8,9 @@ Response::Response()
 	is_chunked = false;
 }
 
+Response::~Response()
+{}
+
 void	Response::generateRedirectionResponse(std::string URL)
 {
 	status_code = "301 Moved Permanently";
@@ -32,9 +35,8 @@ void	Response::generateUploadResponse(std::string file_path)
 	buildResponseHeader();
 }
 
-void	Response::generateCgiResponse(std::string path)
+void	Response::generateCgiResponse()
 {
-	obtainFileLength(path);
 	content_type = "text/html";
 	buildResponseHeader();
 }
@@ -53,23 +55,7 @@ void	Response::setupErrorPage(std::string status, std::string issue)
 {
 	status_code = status + " " + issue;
 	content_type = "text/html";
-	this->obtainFileLength(error_path);
 	buildResponseHeader();
-}
-
-void	Response::obtainFileLength(std::string path)
-{
-	FILE* file = fopen(path.c_str(), "r");
-	// if (file == nullptr)
-	if (!file)	
-
-	{
-		std::cerr << ("response: Error opening file");
-		// exit(EXIT_FAILURE);
-	}
-	std::fseek(file, 0, SEEK_END);
-	content_length = std::ftell(file);
-	std::fclose(file);
 }
 
 void	Response::setDate()
@@ -82,7 +68,6 @@ void	Response::setDate()
 	
 	std::string conv(buffer);
 	this->date = "Date: " + conv;
-	// std::cout << date << std::endl;
 }
 
 void	Response::setResponseContentType(std::string path)

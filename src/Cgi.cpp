@@ -193,7 +193,10 @@ void Cgi::run()
 			{
 				// std::cout << "Child process exited with status: " << WEXITSTATUS(status) << std::endl;
 				client.path_on_server = out_filename;
-				client.response.generateCgiResponse(out_filename);
+				if (client.obtainFileLength())
+					client.response.generateCgiResponse();
+				else
+					throw(CgiException());
 			}
 			else if (WIFSIGNALED(status))
 			{

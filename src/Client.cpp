@@ -2,12 +2,11 @@
 
 int Client::nextId = 0;
 
-Client::Client(SocketConfig conf, std::string ip) : id(nextId++), content_length(0), file_fd(-1), config(conf)
+Client::Client(SocketConfig conf, std::string ip) : config(conf), file_fd(-1), id(nextId++)
 {
 	this->client_ip = ip;
 	this->header_sent = false;
 	this->autoindex = false;
-	this->kill_client = false;
 	this->is_cgi = false;
 	this->is_get = false;
 	this->cancel_recv = false;
@@ -20,6 +19,9 @@ Client::Client(SocketConfig conf, std::string ip) : id(nextId++), content_length
 	this->is_redirect = false;
 	this->request_size = 0;
 }
+
+Client::~Client()
+{}
 
 void    Client::closeFileFd()
 {
@@ -44,8 +46,7 @@ void    Client::checkRequest()
 	this->assignServer();
 	this->parseClientPath();
 	this->assignLocation();
-	this->server_name = server_config.getConfProps("server_name:");
-	response.server_name = this->server_name;
+	response.server_name = server_config.getConfProps("server_name:");
 
 	if (this->is_redirect)
 	{
@@ -142,7 +143,7 @@ void	Client::prepareGet()
 	if (!isDirectory())
 	{
 		response.setResponseContentType(path_on_server);
-		response.obtainFileLength(path_on_server);
+		obtainFileLength();
 	}
 	else if (isDirectory() && autoindex)
 		response.createAutoindex(path_on_server);
@@ -234,7 +235,7 @@ void	Client::setError(std::string status)
 	this->resetProperties();
 
 	path_on_server =  server_config.getConfProps("error_page:") + status + ".html";
-	response.error_path = path_on_server;
+	obtainFileLength();
 	
 	this->request_processed = true;
 	if (status == "400")
@@ -331,6 +332,21 @@ void Client::tokenizeRequestHeader(std::map<std::string, std::string> &request, 
     removeWhitespaces(key);
     removeWhitespaces(value);
     request[key] = value;
+}
+
+bool	Client::obtainFileLength()
+{
+	FILE* file = fopen(path_on_server.c_str(), "r");
+	if (!file)
+	{
+		std::cerr << ("response: Error opening file");
+		setError("500");
+		return false;
+	}
+	std::fseek(file, 0, SEEK_END);
+	response.content_length = std::ftell(file);
+	std::fclose(file);
+	return true;
 }
 
 void Client::removeWhitespaces(std::string &string)
