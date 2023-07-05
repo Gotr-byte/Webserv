@@ -21,7 +21,6 @@ Client::Client(SocketConfig conf, std::string ip) : config(conf), file_fd(-1), c
 	std::stringstream tmp;
 	tmp << nextId++;
 	this->id = tmp.str();
-
 }
 
 Client::~Client()
@@ -258,8 +257,9 @@ void	Client::assignServer()
 			this->server_config = it->second;
 			return;
 		}
+		else if (it->second.first_server)
+			this->server_config = it->second;
 	}
-	this->server_config = config.servers.begin()->second;
 }
 
 void	Client::assignLocation()

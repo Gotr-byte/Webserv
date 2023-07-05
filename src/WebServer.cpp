@@ -2,6 +2,7 @@
 
 WebServer::WebServer(std::string path): config_path(path)
 {
+
 	ConfigCheck check;
 	listening_port_no = check.checkConfig(config_path);
 }
@@ -53,7 +54,6 @@ void WebServer::loopPollEvents()
 					}
 					else if (recieved_size == 0)
 					{
-						std::cout << "Client closed the connection\n";
 						killClient(it--);
 						continue;
 					}
@@ -210,7 +210,6 @@ void WebServer::performUpload(int client_fd)
 void WebServer::sendResponse(int client_fd)
 {
 	std::string chunk = "";
-
 	if (!fds_clients.at(client_fd).header_sent)
 	{
 		if (fds_clients.at(client_fd).response.body.empty() && (!fds_clients.at(client_fd).is_delete && !fds_clients.at(client_fd).is_redirect))

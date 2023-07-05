@@ -107,8 +107,9 @@ void	SocketConfig::removeWhitespaces(std::string &string)
 	string.erase(string.find_last_not_of(" \t") + 1);
 }
 
-SocketConfig::ServerConfig::ServerConfig(std::string path, int socket_no, int server_no)
+SocketConfig::ServerConfig::ServerConfig(std::string path, int socket_no, int server_no) : first_server(false)
 {
+	first_server = server_no == 0;
 	this->setConfProps(path, socket_no, server_no);
 	this->setDefaultProps();
 	if (!this->setLocations(path, socket_no, server_no))

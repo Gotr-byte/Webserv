@@ -22,8 +22,7 @@ void Response::generateDeleteResponse()
 	status_code = "204 No Content";
 	content_type = "text/plain";
 	additional_info.clear();
-	content_length = body.size();
-	setDate();
+	content_length = 0;
 	buildResponseHeader();
 }
 
@@ -38,6 +37,7 @@ void	Response::generateRedirectionResponse(std::string URL)
 {
 	status_code = "301 Moved Permanently";
 	additional_info = "Location: " + URL;
+	content_length = 0;
 	buildResponseHeader();
 }
 
@@ -65,7 +65,7 @@ void	Response::buildResponseHeader()
 	tmp << protocoll << " " << status_code << "\r\n";
 	tmp << "Server: " << server_name << "\r\n";
 	tmp << date << "\r\n";
-	if (status_code != "204 No Content" || status_code != "301 Moved Permanently")
+	if (!content_length)
 	{
 		tmp << "Content-Type: " << content_type << "\r\n";
 		tmp << "Content-Length: " << content_length << "\r\n";

@@ -38,6 +38,8 @@ class SocketConfig
 				std::map<std::string, \
 					std::map<std::string, std::string> >	locations;
 
+				bool										first_server;
+
 			private:
 				void	setConfProps(std::string path, int socket_no, int server_no);
 				void	setDefaultProps();
