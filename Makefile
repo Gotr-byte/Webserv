@@ -36,7 +36,7 @@ FILES	=	\
 			ConfigCheck \
 			main \
 			Response \
-			ServerConfig \
+			SocketConfig \
 			Socket \
 			WebServer
 

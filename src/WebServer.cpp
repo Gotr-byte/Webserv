@@ -328,7 +328,7 @@ int WebServer::setupListeningSockets()
 	for (int i = 0; i < listening_port_no; i++)
 	{
 		struct pollfd listening_poll;
-		ServerConfig tmp(config_path, i);
+		SocketConfig tmp(config_path, i);
 		Socket socket(std::atoi(tmp.port.c_str()), tmp.host);
 		listening_poll.fd = socket.server_fd;
 		listening_poll.events = POLLIN;
@@ -336,7 +336,7 @@ int WebServer::setupListeningSockets()
 		poll_fds.push_back(listening_poll);
 		configs.insert(std::make_pair(listening_poll.fd, tmp));
 		std::cout << "Socket " << (i + 1) << " (FD " << socket.server_fd
-				  << ") is listening on: " << tmp.getConfProps("listen:") << std::endl;
+				  << ") is listening on: " << tmp.host << ":" << tmp.port << std::endl;
 	}
 	return 0;
 }

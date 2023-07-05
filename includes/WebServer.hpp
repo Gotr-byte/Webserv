@@ -28,7 +28,7 @@
 #include "Client.hpp"
 #include "Socket.hpp"
 #include "Cgi.hpp"
-#include "ServerConfig.hpp"
+#include "SocketConfig.hpp"
 #include "ConfigCheck.hpp"
 #include "Response.hpp"
 // #include <cstring.h>
@@ -69,9 +69,8 @@ class WebServer
 		std::vector<struct pollfd>  poll_fds;
 		std::map<int, Client>       fds_clients;
 		std::vector<int>            listening_socket_fds;
-		std::map<int, ServerConfig> configs;
+		std::map<int, SocketConfig> configs;
 		std::string                 config_path;
-		struct sockaddr_in 			client_addr;
 
 		class				InvalidFileDownloadException : public std::exception
 		{

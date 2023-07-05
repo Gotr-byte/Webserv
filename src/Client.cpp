@@ -2,7 +2,7 @@
 
 int Client::nextId = 0;
 
-Client::Client(ServerConfig conf, std::string ip) : id(nextId++), content_length(0), file_fd(-1), config(conf)
+Client::Client(SocketConfig conf, std::string ip) : id(nextId++), content_length(0), file_fd(-1), config(conf)
 {
 	this->client_ip = ip;
 	this->header_sent = false;
@@ -41,13 +41,16 @@ void	Client::parseClientPath()
 
 void    Client::checkRequest()
 {
+	this->assignServer();
 	this->parseClientPath();
 	this->assignLocation();
-	this->server_name = config.getConfProps("server_name:");
+	this->server_name = server_config.getConfProps("server_name:");
 	response.server_name = this->server_name;
 
 	if (this->is_redirect)
+	{
 		prepareRedirect();
+	}
 	else if (this->checkMethod() && checkExistance())
 	{
 		if (method == "GET")
@@ -57,6 +60,19 @@ void    Client::checkRequest()
 		else if (method == "DELETE")
 			prepareDelete();
 	}
+}
+
+void	Client::assignServer()
+{
+	for (std::map<std::string, SocketConfig::ServerConfig>::iterator it = config.servers.begin(); it != config.servers.end(); it++)
+	{
+		if (it->first.find(request_header.at("Host:")) != std::string::npos)
+		{
+			this->server_config = it->second;
+			return;
+		}
+	}
+	this->server_config = config.servers.begin()->second;
 }
 
 void	Client::prepareRedirect()
@@ -84,7 +100,7 @@ void	Client::preparePost()
 {
 	if ((long)request_size < atol(request_header.at("Content-Length:").c_str()))
 		request_complete = false;
-	if (std::atol(config.getConfProps("limit_body_size:").c_str()) < std::atol(request_header["Content-Length:"].c_str()))
+	if (std::atol(server_config.getConfProps("limit_body_size:").c_str()) < std::atol(request_header["Content-Length:"].c_str()))
 	{
 		this->cancel_recv = true;
 		setError("413");
@@ -147,7 +163,7 @@ bool	Client::isDirectory()
 
 bool	Client::checkMethod()
 {
-	if (config.getLocation(location, "allowed_methods:").find(request_header["method:"]) \
+	if (server_config.getLocation(location, "allowed_methods:").find(request_header["method:"]) \
 		!= std::string::npos)
 		{
 			this->method = request_header.at("method:");
@@ -175,7 +191,7 @@ bool	Client::checkExistance()
 void	Client::assignLocation()
 {
 	for (std::map<std::string, std::map<std::string, std::string> >::iterator \
-		it = config.locations.begin(); it != config.locations.end(); it++)
+		it = server_config.locations.begin(); it != server_config.locations.end(); it++)
 	{
 		if (path_on_client.find(it->first) != std::string::npos)
 		{
@@ -217,7 +233,7 @@ void	Client::setError(std::string status)
 {
 	this->resetProperties();
 
-	path_on_server =  config.getConfProps("error_page:") + status + ".html";
+	path_on_server =  server_config.getConfProps("error_page:") + status + ".html";
 	response.error_path = path_on_server;
 	
 	this->request_processed = true;
@@ -242,7 +258,7 @@ bool    Client::mapRequestHeader()
 	std::size_t headerEnd = request.find("\r\n\r\n") + 2;
     if (headerEnd == std::string::npos)
 	{
-		std::cout << "no correct header format" << std::endl;
+		std::cerr << "no correct header format" << std::endl;
 		setError("400");
 		return false;
 	}

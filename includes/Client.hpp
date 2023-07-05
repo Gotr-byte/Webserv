@@ -9,14 +9,14 @@
 #include <string.h>
 #include <stdlib.h>
 #include "Response.hpp"
-#include "ServerConfig.hpp"
+#include "SocketConfig.hpp"
 
 #define PACKAGE_SIZE 5000
 
 class Client
 {
 	public:
-		Client(ServerConfig conf, std::string ip);
+		Client(SocketConfig conf, std::string ip);
 		void	setRequest(char *chunk, size_t buffer_length);
 		bool	mapRequestHeader();
 		void	tokenizeRequestHeader(std::map<std::string, std::string> & request, std::string line_to_tokenize);
@@ -25,6 +25,7 @@ class Client
 		void	checkServerConfig(ServerConfig config);
 		void	checkRequest();
 		void	assignLocation();
+		void	assignServer();
 		void	setError(std::string code);
 		bool	checkMethod();
 		void	resetProperties();
@@ -48,7 +49,8 @@ class Client
 		int                             client_fd;
 		int                             file_fd;
 
-		ServerConfig                        config;
+		SocketConfig						config;
+		SocketConfig::ServerConfig			server_config;
 		bool                                request_complete;
 		std::map<std::string, std::string>  request_header;
 		size_t                              request_size;

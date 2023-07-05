@@ -19,7 +19,7 @@ Socket::Socket(int port, std::string ip)
 	int result = getaddrinfo(ip.c_str(), port_s.str().c_str(), &hints, &server_info);
 	if (result != 0)
 	{
-		fprintf(stderr, "getaddrinfo error: %s\n", gai_strerror(result));
+		std::cerr << "Getaddrinfo Error";
 		exit(EXIT_FAILURE);
 	}
 
@@ -27,33 +27,33 @@ Socket::Socket(int port, std::string ip)
 	server_fd = socket(server_info->ai_family, server_info->ai_socktype, server_info->ai_protocol);
 	if (server_fd < 0)
 	{
-		std::cout << "socket: Error creating server socket\n";
+		std::cerr << "socket: Error creating server socket" << std::endl;
 		exit(EXIT_FAILURE);
 	}
 
 	// Set the socket to non-blocking
 	if (fcntl(server_fd, F_SETFL, O_NONBLOCK) < 0)
 	{
-		perror("Error setting server socket to non-blocking");
+		std::cerr << "Error setting server socket to non-blocking" << std::endl;
 		exit(EXIT_FAILURE);
 	}
 
 	if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0)
 	{
-		perror("Error setting server socket options");
+		std::cerr << "Error setting server socket options" << std::endl;
 		exit(EXIT_FAILURE);
 	}
 
 	if (bind(server_fd, server_info->ai_addr, server_info->ai_addrlen) < 0)
 	{
-		perror("Error binding server socket port");
+		std::cerr << "Error binding server socket port" << std::endl;
 		exit(EXIT_FAILURE);
 	}
 
 	// Listen for incoming connections on the server socket
 	if (listen(server_fd, 42) < 0)
 	{
-		perror("Error listening on server socket");
+		std::cerr << "Error listening on server socket" << std::endl;
 		exit(EXIT_FAILURE);
 	}
 

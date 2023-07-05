@@ -9,7 +9,6 @@ static void	checkLocationBlock(std::fstream &config, std::string &line)
 		if (config.eof())
 			throw std::logic_error("Unexpected end of LocationBlock");
 		getline(config, line);
-		std::cout << "location block: " << line << std::endl;
 		if (line.find("<server>") != std::string::npos)
 			throw std::logic_error("No ServerBlock allowed in LocationBlock");
 		else if (line.find("<socket>") != std::string::npos)
@@ -28,7 +27,6 @@ static void	checkServerBlock(std::fstream	&config, std::string	&line)
 		if (config.eof())
 			throw std::logic_error("Unexpected end of ServerBlock");
 		getline(config, line);
-		std::cout << "server block: " << line << std::endl;
 		if (line.find("<location>") != std::string::npos)
 			checkLocationBlock(config, line);
 		else if (line.find("<socket>") != std::string::npos)
@@ -51,7 +49,6 @@ static void	checkSocketBlock(std::fstream &config, std::string &line)
 		if (config.eof())
 			throw std::logic_error("Unexpected end of SocketBlock");
 		getline(config, line);
-		std::cout << "socket block: " << line << std::endl;
 		if (line.find("<server>") != std::string::npos)
 			checkServerBlock(config, line);
 		else if (line.find("</server>") != std::string::npos)
@@ -81,7 +78,6 @@ int	ConfigCheck::checkConfig(std::string path)
 			server_counter++;
 		}
 	}
-	std::cout << server_counter << " Sockets\n";
 	config.close();
 	return server_counter;
 }

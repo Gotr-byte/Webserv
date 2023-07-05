@@ -1,43 +1,81 @@
-#include "../includes/ServerConfig.hpp"
+#include "../includes/SocketConfig.hpp"
 
 /* CONSTRUCTOR SETS CONFIG FILE CONFIGURATIONS TO THE OBJECT AND THEN
 IF PROPERTIES ARE MISSING, DEFAULT CONFIGURATIONS WILL BE ADDED */
 
-SocketConfig::SocketConfig(std::string path, int socket_no)
+SocketConfig::SocketConfig(std::string path, int socket_no) : servers_on_port(-1)
 {
-	this->setServerConfigs(path, socket_no);
+	this->setupPortHostServerNo(path, socket_no);
+	if (servers_on_port < 0)
+	{
+		std::cerr << "No Server defined at " << host << ":" << port << std::endl;
+		exit(EXIT_FAILURE);
+	}
+	for (int server_no = 0; server_no <= servers_on_port; server_no++)
+		this->setServerConfigs(path, socket_no, server_no);
 }
 
-void	SocketConfig::setServerConfigs(std::string path, int socket_no)
+SocketConfig::~SocketConfig()
+{}
+
+void	SocketConfig::setServerConfigs(std::string path, int socket_no, int server_no)
 {
 	std::fstream config;
 	std::string line;
-	std::string key;
+	std::string server_name = "";
 	std::string value;
 
 	config.open(path.c_str(), std::fstream::in);
 
 	this->accessSocketBlock(config, socket_no);
+	this->accessServerBlock(config, server_no);
 	getline(config, line);
-	while ((line != "</socket>") &&
-		   (line.find("<server>") == std::string::npos))
+	while (line.find("</server>") == std::string::npos)
 	{
-		if (line.find(":") != std::string::npos)
+		if (line.find("server_name:") != std::string::npos)
 		{
-			key = line.substr(0, line.find(":") + 1);
-			value = line.substr(line.find(":") + 1);
-
-			this->removeWhitespaces(key);
-			this->removeWhitespaces(value);
-
-			if (key == "listen:")
-			{
-				this->host = value.substr(0, value.find(":"));
-				this->port = value.substr(value.find(":") + 1);
-			}
-			this->properties[key] = value;
+			server_name = line.substr(line.find(":") + 1);
+			this->removeWhitespaces(server_name);
+			this->servers.insert(std::make_pair(server_name, ServerConfig(path, socket_no, server_no)));
 		}
 		getline(config, line);
+	}
+	if (server_name.empty())
+	{
+		std::cerr << "Config File: missing server_name\n";
+		exit(EXIT_FAILURE);
+	}
+	config.close();
+}
+
+void	SocketConfig::setupPortHostServerNo(std::string path, int socket_no)
+{
+	std::fstream config;
+	std::string value;
+	std::string line;
+
+	config.open(path.c_str(), std::fstream::in);
+
+	this->accessSocketBlock(config, socket_no);
+	getline(config, line);
+	while (line != "</socket>")
+	{
+		if (line.find("<server>") != std::string::npos)
+			servers_on_port++;
+		else if (line.find("listen:") != std::string::npos)
+		{
+			value = line.substr(line.find(":") + 1);
+			this->removeWhitespaces(value);
+
+			this->host = value.substr(0, value.find(":"));
+			this->port = value.substr(value.find(":") + 1);
+		}
+		getline(config, line);
+	}
+	if (this->host.empty() || this->port.empty())
+	{
+		std::cerr << "Config File: invalid or missing listen: entry\n";
+		exit(EXIT_FAILURE);
 	}
 	config.close();
 }
@@ -54,14 +92,34 @@ void SocketConfig::accessSocketBlock(std::fstream &config, int socket_no)
 	}
 }
 
-SocketConfig::ServerConfig::ServerConfig(std::string path, int socket_no)
+void	SocketConfig::accessServerBlock(std::fstream &config, int server_no)
 {
+	std::string tmp;
 
-	this->setConfProps(path, socket_no);
+	while (0 < server_no)
+	{
+		getline(config, tmp);
+		if (tmp.find("</server>") != std::string::npos)
+			server_no--;
+	}
+}
+
+void	SocketConfig::removeWhitespaces(std::string &string)
+{
+	string.erase(0, string.find_first_not_of(" \t"));
+	string.erase(string.find_last_not_of(" \t") + 1);
+}
+
+SocketConfig::ServerConfig::ServerConfig(std::string path, int socket_no, int server_no)
+{
+	this->setConfProps(path, socket_no, server_no);
 	this->setDefaultProps();
-	if (!this->setLocations(path, socket_no))
+	if (!this->setLocations(path, socket_no, server_no))
 		this->setDefaultLocation();
 }
+
+SocketConfig::ServerConfig::ServerConfig()
+{}
 
 SocketConfig::ServerConfig::~ServerConfig()
 {}
@@ -91,7 +149,7 @@ void SocketConfig::ServerConfig::setDefaultLocation()
 	this->locations.insert(std::make_pair("/", l_props));
 }
 
-void SocketConfig::ServerConfig::setConfProps(std::string path, int socket_no)
+void SocketConfig::ServerConfig::setConfProps(std::string path, int socket_no, int server_no)
 {
 	std::fstream config;
 	std::string line;
@@ -101,6 +159,7 @@ void SocketConfig::ServerConfig::setConfProps(std::string path, int socket_no)
 	config.open(path.c_str(), std::fstream::in);
 
 	SocketConfig::accessSocketBlock(config, socket_no);
+	SocketConfig::accessServerBlock(config, server_no);
 	getline(config, line);
 	while ((line != "</server>") &&
 		   (line.find("<location>") == std::string::npos))
@@ -125,19 +184,7 @@ void SocketConfig::ServerConfig::setConfProps(std::string path, int socket_no)
 	config.close();
 }
 
-void SocketConfig::ServerConfig::accessServerBlock(std::fstream &config, int socket_no)
-{
-	std::string tmp;
-
-	while (0 < socket_no)
-	{
-		getline(config, tmp);
-		if (tmp == "</server>")
-			socket_no--;
-	}
-}
-
-bool SocketConfig::ServerConfig::setLocations(std::string path, int socket_no)
+bool SocketConfig::ServerConfig::setLocations(std::string path, int socket_no, int server_no)
 {
 	std::fstream config;
 	std::string line;
@@ -147,7 +194,8 @@ bool SocketConfig::ServerConfig::setLocations(std::string path, int socket_no)
 
 	config.open(path.c_str(), std::fstream::in);
 
-	this->accessServerBlock(config, socket_no);
+	SocketConfig::accessSocketBlock(config, socket_no);
+	SocketConfig::accessServerBlock(config, server_no);
 	getline(config, line);
 	while (line.find("<location>") == std::string::npos)
 	{
@@ -170,19 +218,19 @@ bool SocketConfig::ServerConfig::setLocations(std::string path, int socket_no)
 			{
 				if (dir != "")
 				{
-					std::cout << "LocationBlock: Only one location per LocationBlock allowed\n";
+					std::cerr << "Config file: Only one location per LocationBlock allowed\n";
 					exit(EXIT_FAILURE);
 				}
 				dir = line.substr(line.rfind(":") + 1);
-				this->removeWhitespaces(dir);
+				SocketConfig::removeWhitespaces(dir);
 			}
 			else if (line.find(":") != std::string::npos)
 			{
 				key = line.substr(0, line.find(":") + 1);
 				value = line.substr(line.find(":") + 1);
 
-				this->removeWhitespaces(key);
-				this->removeWhitespaces(value);
+				SocketConfig::removeWhitespaces(key);
+				SocketConfig::removeWhitespaces(value);
 
 				block[key] = value;
 			}
@@ -191,8 +239,6 @@ bool SocketConfig::ServerConfig::setLocations(std::string path, int socket_no)
 		checkLocationBlock(block, dir);
 		getline(config, line);
 	}
-	std::map<std::string, std::map<std::string, std::string> >::iterator it1;
-	std::map<std::string, std::string>::iterator it2;
 	return true;
 }
 
@@ -200,17 +246,17 @@ void SocketConfig::ServerConfig::checkLocationBlock(std::map<std::string, std::s
 {
 		if (dir == "")
 		{
-			std::cout << "LocationBlock: Doesnt contain location\n";
+			std::cerr << "Config file: Doesnt contain location\n";
 			exit(EXIT_FAILURE);
 		}
 		if (block.find("root:") == block.end() && block.find("redirect:") == block.end() )
 		{
-			std::cout << "LocationBlock: No root directory or redirect set\n";
+			std::cerr << "Config file: No root directory or redirect set\n";
 			exit(EXIT_FAILURE);
 		}
 		if (block.find("root:") != block.end() && block.find("redirect:") != block.end() )
 		{
-			std::cout << "LocationBlock: Either relocation or redirection is possible, not both in one location\n";
+			std::cerr << "Config file: Either relocation or redirection is possible, not both in one location\n";
 			exit(EXIT_FAILURE);
 		}
 		if (block.find("allowed_methods:") == block.end())
@@ -220,12 +266,12 @@ void SocketConfig::ServerConfig::checkLocationBlock(std::map<std::string, std::s
 		{
 			if (block.find("cgi_ext:") == block.end() && block.find("cgi_path:") == block.end())
 			{
-				std::cout << "LocationBlock: POST & GET method require cgi_path and cgi_ext\n";
+				std::cerr << "Config file: POST & GET method require cgi_path and cgi_ext\n";
 				exit(EXIT_FAILURE);
 			}
 			else if (block.find("cgi_ext:") == block.end() && block.at("cgi_ext") != ".py")
 			{
-				std::cout << "LocationBlock: This webserver just support .py cgi scripts\n";
+				std::cerr << "Config file: This webserver just support .py cgi scripts\n";
 				exit(EXIT_FAILURE);
 			}
 		}
@@ -233,7 +279,7 @@ void SocketConfig::ServerConfig::checkLocationBlock(std::map<std::string, std::s
 			block["autoindex:"] = "on";
 		if (!this->locations.insert(std::make_pair(dir, block)).second)
 		{
-			std::cout << "LocationBlock: Location duplicate detected\n";
+			std::cerr << "Config file: Location duplicate detected\n";
 			exit(EXIT_FAILURE);
 		}
 }
@@ -252,11 +298,5 @@ std::map<std::string, \
 	std::map<std::string, std::string> > SocketConfig::ServerConfig::getLocations()
 {
 	return this->locations;
-}
-
-void SocketConfig::ServerConfig::removeWhitespaces(std::string &string)
-{
-	string.erase(0, string.find_first_not_of(" \t"));
-	string.erase(string.find_last_not_of(" \t") + 1);
 }
 
