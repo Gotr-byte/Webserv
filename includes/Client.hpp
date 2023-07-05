@@ -22,28 +22,10 @@ class Client
 
 		void	setRequest(char *chunk, size_t buffer_length);
 		bool	mapRequestHeader();
-		void	tokenizeRequestHeader(std::map<std::string, std::string> & request, std::string line_to_tokenize);
-		void	removeWhitespaces(std::string &string);
-		void	printRequest(std::map<std::string, std::string> my_map);
-		void	checkServerConfig(ServerConfig config);
 		void	checkRequest();
-		void	assignLocation();
-		void	assignServer();
 		void	setError(std::string code);
-		bool	checkMethod();
-		void	resetProperties();
-		bool	checkExistance();
-		void	prepareGet();
-		void	preparePost();
-		void	prepareDelete();
-		void	prepareRedirect();
-		bool	isDirectory();
-		void	parseClientPath();
-		void	closeFileFd();
-		bool	isHeaderValid();
 		bool	obtainFileLength();
-
-
+		void	closeFileFd();
 
 		SocketConfig						config;
 		Response                            response;
@@ -52,11 +34,11 @@ class Client
 		int                             	client_fd;
 		int									color_index;
 		int                             	file_fd;
-		int									id;
 		int                             	server_index;
 
 		std::string                         cgi_path;
 		std::string                         client_ip;
+		std::string							id;
 		std::string                         location;
 		std::string                         method;
 		std::string                         path_info;
@@ -65,7 +47,6 @@ class Client
 		std::string                         redirect_url;
 		std::string                         request;
 		std::string                         server_name;
-
 
 		bool                                autoindex;
 		bool                                cancel_recv;
@@ -82,6 +63,22 @@ class Client
 		bool                                response_sent;
 		
 	private:
+		void	prepareDelete();
+		void	prepareGet();
+		void	preparePost();
+		void	prepareRedirect();
+
+		void	parseClientPath();
+		void	assignServer();
+		void	assignLocation();
+		bool	checkMethod();
+		bool	checkExistance();
+		bool	isDirectory();
+		void	resetProperties();
+		bool	isHeaderValid();
+		void	tokenizeRequestHeader(std::map<std::string, std::string> & request, std::string line_to_tokenize);
+		void	removeWhitespaces(std::string &string);
+
 		SocketConfig::ServerConfig			server_config;
 
 		static int  						nextId;

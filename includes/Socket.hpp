@@ -23,15 +23,15 @@
 #include <string>
 #include <iostream>
 
-class Socket{
+class Socket
+{
     public:
-        Socket();
-        ~Socket();
 		Socket(int port, std::string ip);
-        int server_fd;
-		int opt;
-		struct addrinfo hints, *server_info;
+        ~Socket();
+
+        int     server_fd;
+
     private:
-        Socket(const Socket &other);
-        Socket &operator = (const Socket &other);
+		struct addrinfo hints;
+		struct addrinfo *server_info;
 };

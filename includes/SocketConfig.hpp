@@ -21,7 +21,7 @@ class SocketConfig
 	
 		static void	accessSocketBlock(std::fstream &config, int socket_no);
 		static void accessServerBlock(std::fstream &config, int server_no);
-		static void	removeWhitespaces(std::string	& string);
+		static void	removeWhitespaces(std::string & string);
 
 		class ServerConfig
 		{
@@ -40,10 +40,11 @@ class SocketConfig
 
 			private:
 				void	setConfProps(std::string path, int socket_no, int server_no);
+				void	setDefaultProps();
+
 				bool	setLocations(std::string path, int socket_no, int server_no);
 				void	checkLocationBlock(std::map<std::string, \
 										std::string> & block, std::string dir);
-				void	setDefaultProps();
 				void	setDefaultLocation();
 
 				std::map<std::string, std::string>			properties;

@@ -1,14 +1,11 @@
 #include "../includes/SocketConfig.hpp"
 
-/* CONSTRUCTOR SETS CONFIG FILE CONFIGURATIONS TO THE OBJECT AND THEN
-IF PROPERTIES ARE MISSING, DEFAULT CONFIGURATIONS WILL BE ADDED */
-
 SocketConfig::SocketConfig(std::string path, int socket_no) : servers_on_port(-1)
 {
 	this->setupPortHostServerNo(path, socket_no);
 	if (servers_on_port < 0)
 	{
-		std::cerr << "No Server defined at " << host << ":" << port << std::endl;
+		std::cerr << "Config file: No Server defined at " << host << ":" << port << std::endl;
 		exit(EXIT_FAILURE);
 	}
 	for (int server_no = 0; server_no <= servers_on_port; server_no++)
@@ -124,31 +121,6 @@ SocketConfig::ServerConfig::ServerConfig()
 SocketConfig::ServerConfig::~ServerConfig()
 {}
 
-void SocketConfig::ServerConfig::setDefaultProps()
-{
-	this->properties.insert(std::make_pair("port:", "1896"));
-	this->properties.insert(std::make_pair("host:", "localhost"));
-	this->properties.insert(std::make_pair("server_name:", "default_server"));
-	this->properties.insert(std::make_pair("error_page:", "www/error_pages/"));
-	this->properties.insert(std::make_pair("limit_body_size:", "100"));
-	this->properties.insert(std::make_pair("allowed_methods:", "GET"));
-}
-
-void SocketConfig::ServerConfig::setDefaultLocation()
-{
-	std::map<std::string, std::string> l_props;
-
-	l_props.insert(std::make_pair("root:", "www/HTML/"));
-	l_props.insert(std::make_pair("index:", "index.html"));
-	l_props.insert(std::make_pair("redirect:", "https://google.com/"));
-	l_props.insert(std::make_pair("allowed_methods:", "POST, GET"));
-	l_props.insert(std::make_pair("cgi_path:", "www/HTML/cgi-bin/"));
-	l_props.insert(std::make_pair("cgi_ext:", ".py"));
-	l_props.insert(std::make_pair("autoindex:", "on"));
-
-	this->locations.insert(std::make_pair("/", l_props));
-}
-
 void SocketConfig::ServerConfig::setConfProps(std::string path, int socket_no, int server_no)
 {
 	std::fstream config;
@@ -177,6 +149,16 @@ void SocketConfig::ServerConfig::setConfProps(std::string path, int socket_no, i
 		getline(config, line);
 	}
 	config.close();
+}
+
+void SocketConfig::ServerConfig::setDefaultProps()
+{
+	this->properties.insert(std::make_pair("port:", "1896"));
+	this->properties.insert(std::make_pair("host:", "localhost"));
+	this->properties.insert(std::make_pair("server_name:", "default_server"));
+	this->properties.insert(std::make_pair("error_page:", "www/error_pages/"));
+	this->properties.insert(std::make_pair("limit_body_size:", "100"));
+	this->properties.insert(std::make_pair("allowed_methods:", "GET"));
 }
 
 bool SocketConfig::ServerConfig::setLocations(std::string path, int socket_no, int server_no)
@@ -277,6 +259,21 @@ void SocketConfig::ServerConfig::checkLocationBlock(std::map<std::string, std::s
 			std::cerr << "Config file: Location duplicate detected\n";
 			exit(EXIT_FAILURE);
 		}
+}
+
+void SocketConfig::ServerConfig::setDefaultLocation()
+{
+	std::map<std::string, std::string> l_props;
+
+	l_props.insert(std::make_pair("root:", "www/HTML/"));
+	l_props.insert(std::make_pair("index:", "index.html"));
+	l_props.insert(std::make_pair("redirect:", "https://google.com/"));
+	l_props.insert(std::make_pair("allowed_methods:", "POST, GET"));
+	l_props.insert(std::make_pair("cgi_path:", "www/HTML/cgi-bin/"));
+	l_props.insert(std::make_pair("cgi_ext:", ".py"));
+	l_props.insert(std::make_pair("autoindex:", "on"));
+
+	this->locations.insert(std::make_pair("/", l_props));
 }
 
 std::string	SocketConfig::ServerConfig::getConfProps(std::string key)

@@ -13,21 +13,17 @@
 class Response
 {
 	public:
-
 		Response();
 		~Response();
 
-		void	buildResponseHeader();
-		void	generateUploadResponse(std::string file_path);
+		void	generateCgiResponse();
 		void	generateDeleteResponse();
 		void	generateErrorResponse(std::string status, std::string issue);
 		void	generateRedirectionResponse(std::string URL);
-		void	generateCgiResponse();
-
-		void	createAutoindex(std::string path);
-		void	setupErrorPage(std::string status, std::string issue);
-		void	setDate();
+		void	generateUploadResponse(std::string file_path);
+		void	buildResponseHeader();
 		void	setResponseContentType(std::string path);
+		void	createAutoindex(std::string path);
 
 		std::string	body;
 		std::string	header;
@@ -36,6 +32,7 @@ class Response
 		bool		is_chunked;
 
 	private:
+		void	setDate();
 
 		std::string additional_info;
 		std::string	content_type;

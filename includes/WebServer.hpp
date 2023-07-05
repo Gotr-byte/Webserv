@@ -41,17 +41,17 @@ class WebServer
 		WebServer(std::string path);
 		~WebServer();
 
-		int			setupListeningSockets();
+		void		setupListeningSockets();
 		void		loopPollEvents();
 
 	private:
 
 		void		conductPolling();
 		void		acceptClients(int server_fd);
-		void		performGet(int client_fd);
-		void		performUpload(int client_fd);
-		void		performDelete(int client_fd);
 		void		performCgi(int client_fd);
+		void		performGet(int client_fd);
+		void		performDelete(int client_fd);
+		void		performUpload(int client_fd);
 		void		sendResponse(int client_fd);
 		void		killClient(std::vector<struct pollfd>::iterator it);
 
