@@ -1,2 +1,2 @@
 #!
-  curl -X GET 0.0.0.0:9995/planescape.html
+  curl -X GET 0.0.0.0:80/planescape.html

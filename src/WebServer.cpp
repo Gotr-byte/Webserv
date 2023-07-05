@@ -92,7 +92,7 @@ void WebServer::acceptClients(int server_fd)
 	client_fd = accept(server_fd, (struct sockaddr *)&client_addr, &client_addr_size);
 	if (client_fd < 0)
 	{
-		std::cerr << "webserver: Error accepting client connection\n";
+		// std::cerr << "webserver: Error accepting client connection\n";
 		return;
 	}
 
@@ -165,7 +165,7 @@ void WebServer::loopPollEvents()
 					}
 					else if (recieved_size == 0)
 					{
-						std::cout << "Client closed the connection\n";
+						// std::cout << "Client closed the connection\n";
 						killClient(it--);
 						continue;
 					}
