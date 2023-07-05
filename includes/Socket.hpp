@@ -6,12 +6,15 @@
 #if defined(__linux__)
 #include <unistd.h>
 #include <string.h>
+#include <string>
+#include <sstream>
 #endif
 
 #include <sys/wait.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <netdb.h>
+#include <sstream>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <fcntl.h>

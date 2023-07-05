@@ -1,46 +1,41 @@
 #pragma once
 
-#if defined(__APPLE__)
 #include <sys/types.h>
-#endif
-#if defined(__linux__)
-#include <unistd.h>
-#endif
-
 #include <vector>
 #include <iostream>
 #include <cstdlib>
 #include <cstdio>
 #include <cstring>
 #include <poll.h>
-
+#include <cstddef>
+#include <limits>
+#include <algorithm>
+#include <fstream>
 #include <sys/wait.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <fcntl.h>
-#include <fstream>
 #include <string>
-#include <algorithm>
-#include <ctime>
 #include <stdio.h>
 #include <map>
 #include <cctype>
 #include <set>
-#include <deque>
-#include <stdio.h>
-#include <string>
 #include <string.h>
 #include <unistd.h>
 #include <sstream>
-#include "ServerConfig.hpp"
+
 #include "Client.hpp"
 #include "Socket.hpp"
 #include "Cgi.hpp"
-#include "../includes/Response.hpp"
-#include "Colors.hpp"
+#include "SocketConfig.hpp"
+#include "ConfigCheck.hpp"
+#include "Response.hpp"
 // #include <cstring.h>
 // #include <string.h>
+
+#define BUF_SIZE 1024
+#define POLL_TIMEOUT 200
 
 class WebServer
 {
@@ -48,6 +43,7 @@ class WebServer
 		WebServer(std::string path, char **env);
 		~WebServer();
 
+		bool		deleteIfExists(std::string filename);
 		int			setupListeningSockets();
 		void		loopPollEvents();
 		void		conductPolling();
@@ -74,10 +70,8 @@ class WebServer
 		std::vector<struct pollfd>  poll_fds;
 		std::map<int, Client>       fds_clients;
 		std::vector<int>            listening_socket_fds;
-		std::map<int, ServerConfig> configs;
+		std::map<int, SocketConfig> configs;
 		std::string                 config_path;
-		struct sockaddr_in 			client_addr;
-		void cgi_file_upload(std::vector<Response>::iterator req);
 
 		class				InvalidFileDownloadException : public std::exception
 		{
@@ -87,12 +81,4 @@ class WebServer
 					return("Invalid location exception\n");
 				}
 		};
-		// class				GenericServerException : public std::exception
-		// {
-		//     public:
-		//         virtual const char* what() const throw()
-		//         {
-		//             return("Error when determining header lenghth\n");
-		//         }
-		// };
 };

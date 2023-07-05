@@ -2,7 +2,7 @@
 
 int Client::nextId = 0;
 
-Client::Client(ServerConfig conf, std::string ip) : id(nextId++), content_length(0), file_fd(-1), config(conf)
+Client::Client(SocketConfig conf, std::string ip) : id(nextId++), content_length(0), file_fd(-1), config(conf)
 {
 	this->client_ip = ip;
 	this->header_sent = false;
@@ -41,13 +41,16 @@ void	Client::parseClientPath()
 
 void    Client::checkRequest()
 {
+	this->assignServer();
 	this->parseClientPath();
 	this->assignLocation();
-	this->server_name = config.getConfProps("server_name:");
+	this->server_name = server_config.getConfProps("server_name:");
 	response.server_name = this->server_name;
 
 	if (this->is_redirect)
+	{
 		prepareRedirect();
+	}
 	else if (this->checkMethod() && checkExistance())
 	{
 		if (method == "GET")
@@ -59,6 +62,19 @@ void    Client::checkRequest()
 	}
 }
 
+void	Client::assignServer()
+{
+	for (std::map<std::string, SocketConfig::ServerConfig>::iterator it = config.servers.begin(); it != config.servers.end(); it++)
+	{
+		if (it->first.find(request_header.at("Host:")) != std::string::npos)
+		{
+			this->server_config = it->second;
+			return;
+		}
+	}
+	this->server_config = config.servers.begin()->second;
+}
+
 void	Client::prepareRedirect()
 {
 	response.generateRedirectionResponse(redirect_url);
@@ -67,7 +83,7 @@ void	Client::prepareRedirect()
 
 void	Client::prepareDelete()
 {
-	if (isDirectory()) //Operation is forbidden is client wants to delete a folder
+	if (isDirectory())
 	{
 		setError("403");
 		return;
@@ -82,14 +98,14 @@ void	Client::prepareDelete()
 
 void	Client::preparePost()
 {
-	if ((long)request_size < std::atol(request_header.at("Content-Length:").c_str()))
+	if ((long)request_size < atol(request_header.at("Content-Length:").c_str()))
 		request_complete = false;
-	if (std::atol(config.getConfProps("limit_body_size:").c_str()) < std::atol(request_header["Content-Length:"].c_str()))
+	if (std::atol(server_config.getConfProps("limit_body_size:").c_str()) < std::atol(request_header["Content-Length:"].c_str()))
 	{
 		this->cancel_recv = true;
 		setError("413");
 	}	
-	else if (path_on_server.find(".py") != std::string::npos)
+	else if (path_on_server.find(cgi_extension) != std::string::npos)
 	{
 		if (access(path_on_server.c_str(), X_OK) == -1)
 		{
@@ -114,7 +130,7 @@ void	Client::preparePost()
 void	Client::prepareGet()
 {
 	this->is_get = true;
-	if (path_on_server.find(".py") != std::string::npos)
+	if (path_on_server.find(cgi_extension) != std::string::npos)
 	{
 		if (access(path_on_server.c_str(), X_OK))
 		{
@@ -147,7 +163,7 @@ bool	Client::isDirectory()
 
 bool	Client::checkMethod()
 {
-	if (config.getLocation(location, "allowed_methods:").find(request_header["method:"]) \
+	if (server_config.getLocation(location, "allowed_methods:").find(request_header["method:"]) \
 		!= std::string::npos)
 		{
 			this->method = request_header.at("method:");
@@ -175,9 +191,9 @@ bool	Client::checkExistance()
 void	Client::assignLocation()
 {
 	for (std::map<std::string, std::map<std::string, std::string> >::iterator \
-		it = config.locations.begin(); it != config.locations.end(); it++)
+		it = server_config.locations.begin(); it != server_config.locations.end(); it++)
 	{
-		if (int pos = path_on_client.find(it->first) != std::string::npos)
+		if (path_on_client.find(it->first) != std::string::npos)
 		{
 			this->location = it->first;
 			if (it->second.find("redirect:") != it->second.end())
@@ -185,6 +201,11 @@ void	Client::assignLocation()
 				redirect_url = it->second.at("redirect:");
 				this->is_redirect = true;
 				return;
+			}
+			if (it->second.find("cgi_path:") != it->second.end() && it->second.find("cgi_path:") != it->second.end())
+			{
+				cgi_path = it->second.at("cgi_path:");
+				cgi_extension = it->second.at("cgi_ext:");
 			}
 			this->path_on_server = it->second.at("root:");
 			if (path_on_client == it->first)
@@ -212,7 +233,7 @@ void	Client::setError(std::string status)
 {
 	this->resetProperties();
 
-	path_on_server =  config.getConfProps("error_page:") + status + ".html";
+	path_on_server =  server_config.getConfProps("error_page:") + status + ".html";
 	response.error_path = path_on_server;
 	
 	this->request_processed = true;
@@ -234,17 +255,17 @@ void	Client::setError(std::string status)
 
 bool    Client::mapRequestHeader()
 {
-	std::size_t headerEnd = request.find("\r\n\r\n");
+	std::size_t headerEnd = request.find("\r\n\r\n") + 2;
     if (headerEnd == std::string::npos)
 	{
-		std::cout << "no correct header format" << std::endl;
+		std::cerr << "no correct header format" << std::endl;
 		setError("400");
 		return false;
 	}
 
 	std::string header = request.substr(0, headerEnd);
-	request = request.substr(headerEnd + 4);
-	request_size -= headerEnd + 4;
+	request = request.substr(headerEnd + 2);
+	request_size -= headerEnd + 2;
 
     std::size_t lineStart = 0;
     std::size_t lineEnd;
@@ -300,12 +321,6 @@ bool	Client::isHeaderValid()
 	return true;
 }
 
-/**
- * Tokenizes a line of text and stores the key-value pair in a map.
- *
- * @param request The map to store the key-value pair.
- * @param line_to_tokenize The line of text to tokenize.
- */
 void Client::tokenizeRequestHeader(std::map<std::string, std::string> &request, std::string line_to_tokenize)
 {
     std::stringstream tokenize_stream(line_to_tokenize);
@@ -327,13 +342,8 @@ void Client::removeWhitespaces(std::string &string)
 void	Client::setRequest(char *chunk, size_t buffer_length)
 {
 	request_size += buffer_length;
-    for (size_t size = 0; size < buffer_length; size++)
-        request.push_back(chunk[size]);
 	if (buffer_length < PACKAGE_SIZE)
 		request_complete = true;
+    for (size_t size = 0; size < buffer_length; size++)
+        request.push_back(chunk[size]);
 }
-
-
-// void Client::set_cgi_filename(Cgi &cgi){
-// 	_cgi_filename = cgi.get_file_name();
-// }

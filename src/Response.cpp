@@ -60,10 +60,12 @@ void	Response::setupErrorPage(std::string status, std::string issue)
 void	Response::obtainFileLength(std::string path)
 {
 	FILE* file = fopen(path.c_str(), "r");
-	if (file == nullptr)	
+	// if (file == nullptr)
+	if (!file)	
+
 	{
 		std::cerr << ("response: Error opening file");
-		exit(EXIT_FAILURE);
+		// exit(EXIT_FAILURE);
 	}
 	std::fseek(file, 0, SEEK_END);
 	content_length = std::ftell(file);
@@ -72,13 +74,13 @@ void	Response::obtainFileLength(std::string path)
 
 void	Response::setDate()
 {
-	time_t currentTime = time(nullptr);
-    tm* timeinfo = gmtime(&currentTime);
-    
-    char buffer[80];
-    strftime(buffer, sizeof(buffer), "%a, %d %b %Y %H:%M:%S GMT", timeinfo);
-    
-    std::string conv(buffer);
+	time_t currentTime = time(NULL);
+	tm* timeinfo = gmtime(&currentTime);
+	
+	char buffer[80];
+	strftime(buffer, sizeof(buffer), "%a, %d %b %Y %H:%M:%S GMT", timeinfo);
+	
+	std::string conv(buffer);
 	this->date = "Date: " + conv;
 	// std::cout << date << std::endl;
 }
@@ -87,7 +89,7 @@ void	Response::setResponseContentType(std::string path)
 {
 	std::string suffix = path.substr(path.rfind(".") + 1);
 
-	if (path.find("/file/") != std::string::npos)
+	if (path.find("file/") != std::string::npos)
 		content_type = "application/octet-stream";
 	else
 	{
@@ -116,7 +118,6 @@ void	Response::setResponseContentType(std::string path)
 		else
 			content_type = "application/octet-stream";
 	}
-	// std::cout << suffix << std::endl;
 }
 
 void	Response::buildResponseHeader()
@@ -150,44 +151,44 @@ void	Response::createAutoindex(std::string path)
 	std::ostringstream	autoidx;
 
 	autoidx << "<!DOCTYPE html>\n";
-    autoidx << "<html>\n";
-    autoidx << "<head>\n";
-    autoidx << "<title>Index of " << path << "</title>\n";
-    autoidx << "</head>\n";
-    autoidx << "<body>\n";
-    autoidx << "<h1>Index of " << path << "</h1>\n";
-    autoidx << "<ul>\n";
+	autoidx << "<html>\n";
+	autoidx << "<head>\n";
+	autoidx << "<title>Index of " << path << "</title>\n";
+	autoidx << "</head>\n";
+	autoidx << "<body>\n";
+	autoidx << "<h1>Index of " << path << "</h1>\n";
+	autoidx << "<ul>\n";
 
 	DIR* dir = opendir(path.c_str());
 
 	struct dirent* entry;
-    while ((entry = readdir(dir)) != NULL)
+	while ((entry = readdir(dir)) != NULL)
 	{
-        // Skip "." and ".." entries
-        if (std::string(entry->d_name) == "." || std::string(entry->d_name) == "..") {
-            continue;
-        }
-        
-        std::string itemName = entry->d_name;
-        std::string itemPath = path + "/" + itemName;
-        
-        // Check if the entry is a file or directory
-        bool isDir = (entry->d_type == DT_DIR);
-        
-        // generate the appropriate HTML entry
-        if (isDir)
-            autoidx << "<li><a href=\"" << itemName << "/\">" << itemName << "/</a></li>\n";
-        else
-            autoidx << "<li><a href=\"" << itemName << "\">" << itemName << "</a></li>\n";
-    }
-    
-    // Close the directory
-    closedir(dir);
-    
-    // Write the HTML footer
-    autoidx << "</ul>\n";
-    autoidx << "</body>\n";
-    autoidx << "</html>";
+		// Skip "." and ".." entries
+		if (std::string(entry->d_name) == "." || std::string(entry->d_name) == "..") {
+			continue;
+		}
+		
+		std::string itemName = entry->d_name;
+		std::string itemPath = path + "/" + itemName;
+		
+		// Check if the entry is a file or directory
+		bool isDir = (entry->d_type == DT_DIR);
+		
+		// generate the appropriate HTML entry
+		if (isDir)
+			autoidx << "<li><a href=\"" << itemName << "/\">" << itemName << "/</a></li>\n";
+		else
+			autoidx << "<li><a href=\"" << itemName << "\">" << itemName << "</a></li>\n";
+	}
+	
+	// Close the directory
+	closedir(dir);
+	
+	// Write the HTML footer
+	autoidx << "</ul>\n";
+	autoidx << "</body>\n";
+	autoidx << "</html>";
 
 	body = autoidx.str();
 	additional_info = "";

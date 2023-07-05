@@ -4,31 +4,61 @@ static void	checkLocationBlock(std::fstream &config, std::string &line)
 {
 	while (line.find("</location>") == std::string::npos)
 	{
+		if (line.empty())
+			getline(config, line);
 		if (config.eof())
 			throw std::logic_error("Unexpected end of LocationBlock");
 		getline(config, line);
-		if (line.find("server>") != std::string::npos)
+		if (line.find("<server>") != std::string::npos)
 			throw std::logic_error("No ServerBlock allowed in LocationBlock");
+		else if (line.find("<socket>") != std::string::npos)
+			throw std::logic_error("No SocketBlock allowed in LocationBlock");
 		else if (line.find("<location>") != std::string::npos)
-			throw std::logic_error("LocationBlock cannot contain another location block start <location>");
+			throw std::logic_error("LocationBlock cannot contain another LocationBlock start <location>");
 	}
 }
 
 static void	checkServerBlock(std::fstream	&config, std::string	&line)
 {
-	if (line != "<server>")
-		throw std::logic_error("ServerBlock has to start with <server>");
-	while (line != "</server>")
+	while (line.find("</server>") == std::string::npos)
 	{
+		if (line.empty())
+			getline(config, line);
 		if (config.eof())
 			throw std::logic_error("Unexpected end of ServerBlock");
 		getline(config, line);
 		if (line.find("<location>") != std::string::npos)
 			checkLocationBlock(config, line);
+		else if (line.find("<socket>") != std::string::npos)
+			throw std::logic_error("ServerBlock cannot contain another SocketBlock start <server>");
 		else if (line.find("</location>") != std::string::npos)
 			throw std::logic_error("Incorrect LocationBlock format");
-		if (line.find("<server>") != std::string::npos)
+		else if (line.find("<server>") != std::string::npos)
 			throw std::logic_error("ServerBlock cannot contain another ServerBlock start <server>");
+	}
+}
+
+static void	checkSocketBlock(std::fstream &config, std::string &line)
+{
+	if (line != "<socket>")
+		throw std::logic_error("SocketBlock has to start with <socket>");
+	while (line != "</socket>")
+	{
+		if (line.empty())
+			getline(config, line);
+		if (config.eof())
+			throw std::logic_error("Unexpected end of SocketBlock");
+		getline(config, line);
+		if (line.find("<server>") != std::string::npos)
+			checkServerBlock(config, line);
+		else if (line.find("</server>") != std::string::npos)
+			throw std::logic_error("Incorrect ServerBlock format");
+		else if (line.find("<location>") != std::string::npos)
+			throw std::logic_error("Incorrect LocationBlock format");
+		else if (line.find("</location>") != std::string::npos)
+			throw std::logic_error("Incorrect LocationBlock format");
+		if (line.find("<socket>") != std::string::npos)
+			throw std::logic_error("SocketBlock cannot contain another SocketBlock start <socket>");
 	}
 }
 
@@ -44,7 +74,7 @@ int	ConfigCheck::checkConfig(std::string path)
 	{
 		if (!line.empty())
 		{
-			checkServerBlock(config, line);
+			checkSocketBlock(config, line);
 			server_counter++;
 		}
 	}
