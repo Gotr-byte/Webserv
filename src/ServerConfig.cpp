@@ -3,46 +3,12 @@
 /* CONSTRUCTOR SETS CONFIG FILE CONFIGURATIONS TO THE OBJECT AND THEN
 IF PROPERTIES ARE MISSING, DEFAULT CONFIGURATIONS WILL BE ADDED */
 
-ServerConfig::ServerConfig()
-{}
-
-
-ServerConfig::ServerConfig(std::string path, int socket_no)
+SocketConfig::SocketConfig(std::string path, int socket_no)
 {
-	this->first_server = (socket_no == 0);
-	this->setConfProps(path, socket_no);
-	this->setDefaultProps();
-	if (!this->setLocations(path, socket_no))
-		this->setDefaultLocation();
+	this->setServerConfigs(path, socket_no);
 }
 
-ServerConfig::~ServerConfig()
-{}
-
-void ServerConfig::setDefaultProps()
-{
-	this->properties.insert(std::make_pair("port:", "1896"));
-	this->properties.insert(std::make_pair("host:", "localhost"));
-	this->properties.insert(std::make_pair("server_name:", "default_server"));
-	this->properties.insert(std::make_pair("error_page:", "./www/errors/"));
-	this->properties.insert(std::make_pair("limit_body_size:", "100"));
-	this->properties.insert(std::make_pair("allowed_methods:", "GET"));
-}
-
-void ServerConfig::setDefaultLocation()
-{
-	std::map<std::string, std::string> l_props;
-
-	l_props.insert(std::make_pair("root:", "./www/html/"));
-	l_props.insert(std::make_pair("index:", "index.html"));
-	l_props.insert(std::make_pair("redirect:", "https://google.com/"));
-	l_props.insert(std::make_pair("allowed_methods:", "POST, GET"));
-	l_props.insert(std::make_pair("autoindex:", "on"));
-
-	this->locations.insert(std::make_pair("/", l_props));
-}
-
-void ServerConfig::setConfProps(std::string path, int socket_no)
+void	SocketConfig::setServerConfigs(std::string path, int socket_no)
 {
 	std::fstream config;
 	std::string line;
@@ -51,10 +17,10 @@ void ServerConfig::setConfProps(std::string path, int socket_no)
 
 	config.open(path.c_str(), std::fstream::in);
 
-	this->accessServerBlock(config, socket_no);
+	this->accessSocketBlock(config, socket_no);
 	getline(config, line);
-	while ((line != "</server>") &&
-		   (line.find("<location>") == std::string::npos))
+	while ((line != "</socket>") &&
+		   (line.find("<server>") == std::string::npos))
 	{
 		if (line.find(":") != std::string::npos)
 		{
@@ -76,7 +42,90 @@ void ServerConfig::setConfProps(std::string path, int socket_no)
 	config.close();
 }
 
-void ServerConfig::accessServerBlock(std::fstream &config, int socket_no)
+void SocketConfig::accessSocketBlock(std::fstream &config, int socket_no)
+{
+	std::string tmp;
+
+	while (0 < socket_no)
+	{
+		getline(config, tmp);
+		if (tmp == "</socket>")
+			socket_no--;
+	}
+}
+
+SocketConfig::ServerConfig::ServerConfig(std::string path, int socket_no)
+{
+
+	this->setConfProps(path, socket_no);
+	this->setDefaultProps();
+	if (!this->setLocations(path, socket_no))
+		this->setDefaultLocation();
+}
+
+SocketConfig::ServerConfig::~ServerConfig()
+{}
+
+void SocketConfig::ServerConfig::setDefaultProps()
+{
+	this->properties.insert(std::make_pair("port:", "1896"));
+	this->properties.insert(std::make_pair("host:", "localhost"));
+	this->properties.insert(std::make_pair("server_name:", "default_server"));
+	this->properties.insert(std::make_pair("error_page:", "www/error_pages/"));
+	this->properties.insert(std::make_pair("limit_body_size:", "100"));
+	this->properties.insert(std::make_pair("allowed_methods:", "GET"));
+}
+
+void SocketConfig::ServerConfig::setDefaultLocation()
+{
+	std::map<std::string, std::string> l_props;
+
+	l_props.insert(std::make_pair("root:", "www/HTML/"));
+	l_props.insert(std::make_pair("index:", "index.html"));
+	l_props.insert(std::make_pair("redirect:", "https://google.com/"));
+	l_props.insert(std::make_pair("allowed_methods:", "POST, GET"));
+	l_props.insert(std::make_pair("cgi_path:", "www/HTML/cgi-bin/"));
+	l_props.insert(std::make_pair("cgi_ext:", ".py"));
+	l_props.insert(std::make_pair("autoindex:", "on"));
+
+	this->locations.insert(std::make_pair("/", l_props));
+}
+
+void SocketConfig::ServerConfig::setConfProps(std::string path, int socket_no)
+{
+	std::fstream config;
+	std::string line;
+	std::string key;
+	std::string value;
+
+	config.open(path.c_str(), std::fstream::in);
+
+	SocketConfig::accessSocketBlock(config, socket_no);
+	getline(config, line);
+	while ((line != "</server>") &&
+		   (line.find("<location>") == std::string::npos))
+	{
+		if (line.find(":") != std::string::npos)
+		{
+			key = line.substr(0, line.find(":") + 1);
+			value = line.substr(line.find(":") + 1);
+
+			SocketConfig::removeWhitespaces(key);
+			SocketConfig::removeWhitespaces(value);
+
+			if (key == "listen:")
+			{
+				this->host = value.substr(0, value.find(":"));
+				this->port = value.substr(value.find(":") + 1);
+			}
+			this->properties[key] = value;
+		}
+		getline(config, line);
+	}
+	config.close();
+}
+
+void SocketConfig::ServerConfig::accessServerBlock(std::fstream &config, int socket_no)
 {
 	std::string tmp;
 
@@ -88,7 +137,7 @@ void ServerConfig::accessServerBlock(std::fstream &config, int socket_no)
 	}
 }
 
-bool ServerConfig::setLocations(std::string path, int socket_no)
+bool SocketConfig::ServerConfig::setLocations(std::string path, int socket_no)
 {
 	std::fstream config;
 	std::string line;
@@ -122,7 +171,7 @@ bool ServerConfig::setLocations(std::string path, int socket_no)
 				if (dir != "")
 				{
 					std::cout << "LocationBlock: Only one location per LocationBlock allowed\n";
-					exit(1);
+					exit(EXIT_FAILURE);
 				}
 				dir = line.substr(line.rfind(":") + 1);
 				this->removeWhitespaces(dir);
@@ -147,7 +196,7 @@ bool ServerConfig::setLocations(std::string path, int socket_no)
 	return true;
 }
 
-void ServerConfig::checkLocationBlock(std::map<std::string, std::string> & block, std::string dir)
+void SocketConfig::ServerConfig::checkLocationBlock(std::map<std::string, std::string> & block, std::string dir)
 {
 		if (dir == "")
 		{
@@ -189,23 +238,23 @@ void ServerConfig::checkLocationBlock(std::map<std::string, std::string> & block
 		}
 }
 
-std::string	ServerConfig::getConfProps(std::string key)
+std::string	SocketConfig::ServerConfig::getConfProps(std::string key)
 {
 	return this->properties[key];
 }
 
-std::string	ServerConfig::getLocation(std::string location, std::string key)
+std::string	SocketConfig::ServerConfig::getLocation(std::string location, std::string key)
 {
 	return this->locations[location][key];
 }
 
 std::map<std::string, \
-	std::map<std::string, std::string> > ServerConfig::getLocations()
+	std::map<std::string, std::string> > SocketConfig::ServerConfig::getLocations()
 {
 	return this->locations;
 }
 
-void ServerConfig::removeWhitespaces(std::string &string)
+void SocketConfig::ServerConfig::removeWhitespaces(std::string &string)
 {
 	string.erase(0, string.find_first_not_of(" \t"));
 	string.erase(string.find_last_not_of(" \t") + 1);
