@@ -250,7 +250,6 @@ bool    Client::mapRequestHeader()
 	std::string header = request.substr(0, headerEnd);
 	request = request.substr(headerEnd + 2);
 	request_size -= headerEnd + 2;
-	std::cout << header << std::endl;
 
     std::size_t lineStart = 0;
     std::size_t lineEnd;
