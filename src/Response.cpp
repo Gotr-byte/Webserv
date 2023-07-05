@@ -65,7 +65,7 @@ void	Response::buildResponseHeader()
 	tmp << protocoll << " " << status_code << "\r\n";
 	tmp << "Server: " << server_name << "\r\n";
 	tmp << date << "\r\n";
-	if (!content_length)
+	if (content_length)
 	{
 		tmp << "Content-Type: " << content_type << "\r\n";
 		tmp << "Content-Length: " << content_length << "\r\n";
@@ -82,7 +82,9 @@ void	Response::setResponseContentType(std::string path)
 	std::string suffix = path.substr(path.rfind(".") + 1);
 
 	if (path.find("file/") != std::string::npos)
+	{
 		content_type = "application/octet-stream";
+	}
 	else
 	{
 		if (suffix == "html")
