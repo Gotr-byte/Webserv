@@ -7,6 +7,7 @@
 #include <map>
 #include <time.h>
 #include <string.h>
+#include <cstring>
 #include <stdlib.h>
 #include "Response.hpp"
 #include "SocketConfig.hpp"
