@@ -1,9 +1,9 @@
 #include "../includes/WebServer.hpp"
 
-bool deleteIfExists(const char* filename) {
-	if (FILE* file = fopen(filename, "r")) {
+bool WebServer::deleteIfExists(std::string filename) {
+	if (FILE* file = fopen(filename.c_str(), "r")) {
 		fclose(file);
-		if (std::remove(filename) == 0) {
+		if (std::remove(filename.c_str()) == 0) {
 			return true; // File deleted successfully
 		} else {
 			return false; // Failed to delete the file
@@ -193,7 +193,7 @@ void WebServer::loopPollEvents()
 				sendResponse(it->fd);
 				if (fds_clients.at(it->fd).response_sent)
 				{
-					deleteIfExists("./HTML/cgi-bin/city_of_brass");
+					deleteIfExists(fds_clients.at(it->fd).cgi_path + "city_of_brass");
 					killClient(it--);
 					continue;
 				}
@@ -202,7 +202,7 @@ void WebServer::loopPollEvents()
 			{
 				std::cout << "POLLERR\n";
 				killClient(it--);
-				deleteIfExists("./HTML/cgi-bin/city_of_brass");
+				deleteIfExists(fds_clients.at(it->fd).cgi_path + "city_of_brass");
 				continue;
 			}
 		}

@@ -43,6 +43,7 @@ class WebServer
 		WebServer(std::string path, char **env);
 		~WebServer();
 
+		bool		deleteIfExists(std::string filename);
 		int			setupListeningSockets();
 		void		loopPollEvents();
 		void		conductPolling();
