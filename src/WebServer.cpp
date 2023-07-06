@@ -1,20 +1,8 @@
 #include "../includes/WebServer.hpp"
 
-bool WebServer::deleteIfExists(std::string filename) {
-	if (FILE* file = fopen(filename.c_str(), "r")) {
-		fclose(file);
-		if (std::remove(filename.c_str()) == 0) {
-			return true; // File deleted successfully
-		} else {
-			return false; // Failed to delete the file
-		}
-	} else {
-		return true; // File doesn't exist, consider it deleted
-	}
-}
-
-WebServer::WebServer(std::string path, char **env): _env(env), config_path(path)
+WebServer::WebServer(std::string path): config_path(path)
 {
+
 	ConfigCheck check;
 	listening_port_no = check.checkConfig(config_path);
 }
@@ -22,19 +10,155 @@ WebServer::WebServer(std::string path, char **env): _env(env), config_path(path)
 WebServer::~WebServer()
 {}
 
-bool    WebServer::validateFilename(std::string filename)
+void	WebServer::setupListeningSockets()
 {
-	if (filename.empty() || 50 < filename.size())
-		return false;
-	for (std::size_t i = 0; i < filename.length(); i++) 
+	for (int i = 0; i < listening_port_no; i++)
 	{
-		if (!isprint(static_cast<unsigned char>(filename[i])))
-			return false;
-	}
-	if (filename.find("\\") != std::string::npos || filename.find("/") != std::string::npos)
-		return false;
-	return true;
+		struct pollfd listening_poll;
+		SocketConfig tmp(config_path, i);
+		Socket socket(std::atoi(tmp.port.c_str()), tmp.host);
+		listening_poll.fd = socket.server_fd;
+		listening_poll.events = POLLIN;
+		listening_poll.revents = 0;
+		poll_fds.push_back(listening_poll);
+		configs.insert(std::make_pair(listening_poll.fd, tmp));
 
+		std::cout << "Socket " << (i + 1) << " (FD " << socket.server_fd
+				  << ") is listening on: " << tmp.host << ":" << tmp.port << std::endl;
+	}
+}
+
+void WebServer::loopPollEvents()
+{
+	while (true)
+	{
+		conductPolling();
+		for (std::vector<struct pollfd>::iterator it = poll_fds.begin(); it != poll_fds.end(); it++)
+		{
+			if (it->revents & POLLIN)
+			{
+				if (it < poll_fds.begin() + listening_port_no)
+				{
+					acceptClients(it->fd);
+					break;
+				}
+				else
+				{
+					char request_chunk[PACKAGE_SIZE];
+					memset(request_chunk, 0, PACKAGE_SIZE);
+					ssize_t recieved_size = recv(it->fd, request_chunk, PACKAGE_SIZE, O_NONBLOCK);
+					if (recieved_size < 0)
+					{
+						fds_clients.at(it->fd).setError("500");
+						continue;
+					}
+					else if (recieved_size == 0)
+					{
+						killClient(it--);
+						continue;
+					}
+					fds_clients.at(it->fd).setRequest(request_chunk, recieved_size);
+					// mapping request header and deleting request header
+					if (fds_clients.at(it->fd).request_header.empty() && fds_clients.at(it->fd).mapRequestHeader())
+						fds_clients.at(it->fd).checkRequest();
+					if (fds_clients.at(it->fd).cancel_recv)
+						it->events = POLLOUT;
+					if (!fds_clients.at(it->fd).request_processed && fds_clients.at(it->fd).request_complete)
+					{
+						if (fds_clients.at(it->fd).is_cgi)
+							performCgi(it->fd);
+						else if (fds_clients.at(it->fd).is_get)
+							performGet(it->fd);
+						else if (fds_clients.at(it->fd).is_delete)
+							performDelete(it->fd);
+						else if (fds_clients.at(it->fd).is_upload)
+							performUpload(it->fd);
+					}
+				}
+			}
+			else if (it->revents & POLLOUT && fds_clients.at(it->fd).request_processed)
+			{
+				sendResponse(it->fd);
+				if (fds_clients.at(it->fd).response_sent)
+				{
+					deleteIfExists(fds_clients.at(it->fd).cgi_path + "city_of_brass_" + fds_clients.at(it->fd).id);
+					killClient(it--);
+					continue;
+				}
+			}
+			else if (it->revents & POLLHUP ||it->revents & POLLNVAL || it->revents & POLLERR)
+			{
+				std::cout << "POLLERR\n";
+				killClient(it--);
+				deleteIfExists(fds_clients.at(it->fd).cgi_path + "city_of_brass_" + fds_clients.at(it->fd).id);
+				continue;
+			}
+		}
+	}
+}
+
+void WebServer::conductPolling()
+{
+	if (poll(poll_fds.data(), poll_fds.size(), POLL_TIMEOUT) < 0)
+	{
+		std::cerr << "Error polling sockets\n";
+		exit(EXIT_FAILURE);
+	}
+}
+
+void WebServer::acceptClients(int server_fd)
+{
+	struct sockaddr_in client_addr;
+	socklen_t client_addr_size = sizeof(client_addr);
+
+	int client_fd;
+	client_fd = accept(server_fd, (struct sockaddr *)&client_addr, &client_addr_size);
+	if (client_fd < 0)
+	{
+		std::cerr << "webserver: Error accepting client connection\n";
+		return;
+	}
+
+	fcntl(client_fd, F_SETFL, O_NONBLOCK);
+
+	std::string client_ip = convertIPv4ToString(client_addr.sin_addr);
+
+	fds_clients.insert(std::make_pair(client_fd, Client(configs.at(server_fd), client_ip)));
+	struct pollfd pollstruct;
+	pollstruct.fd = client_fd;
+	pollstruct.events = POLLIN | POLLOUT;
+	pollstruct.revents = 0;
+	this->poll_fds.push_back(pollstruct);
+}
+
+void    WebServer::performCgi(int client_fd)
+{
+	Cgi cgi(fds_clients.at(client_fd));
+	try{
+		cgi.run();
+	}
+	catch (const std::exception &e){
+		fds_clients.at(client_fd).setError("500");
+	}
+	fds_clients.at(client_fd).request_processed = true;
+}
+
+void    WebServer::performGet(int client_fd)
+{
+	fds_clients.at(client_fd).response.buildResponseHeader();
+	fds_clients.at(client_fd).request_processed = true;
+}
+
+void WebServer::performDelete(int client_fd)
+{
+	int i = std::remove(fds_clients.at(client_fd).path_on_server.c_str());
+	if (i != 0)
+	{
+		fds_clients.at(client_fd).setError("409");
+		return;
+	}
+	fds_clients.at(client_fd).response.generateDeleteResponse();
+	fds_clients.at(client_fd).request_processed = true;
 }
 
 void WebServer::performUpload(int client_fd)
@@ -83,148 +207,9 @@ void WebServer::performUpload(int client_fd)
 	fds_clients.at(client_fd).request_processed = true;
 }
 
-void WebServer::acceptClients(int server_fd)
-{
-	struct sockaddr_in client_addr;
-	socklen_t client_addr_size = sizeof(client_addr);
-
-	int client_fd;
-	client_fd = accept(server_fd, (struct sockaddr *)&client_addr, &client_addr_size);
-	if (client_fd < 0)
-	{
-		// std::cerr << "webserver: Error accepting client connection\n";
-		return;
-	}
-
-	fcntl(client_fd, F_SETFL, O_NONBLOCK);
-
-	std::string client_ip = convertIPv4ToString(client_addr.sin_addr);
-
-	fds_clients.insert(std::make_pair(client_fd, Client(configs.at(server_fd), client_ip)));
-	struct pollfd pollstruct;
-	pollstruct.fd = client_fd;
-	pollstruct.events = POLLIN | POLLOUT;
-	pollstruct.revents = 0;
-	this->poll_fds.push_back(pollstruct);
-}
-
-std::string WebServer::convertIPv4ToString(const struct in_addr& address)
-{
-	const unsigned char* bytes = reinterpret_cast<const unsigned char*>(&address.s_addr);
-	std::string ipAddress;
-	std::stringstream stream;
-	stream << (static_cast<int>(bytes[0]));
-	stream << '.';
-	stream << (static_cast<int>(bytes[1]));
-	stream << '.';
-	stream << (static_cast<int>(bytes[2]));
-	stream << '.';
-	stream << (static_cast<int>(bytes[3]));
-	ipAddress = stream.str();
-	return ipAddress;
-}
-
-void WebServer::conductPolling()
-{
-	if (poll(poll_fds.data(), poll_fds.size(), POLL_TIMEOUT) < 0)
-	{
-		std::cerr << "Error polling sockets\n";
-		exit(EXIT_FAILURE);
-	}
-}
-
-void    WebServer::performGet(int client_fd)
-{
-	fds_clients.at(client_fd).response.buildResponseHeader();
-	fds_clients.at(client_fd).request_processed = true;
-}
-
-void WebServer::loopPollEvents()
-{
-	while (true)
-	{
-		conductPolling();
-		for (std::vector<struct pollfd>::iterator it = poll_fds.begin(); it != poll_fds.end(); it++)
-		{
-			if (it->revents & POLLIN)
-			{
-				if (it < poll_fds.begin() + listening_port_no)
-				{
-					acceptClients(it->fd);
-					break;
-				}
-				else
-				{
-					char request_chunk[PACKAGE_SIZE];
-					memset(request_chunk, 0, PACKAGE_SIZE);
-					ssize_t recieved_size = recv(it->fd, request_chunk, PACKAGE_SIZE, O_NONBLOCK);
-					if (recieved_size < 0)
-					{
-						fds_clients.at(it->fd).setError("500");
-						continue;
-					}
-					else if (recieved_size == 0)
-					{
-						// std::cout << "Client closed the connection\n";
-						killClient(it--);
-						continue;
-					}
-					fds_clients.at(it->fd).setRequest(request_chunk, recieved_size);
-					// mapping request header and deleting request header
-					if (fds_clients.at(it->fd).request_header.empty() && fds_clients.at(it->fd).mapRequestHeader())
-						fds_clients.at(it->fd).checkRequest();
-					if (fds_clients.at(it->fd).cancel_recv)
-						it->events = POLLOUT;
-					if (!fds_clients.at(it->fd).request_processed && fds_clients.at(it->fd).request_complete)
-					{
-						if (fds_clients.at(it->fd).is_cgi)
-							performCgi(it->fd);
-						else if (fds_clients.at(it->fd).is_get)
-							performGet(it->fd);
-						else if (fds_clients.at(it->fd).is_delete)
-							performDelete(it->fd);
-						else if (fds_clients.at(it->fd).is_upload)
-							performUpload(it->fd);
-					}
-				}
-			}
-			else if (it->revents & POLLOUT && fds_clients.at(it->fd).request_processed)
-			{
-				sendResponse(it->fd);
-				if (fds_clients.at(it->fd).response_sent)
-				{
-					deleteIfExists(fds_clients.at(it->fd).cgi_path + "city_of_brass");
-					killClient(it--);
-					continue;
-				}
-			}
-			else if (it->revents & POLLHUP ||it->revents & POLLNVAL || it->revents & POLLERR)
-			{
-				std::cout << "POLLERR\n";
-				killClient(it--);
-				deleteIfExists(fds_clients.at(it->fd).cgi_path + "city_of_brass");
-				continue;
-			}
-		}
-	}
-}
-
-void    WebServer::performCgi(int client_fd)
-{
-	Cgi cgi(fds_clients.at(client_fd));
-	try{
-		cgi.run();
-	}
-	catch (const std::exception &e){
-		fds_clients.at(client_fd).setError("500");
-	}
-	fds_clients.at(client_fd).request_processed = true;
-	}
-
 void WebServer::sendResponse(int client_fd)
 {
 	std::string chunk = "";
-
 	if (!fds_clients.at(client_fd).header_sent)
 	{
 		if (fds_clients.at(client_fd).response.body.empty() && (!fds_clients.at(client_fd).is_delete && !fds_clients.at(client_fd).is_redirect))
@@ -295,14 +280,6 @@ void WebServer::sendResponse(int client_fd)
 		fds_clients.at(client_fd).response_sent = true;
 }
 
-
-std::string WebServer::toHex(int value)
-{
-	std::stringstream stream;
-	stream << std::hex << value;
-	return stream.str();
-}
-
 void WebServer::killClient(std::vector<struct pollfd>::iterator it)
 {
 	if ((close(it->fd)) < 0)
@@ -311,32 +288,54 @@ void WebServer::killClient(std::vector<struct pollfd>::iterator it)
 	poll_fds.erase(it);
 }
 
-void WebServer::performDelete(int client_fd)
+bool WebServer::deleteIfExists(std::string filename) 
 {
-	int i = std::remove(fds_clients.at(client_fd).path_on_server.c_str());
-	if (i != 0)
+	if (FILE* file = fopen(filename.c_str(), "r"))
 	{
-		fds_clients.at(client_fd).setError("409");
-		return;
-	}
-	fds_clients.at(client_fd).response.generateDeleteResponse();
-	fds_clients.at(client_fd).request_processed = true;
+		fclose(file);
+		if (std::remove(filename.c_str()) == 0)
+			return true;
+		else
+			return false;
+	} 
+	else 
+		return true;
 }
 
-int WebServer::setupListeningSockets()
+bool    WebServer::validateFilename(std::string filename)
 {
-	for (int i = 0; i < listening_port_no; i++)
+	if (filename.empty() || 50 < filename.size())
+		return false;
+	for (std::size_t i = 0; i < filename.length(); i++) 
 	{
-		struct pollfd listening_poll;
-		SocketConfig tmp(config_path, i);
-		Socket socket(std::atoi(tmp.port.c_str()), tmp.host);
-		listening_poll.fd = socket.server_fd;
-		listening_poll.events = POLLIN;
-		listening_poll.revents = 0;
-		poll_fds.push_back(listening_poll);
-		configs.insert(std::make_pair(listening_poll.fd, tmp));
-		std::cout << "Socket " << (i + 1) << " (FD " << socket.server_fd
-				  << ") is listening on: " << tmp.host << ":" << tmp.port << std::endl;
+		if (!std::isprint(static_cast<unsigned char>(filename[i])))
+			return false;
 	}
-	return 0;
+	if (filename.find("\\") != std::string::npos || filename.find("/") != std::string::npos)
+		return false;
+	return true;
+
+}
+
+std::string WebServer::convertIPv4ToString(const struct in_addr& address)
+{
+	const unsigned char* bytes = reinterpret_cast<const unsigned char*>(&address.s_addr);
+	std::string ipAddress;
+	std::stringstream stream;
+	stream << (static_cast<int>(bytes[0]));
+	stream << '.';
+	stream << (static_cast<int>(bytes[1]));
+	stream << '.';
+	stream << (static_cast<int>(bytes[2]));
+	stream << '.';
+	stream << (static_cast<int>(bytes[3]));
+	ipAddress = stream.str();
+	return ipAddress;
+}
+
+std::string WebServer::toHex(int value)
+{
+	std::stringstream stream;
+	stream << std::hex << value;
+	return stream.str();
 }

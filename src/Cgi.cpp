@@ -3,28 +3,8 @@
 // Global flag to track if timeout occurred
 volatile sig_atomic_t timeoutOccurred = 0;
 
-// Signal handler for timeout
-void handleTimeout(int signum)
-{
-	(void) signum;
-	timeoutOccurred = 1;
-}
-
-bool Cgi::is_python3_installed() {
-	const char* pythonPath = "/usr/bin/python3";
-	if (access(pythonPath, X_OK) == 0) {
-		return true;
-	} else {
-		return false;
-	}
-}
-
 Cgi::Cgi(Client & c) : client(c)
-{
-	std::stringstream string_stream;
-	string_stream << client.id;
-	id = string_stream.str();
-}
+{}
 
 Cgi::~Cgi() {}
 
@@ -40,7 +20,7 @@ void Cgi::run()
 		throw(CgiException());
 	std::cout << "cgi: request header method [" << client.request_header["method:"] << "]\n";
 
-	std::string tmp = client.cgi_path + "city_of_brass";
+	std::string tmp = client.cgi_path + "city_of_brass_" + client.id;
 	const char* out_filename = tmp.c_str(); //dynamic filename 
 	int outfile = open(out_filename, O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR);
 	if (outfile == -1) 
@@ -63,8 +43,8 @@ void Cgi::run()
 	write(pipe_d[WRITE_END], client.request.c_str(), client.request.size());
 	close(pipe_d[WRITE_END]);
 
-	int _cgi_pid = fork();
-	if (_cgi_pid < 0)
+	int cgi_pid = fork();
+	if (cgi_pid < 0)
 	{
 		close(pipe_d[READ_END]);
 		close(outfile);
@@ -72,7 +52,7 @@ void Cgi::run()
 		throw(CgiException());
 	}
 	
-	if (_cgi_pid == 0)
+	if (cgi_pid == 0)
 	{
 		//set standard output to file
 		dup2(outfile, STDOUT_FILENO);
@@ -177,7 +157,7 @@ void Cgi::run()
 	int status;
 	close(pipe_d[READ_END]);
 	close(outfile);
-		pid_t terminatedPid = waitpid(_cgi_pid, &status, 0);
+		pid_t terminatedPid = waitpid(cgi_pid, &status, 0);
 		if (terminatedPid == -1)
 		{
 			std::cerr << "cgi: error with process handling\n";
@@ -193,7 +173,10 @@ void Cgi::run()
 			{
 				// std::cout << "Child process exited with status: " << WEXITSTATUS(status) << std::endl;
 				client.path_on_server = out_filename;
-				client.response.generateCgiResponse(out_filename);
+				if (client.obtainFileLength())
+					client.response.generateCgiResponse();
+				else
+					throw(CgiException());
 			}
 			else if (WIFSIGNALED(status))
 			{
@@ -202,4 +185,20 @@ void Cgi::run()
 				throw(CgiException());
 			}
 		}
+}
+
+// Signal handler for timeout
+void Cgi::handleTimeout(int signum)
+{
+	(void) signum;
+	timeoutOccurred = 1;
+}
+
+bool Cgi::is_python3_installed() {
+	const char* pythonPath = "/usr/bin/python3";
+	if (access(pythonPath, X_OK) == 0) {
+		return true;
+	} else {
+		return false;
+	}
 }

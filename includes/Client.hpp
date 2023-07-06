@@ -7,6 +7,7 @@
 #include <map>
 #include <time.h>
 #include <string.h>
+#include <cstring>
 #include <stdlib.h>
 #include "Response.hpp"
 #include "SocketConfig.hpp"
@@ -17,69 +18,70 @@ class Client
 {
 	public:
 		Client(SocketConfig conf, std::string ip);
+		~Client();
+
 		void	setRequest(char *chunk, size_t buffer_length);
 		bool	mapRequestHeader();
-		void	tokenizeRequestHeader(std::map<std::string, std::string> & request, std::string line_to_tokenize);
-		void	removeWhitespaces(std::string &string);
-		void	printRequest(std::map<std::string, std::string> my_map);
-		void	checkServerConfig(ServerConfig config);
 		void	checkRequest();
-		void	assignLocation();
-		void	assignServer();
 		void	setError(std::string code);
-		bool	checkMethod();
-		void	resetProperties();
-		bool	checkExistance();
-		void	prepareGet();
-		void	preparePost();
-		void	prepareDelete();
-		void	prepareRedirect();
-		bool	isDirectory();
-		void	parseClientPath();
+		bool	obtainFileLength();
 		void	closeFileFd();
-		bool	isHeaderValid();
-
-		static int  nextId;
-		int		id;
-		int color_index;
-
-		bool header_sent;    // Flag indicating if initial response headers have been sent
-		off_t content_length;        // Content length of the requested file
-		int                             server_index;
-		int                             client_fd;
-		int                             file_fd;
 
 		SocketConfig						config;
-		SocketConfig::ServerConfig			server_config;
-		bool                                request_complete;
-		std::map<std::string, std::string>  request_header;
-		size_t                              request_size;
-		std::string                         request;
 		Response                            response;
-		bool                                is_error;
-		std::string                         method;
-		std::string                         path_on_server;
-		std::string                         path_on_client;
-		std::string                         path_info;
-		std::string                         server_name;
-		std::string                         location;
-		std::string                         client_ip;
-		std::string                         redirect_url;
-		std::string                         cgi_extension;
+		std::map<std::string, std::string>  request_header;
+
+		int                             	client_fd;
+		int									color_index;
+		int                             	file_fd;
+		int                             	server_index;
+
 		std::string                         cgi_path;
-		bool                                kill_client;
+		std::string                         client_ip;
+		std::string							id;
+		std::string                         location;
+		std::string                         method;
+		std::string                         path_info;
+		std::string                         path_on_client;
+		std::string                         path_on_server;
+		std::string                         redirect_url;
+		std::string                         request;
+		std::string                         server_name;
+
 		bool                                autoindex;
 		bool                                cancel_recv;
-		bool                                is_redirect;
+		bool 								header_sent;
 		bool                        		is_cgi;
-		bool                                is_get;
-		bool                        		is_upload;
 		bool                        		is_delete;
-		bool                                query_string;
-		bool                                response_sent;
+		bool                                is_get;
+		bool                                is_redirect;
+		bool                        		is_upload;
 		bool                                last_chunk_sent;
+		bool                                query_string;
+		bool                                request_complete;
 		bool                                request_processed;
-		// struct sockaddr_in                  ip_address;
+		bool                                response_sent;
+		
 	private:
-		std::string _cgi_filename;
+		void	prepareDelete();
+		void	prepareGet();
+		void	preparePost();
+		void	prepareRedirect();
+
+		void	parseClientPath();
+		void	assignServer();
+		void	assignLocation();
+		bool	checkMethod();
+		bool	checkExistance();
+		bool	isDirectory();
+		void	resetProperties();
+		bool	isHeaderValid();
+		void	tokenizeRequestHeader(std::map<std::string, std::string> & request, std::string line_to_tokenize);
+		void	removeWhitespaces(std::string &string);
+
+		SocketConfig::ServerConfig			server_config;
+
+		static int  						nextId;
+		std::string                         cgi_extension;
+		size_t                              request_size;
 };

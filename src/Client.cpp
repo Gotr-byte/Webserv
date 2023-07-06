@@ -2,41 +2,96 @@
 
 int Client::nextId = 0;
 
-Client::Client(SocketConfig conf, std::string ip) : id(nextId++), content_length(0), file_fd(-1), config(conf)
+Client::Client(SocketConfig conf, std::string ip) : config(conf), file_fd(-1), client_ip(ip)
 {
-	this->client_ip = ip;
-	this->header_sent = false;
 	this->autoindex = false;
-	this->kill_client = false;
-	this->is_cgi = false;
-	this->is_get = false;
 	this->cancel_recv = false;
+	this->header_sent = false;
+	this->is_cgi = false;
 	this->is_delete = false;
+	this->is_get = false;
 	this->is_upload = false;
-	this->query_string = false;
-	this->response_sent = false;
-	this->last_chunk_sent = false;
-	this->request_processed = false;
 	this->is_redirect = false;
+	this->last_chunk_sent = false;
+	this->query_string = false;
+	this->request_processed = false;
 	this->request_size = 0;
+	this->response_sent = false;
+	
+	std::stringstream tmp;
+	tmp << nextId++;
+	this->id = tmp.str();
 }
 
-void    Client::closeFileFd()
+Client::~Client()
+{}
+
+void	Client::setRequest(char *chunk, size_t buffer_length)
 {
-	if (file_fd != -1)
-		close(file_fd);
-	file_fd = -1;
+	request_size += buffer_length;
+	if (buffer_length < PACKAGE_SIZE)
+		request_complete = true;
+    for (size_t size = 0; size < buffer_length; size++)
+        request.push_back(chunk[size]);
 }
 
-void	Client::parseClientPath()
+bool    Client::mapRequestHeader()
 {
-	path_on_client = request_header.at("location:");
-	size_t i,j;
-	if ((i = path_on_client.find(".")) != std::string::npos && (j = path_on_client.substr(i).find("/")) != std::string::npos)
+	std::size_t headerEnd = request.find("\r\n\r\n") + 2;
+    if (headerEnd == std::string::npos)
 	{
-		path_info = path_on_client.substr(i + j);
-		path_on_client = path_on_client.substr(0, i + j);
+		std::cerr << "no correct header format" << std::endl;
+		setError("400");
+		return false;
 	}
+
+	std::string header = request.substr(0, headerEnd);
+	request = request.substr(headerEnd + 2);
+	request_size -= headerEnd + 2;
+
+    std::size_t lineStart = 0;
+    std::size_t lineEnd;
+
+    lineEnd = header.find("\r\n", lineStart);
+	std::string line = header.substr(lineStart, lineEnd - lineStart);
+	lineStart = lineEnd + 2;
+
+    if (!line.empty())
+    {
+        request_header["method:"] = std::strtok(&line[0], " ");
+        request_header["location:"] = std::strtok(NULL, " ");
+        std::size_t found = request_header.at("location:").find('?');
+        if (found != std::string::npos && request_header.at("method:") == "GET")
+		{
+			this->query_string = true;
+            request_header["HTTP_version:"] = std::strtok(NULL, " ");
+            std::string temporary = std::strtok(&request_header.at("location:")[0], "?");
+            request_header["query_string:"] = std::strtok(NULL, " ");
+            request_header["location:"] = temporary;
+        }
+        else
+            request_header["HTTP_version:"] = std::strtok(NULL, " ");
+    }
+	while ((lineEnd = header.find("\r\n", lineStart)) != std::string::npos)
+    {
+		std::string line = header.substr(lineStart, lineEnd - lineStart);
+        tokenizeRequestHeader(request_header, line);
+		lineStart = lineEnd + 2;
+    }
+	if (!isHeaderValid())
+	{
+		setError("400");
+		return false;
+	}
+    size_t v;
+    if (this->request_header.at("method:") == "POST" && (v = request_header["Content-Type:"].find("boundary=")) != std::string::npos)
+    {
+        std::string key = request_header.at("Content-Type:").substr(v, 8);
+        std::string value = request_header.at("Content-Type:").substr(request_header["Content-Type:"].find("=") + 1);
+        request_header[key] = value;
+        request_header["Content-Type:"] = request_header["Content-Type:"].substr(0, request_header["Content-Type:"].find(";"));
+    }
+	return true;
 }
 
 void    Client::checkRequest()
@@ -44,8 +99,7 @@ void    Client::checkRequest()
 	this->assignServer();
 	this->parseClientPath();
 	this->assignLocation();
-	this->server_name = server_config.getConfProps("server_name:");
-	response.server_name = this->server_name;
+	response.server_name = server_config.getConfProps("server_name:");
 
 	if (this->is_redirect)
 	{
@@ -62,23 +116,50 @@ void    Client::checkRequest()
 	}
 }
 
-void	Client::assignServer()
+void	Client::setError(std::string status)
 {
-	for (std::map<std::string, SocketConfig::ServerConfig>::iterator it = config.servers.begin(); it != config.servers.end(); it++)
-	{
-		if (it->first.find(request_header.at("Host:")) != std::string::npos)
-		{
-			this->server_config = it->second;
-			return;
-		}
-	}
-	this->server_config = config.servers.begin()->second;
+	this->resetProperties();
+
+	path_on_server =  server_config.getConfProps("error_page:") + status + ".html";
+	obtainFileLength();
+	
+	this->request_processed = true;
+	if (status == "400")
+		response.generateErrorResponse("400", "Bad Request");
+	else if (status == "403")
+		response.generateErrorResponse("403", "Forbidden");
+	else if (status == "404")
+		response.generateErrorResponse("404", "Not Found");
+	else if (status == "405")
+		response.generateErrorResponse("405", "Method Not Allowed");
+	else if (status == "409")
+		response.generateErrorResponse("409", "Conflict");
+	else if (status == "413")
+		response.generateErrorResponse("413", "Payload Too Large");
+	else if (status == "500")
+		response.generateErrorResponse("500", "Internal Server Error");
 }
 
-void	Client::prepareRedirect()
+bool	Client::obtainFileLength()
 {
-	response.generateRedirectionResponse(redirect_url);
-	this->request_processed = true;
+	FILE* file = fopen(path_on_server.c_str(), "r");
+	if (!file)
+	{
+		std::cerr << ("response: Error opening file");
+		setError("500");
+		return false;
+	}
+	std::fseek(file, 0, SEEK_END);
+	response.content_length = std::ftell(file);
+	std::fclose(file);
+	return true;
+}
+
+void    Client::closeFileFd()
+{
+	if (file_fd != -1)
+		close(file_fd);
+	file_fd = -1;
 }
 
 void	Client::prepareDelete()
@@ -94,6 +175,29 @@ void	Client::prepareDelete()
 		return;
 	}
 	is_delete = true;
+}
+
+void	Client::prepareGet()
+{
+	this->is_get = true;
+	if (path_on_server.find(cgi_extension) != std::string::npos)
+	{
+		if (access(path_on_server.c_str(), X_OK))
+		{
+			setError("403");
+			return ;
+		}
+		this->is_cgi = true;
+	}
+	if (!isDirectory())
+	{
+		response.setResponseContentType(path_on_server);
+		obtainFileLength();
+	}
+	else if (isDirectory() && autoindex)
+		response.createAutoindex(path_on_server);
+	else
+		setError("403");
 }
 
 void	Client::preparePost()
@@ -127,65 +231,35 @@ void	Client::preparePost()
 		setError("403");
 }
 
-void	Client::prepareGet()
+void	Client::prepareRedirect()
 {
-	this->is_get = true;
-	if (path_on_server.find(cgi_extension) != std::string::npos)
+	response.generateRedirectionResponse(redirect_url);
+	this->request_processed = true;
+}
+
+void	Client::parseClientPath()
+{
+	path_on_client = request_header.at("location:");
+	size_t i,j;
+	if ((i = path_on_client.find(".")) != std::string::npos && (j = path_on_client.substr(i).find("/")) != std::string::npos)
 	{
-		if (access(path_on_server.c_str(), X_OK))
+		path_info = path_on_client.substr(i + j);
+		path_on_client = path_on_client.substr(0, i + j);
+	}
+}
+
+void	Client::assignServer()
+{
+	for (std::map<std::string, SocketConfig::ServerConfig>::iterator it = config.servers.begin(); it != config.servers.end(); it++)
+	{
+		if (it->first.find(request_header.at("Host:")) != std::string::npos)
 		{
-			setError("403");
-			return ;
+			this->server_config = it->second;
+			return;
 		}
-		this->is_cgi = true;
+		else if (it->second.first_server)
+			this->server_config = it->second;
 	}
-	if (!isDirectory())
-	{
-		response.setResponseContentType(path_on_server);
-		response.obtainFileLength(path_on_server);
-	}
-	else if (isDirectory() && autoindex)
-		response.createAutoindex(path_on_server);
-	else
-		setError("403");
-}
-
-bool	Client::isDirectory()
-{
-	DIR *dir = opendir(path_on_server.c_str());
-	if (!dir)
-	{
-		return false;
-	}
-	closedir(dir);
-	return true;
-}
-
-bool	Client::checkMethod()
-{
-	if (server_config.getLocation(location, "allowed_methods:").find(request_header["method:"]) \
-		!= std::string::npos)
-		{
-			this->method = request_header.at("method:");
-			return true;
-		}
-	setError("405");
-	return false;
-}
-
-bool	Client::checkExistance()
-{
-	if (access(path_on_server.c_str(), F_OK) == -1)
-	{
-		setError("404");
-		return false;
-	}
-	if (access(path_on_server.c_str(), R_OK) == -1)
-	{
-		setError("403");
-		return false;
-	}
-	return true;
 }
 
 void	Client::assignLocation()
@@ -218,98 +292,54 @@ void	Client::assignLocation()
 	}
 }
 
+bool	Client::checkMethod()
+{
+	if (server_config.getLocation(location, "allowed_methods:").find(request_header["method:"]) \
+		!= std::string::npos)
+		{
+			this->method = request_header.at("method:");
+			return true;
+		}
+	setError("405");
+	return false;
+}
+
+bool	Client::checkExistance()
+{
+	if (access(path_on_server.c_str(), F_OK) == -1)
+	{
+		setError("404");
+		return false;
+	}
+	if (access(path_on_server.c_str(), R_OK) == -1)
+	{
+		setError("403");
+		return false;
+	}
+	return true;
+}
+
+bool	Client::isDirectory()
+{
+	DIR *dir = opendir(path_on_server.c_str());
+	if (!dir)
+	{
+		return false;
+	}
+	closedir(dir);
+	return true;
+}
+
 void	Client::resetProperties()
 {
+	this->header_sent = false;
 	this->is_cgi = false;
+	this->is_delete = false;
 	this->is_get = false;
 	this->is_upload = false;
-	this->is_delete = false;
-	this->response_sent = false;
 	this->last_chunk_sent = false;
 	this->request_processed = false;
-}
-
-void	Client::setError(std::string status)
-{
-	this->resetProperties();
-
-	path_on_server =  server_config.getConfProps("error_page:") + status + ".html";
-	response.error_path = path_on_server;
-	
-	this->request_processed = true;
-	if (status == "400")
-		response.setupErrorPage("400", "Bad Request");
-	else if (status == "403")
-		response.setupErrorPage("403", "Forbidden");
-	else if (status == "404")
-		response.setupErrorPage("404", "Not Found");
-	else if (status == "405")
-		response.setupErrorPage("405", "Method Not Allowed");
-	else if (status == "409")
-		response.setupErrorPage("409", "Conflict");
-	else if (status == "413")
-		response.setupErrorPage("413", "Payload Too Large");
-	else if (status == "500")
-		response.setupErrorPage("500", "Internal Server Error");
-}
-
-bool    Client::mapRequestHeader()
-{
-	std::size_t headerEnd = request.find("\r\n\r\n") + 2;
-    if (headerEnd == std::string::npos)
-	{
-		std::cerr << "no correct header format" << std::endl;
-		setError("400");
-		return false;
-	}
-
-	std::string header = request.substr(0, headerEnd);
-	request = request.substr(headerEnd + 2);
-	request_size -= headerEnd + 2;
-
-    std::size_t lineStart = 0;
-    std::size_t lineEnd;
-
-    lineEnd = header.find("\r\n", lineStart);
-	std::string line = header.substr(lineStart, lineEnd - lineStart);
-	lineStart = lineEnd + 2;
-
-    if (!line.empty())
-    {
-        request_header["method:"] = strtok(&line[0], " ");
-        request_header["location:"] = strtok(NULL, " ");
-        std::size_t found = request_header.at("location:").find('?');
-        if (found != std::string::npos && request_header.at("method:") == "GET")
-		{
-			this->query_string = true;
-            request_header["HTTP_version:"] = strtok(NULL, " ");
-            std::string temporary = strtok(&request_header.at("location:")[0], "?");
-            request_header["query_string:"] = strtok(NULL, " ");
-            request_header["location:"] = temporary;
-        }
-        else
-            request_header["HTTP_version:"] = strtok(NULL, " ");
-    }
-	while ((lineEnd = header.find("\r\n", lineStart)) != std::string::npos)
-    {
-		std::string line = header.substr(lineStart, lineEnd - lineStart);
-        tokenizeRequestHeader(request_header, line);
-		lineStart = lineEnd + 2;
-    }
-	if (!isHeaderValid())
-	{
-		setError("400");
-		return false;
-	}
-    size_t v;
-    if (this->request_header.at("method:") == "POST" && (v = request_header["Content-Type:"].find("boundary=")) != std::string::npos)
-    {
-        std::string key = request_header.at("Content-Type:").substr(v, 8);
-        std::string value = request_header.at("Content-Type:").substr(request_header["Content-Type:"].find("=") + 1);
-        request_header[key] = value;
-        request_header["Content-Type:"] = request_header["Content-Type:"].substr(0, request_header["Content-Type:"].find(";"));
-    }
-	return true;
+	this->response_sent = false;
 }
 
 bool	Client::isHeaderValid()
@@ -337,13 +367,4 @@ void Client::removeWhitespaces(std::string &string)
 {
     string.erase(0, string.find_first_not_of(" \t"));
     string.erase(string.find_last_not_of(" \t") + 1);
-}
-
-void	Client::setRequest(char *chunk, size_t buffer_length)
-{
-	request_size += buffer_length;
-	if (buffer_length < PACKAGE_SIZE)
-		request_complete = true;
-    for (size_t size = 0; size < buffer_length; size++)
-        request.push_back(chunk[size]);
 }

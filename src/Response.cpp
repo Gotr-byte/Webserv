@@ -8,17 +8,36 @@ Response::Response()
 	is_chunked = false;
 }
 
-void	Response::generateRedirectionResponse(std::string URL)
+Response::~Response()
+{}
+
+void	Response::generateCgiResponse()
 {
-	status_code = "301 Moved Permanently";
-	additional_info = "Location: " + URL;
+	content_type = "text/html";
+	buildResponseHeader();
+}
+
+void Response::generateDeleteResponse()
+{
+	status_code = "204 No Content";
+	content_type = "text/plain";
+	additional_info.clear();
+	content_length = 0;
 	buildResponseHeader();
 }
 
 void	Response::generateErrorResponse(std::string status, std::string issue)
 {
-	additional_info = "Connection: closed\nTransfer-Encoding: chunked";
-	setupErrorPage(status, issue);
+	status_code = status + " " + issue;
+	content_type = "text/html";
+	buildResponseHeader();
+}
+
+void	Response::generateRedirectionResponse(std::string URL)
+{
+	status_code = "301 Moved Permanently";
+	additional_info = "Location: " + URL;
+	content_length = 0;
 	buildResponseHeader();
 }
 
@@ -32,57 +51,30 @@ void	Response::generateUploadResponse(std::string file_path)
 	buildResponseHeader();
 }
 
-void	Response::generateCgiResponse(std::string path)
+void	Response::buildResponseHeader()
 {
-	obtainFileLength(path);
-	content_type = "text/html";
-	buildResponseHeader();
-}
+	std::ostringstream tmp;
 
-void Response::generateDeleteResponse()
-{
-	status_code = "204 No Content";
-	content_type = "text/plain";
-	additional_info.clear();
-	content_length = body.size();
-	setDate();
-	buildResponseHeader();
-}
-
-void	Response::setupErrorPage(std::string status, std::string issue)
-{
-	status_code = status + " " + issue;
-	content_type = "text/html";
-	this->obtainFileLength(error_path);
-	buildResponseHeader();
-}
-
-void	Response::obtainFileLength(std::string path)
-{
-	FILE* file = fopen(path.c_str(), "r");
-	// if (file == nullptr)
-	if (!file)	
-
+	if (BUF_SIZE < content_length)
 	{
-		std::cerr << ("response: Error opening file");
-		// exit(EXIT_FAILURE);
+		additional_info = "Transfer-Encoding: chunked";
+		is_chunked = true;
 	}
-	std::fseek(file, 0, SEEK_END);
-	content_length = std::ftell(file);
-	std::fclose(file);
-}
 
-void	Response::setDate()
-{
-	time_t currentTime = time(NULL);
-	tm* timeinfo = gmtime(&currentTime);
-	
-	char buffer[80];
-	strftime(buffer, sizeof(buffer), "%a, %d %b %Y %H:%M:%S GMT", timeinfo);
-	
-	std::string conv(buffer);
-	this->date = "Date: " + conv;
-	// std::cout << date << std::endl;
+	this->setDate();
+	tmp << protocoll << " " << status_code << "\r\n";
+	tmp << "Server: " << server_name << "\r\n";
+	tmp << date << "\r\n";
+	if (content_length)
+	{
+		tmp << "Content-Type: " << content_type << "\r\n";
+		tmp << "Content-Length: " << content_length << "\r\n";
+	}
+	if (!additional_info.empty())
+		tmp << additional_info << "\r\n";
+	tmp << "\r\n";
+
+	header = tmp.str();
 }
 
 void	Response::setResponseContentType(std::string path)
@@ -90,7 +82,9 @@ void	Response::setResponseContentType(std::string path)
 	std::string suffix = path.substr(path.rfind(".") + 1);
 
 	if (path.find("file/") != std::string::npos)
+	{
 		content_type = "application/octet-stream";
+	}
 	else
 	{
 		if (suffix == "html")
@@ -120,32 +114,6 @@ void	Response::setResponseContentType(std::string path)
 	}
 }
 
-void	Response::buildResponseHeader()
-{
-	std::ostringstream tmp;
-
-	if (BUF_SIZE < content_length)
-	{
-		additional_info = "Transfer-Encoding: chunked";
-		is_chunked = true;
-	}
-
-	this->setDate();
-	tmp << protocoll << " " << status_code << "\r\n";
-	tmp << "Server: " << server_name << "\r\n";
-	tmp << date << "\r\n";
-	if (status_code != "204 No Content" || status_code != "301 Moved Permanently")
-	{
-		tmp << "Content-Type: " << content_type << "\r\n";
-		tmp << "Content-Length: " << content_length << "\r\n";
-	}
-	if (!additional_info.empty())
-		tmp << additional_info << "\r\n";
-	tmp << "\r\n";
-
-	header = tmp.str();
-}
-
 void	Response::createAutoindex(std::string path)
 {
 	std::ostringstream	autoidx;
@@ -164,7 +132,6 @@ void	Response::createAutoindex(std::string path)
 	struct dirent* entry;
 	while ((entry = readdir(dir)) != NULL)
 	{
-		// Skip "." and ".." entries
 		if (std::string(entry->d_name) == "." || std::string(entry->d_name) == "..") {
 			continue;
 		}
@@ -172,20 +139,16 @@ void	Response::createAutoindex(std::string path)
 		std::string itemName = entry->d_name;
 		std::string itemPath = path + "/" + itemName;
 		
-		// Check if the entry is a file or directory
 		bool isDir = (entry->d_type == DT_DIR);
 		
-		// generate the appropriate HTML entry
 		if (isDir)
 			autoidx << "<li><a href=\"" << itemName << "/\">" << itemName << "/</a></li>\n";
 		else
 			autoidx << "<li><a href=\"" << itemName << "\">" << itemName << "</a></li>\n";
 	}
 	
-	// Close the directory
 	closedir(dir);
 	
-	// Write the HTML footer
 	autoidx << "</ul>\n";
 	autoidx << "</body>\n";
 	autoidx << "</html>";
@@ -194,6 +157,16 @@ void	Response::createAutoindex(std::string path)
 	additional_info = "";
 	content_type = "text/html";
 	content_length = body.size();
-	// std::cout << autoindexbody << std::endl;
 }
 
+void	Response::setDate()
+{
+	time_t currentTime = time(NULL);
+	tm* timeinfo = gmtime(&currentTime);
+	
+	char buffer[80];
+	strftime(buffer, sizeof(buffer), "%a, %d %b %Y %H:%M:%S GMT", timeinfo);
+	
+	std::string conv(buffer);
+	this->date = "Date: " + conv;
+}
