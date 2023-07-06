@@ -3,7 +3,7 @@
 static void checkFileExtension(const std::string& filename) {
     if (filename.length() < 7 || filename.substr(filename.length() - 7) != ".config") {
         std::cerr << "Error: Invalid file extension. Expected '.config'" << std::endl;
-        exit(1);
+        exit(EXIT_FAILURE);
     }
 }
 
@@ -11,7 +11,7 @@ static void checkFileEmpty(const std::string& filename) {
     std::ifstream file(filename.c_str());
     if (file.peek() == std::ifstream::traits_type::eof()) {
         std::cerr << "Error: File is empty." << std::endl;
-        std::exit(1);
+        std::exit(EXIT_FAILURE);
     }
 }
 
@@ -22,14 +22,26 @@ static void	checkLocationBlock(std::fstream &config, std::string &line)
 		if (line.empty())
 			getline(config, line);
 		if (config.eof())
-			throw std::logic_error("Unexpected end of LocationBlock");
+		{
+			std::cerr << "Config file: Unexpected end of LocationBlock" << std::endl;
+			exit(EXIT_FAILURE);
+		}
 		getline(config, line);
 		if (line.find("<server>") != std::string::npos)
-			throw std::logic_error("No ServerBlock allowed in LocationBlock");
+		{
+			std::cerr << "Config file: No ServerBlock allowed in LocationBlock" << std::endl;
+			exit(EXIT_FAILURE);
+		}
 		else if (line.find("<socket>") != std::string::npos)
-			throw std::logic_error("No SocketBlock allowed in LocationBlock");
+		{
+			std::cerr << "Config file: No SocketBlock allowed in LocationBlock" << std::endl;
+			exit(EXIT_FAILURE);
+		}
 		else if (line.find("<location>") != std::string::npos)
-			throw std::logic_error("LocationBlock cannot contain another LocationBlock start <location>");
+		{
+			std::cerr << "Config file: LocationBlock cannot contain another LocationBlock start <location>" << std::endl;
+			exit(EXIT_FAILURE);
+		}
 	}
 }
 
@@ -40,40 +52,70 @@ static void	checkServerBlock(std::fstream	&config, std::string	&line)
 		if (line.empty())
 			getline(config, line);
 		if (config.eof())
-			throw std::logic_error("Unexpected end of ServerBlock");
+		{
+			std::cerr << "Config file: Unexpected end of ServerBlock" << std::endl;
+			exit(EXIT_FAILURE);
+		}
 		getline(config, line);
 		if (line.find("<location>") != std::string::npos)
 			checkLocationBlock(config, line);
 		else if (line.find("<socket>") != std::string::npos)
-			throw std::logic_error("ServerBlock cannot contain another SocketBlock start <server>");
+		{
+			std::cerr << "Config file: ServerBlock cannot contain another SocketBlock start <server>" << std::endl;
+			exit(EXIT_FAILURE);
+		}
 		else if (line.find("</location>") != std::string::npos)
-			throw std::logic_error("Incorrect LocationBlock format");
+		{
+			std::cerr << "Config file: Incorrect LocationBlock format" << std::endl;
+			exit(EXIT_FAILURE);
+		}
 		else if (line.find("<server>") != std::string::npos)
-			throw std::logic_error("ServerBlock cannot contain another ServerBlock start <server>");
+		{
+			std::cerr << "Config file: ServerBlock cannot contain another ServerBlock start <server>" << std::endl;
+			exit(EXIT_FAILURE);
+		}
 	}
 }
 
 static void	checkSocketBlock(std::fstream &config, std::string &line)
 {
 	if (line != "<socket>")
-		throw std::logic_error("SocketBlock has to start with <socket>");
+	{
+		std::cerr << "Config file: SocketBlock has to start with <socket>" << std::endl;
+		exit(EXIT_FAILURE);
+	}
 	while (line != "</socket>")
 	{
 		if (line.empty())
 			getline(config, line);
 		if (config.eof())
-			throw std::logic_error("Unexpected end of SocketBlock");
+		{
+			std::cerr << "Config file: Unexpected end of SocketBlock" << std::endl;
+			exit(EXIT_FAILURE);
+		}
 		getline(config, line);
 		if (line.find("<server>") != std::string::npos)
 			checkServerBlock(config, line);
 		else if (line.find("</server>") != std::string::npos)
-			throw std::logic_error("Incorrect ServerBlock format");
+		{
+			std::cerr << "Config file: Incorrect ServerBlock format" << std::endl;
+			exit(EXIT_FAILURE);
+		}
 		else if (line.find("<location>") != std::string::npos)
-			throw std::logic_error("Incorrect LocationBlock format");
+		{
+			std::cerr << "Config file: Incorrect LocationBlock format" << std::endl;
+			exit(EXIT_FAILURE);
+		}
 		else if (line.find("</location>") != std::string::npos)
-			throw std::logic_error("Incorrect LocationBlock format");
+		{
+			std::cerr << "Config file: Incorrect LocationBlock format" << std::endl;
+			exit(EXIT_FAILURE);
+		}
 		if (line.find("<socket>") != std::string::npos)
-			throw std::logic_error("SocketBlock cannot contain another SocketBlock start <socket>");
+		{
+			std::cerr << "Config file: SocketBlock cannot contain another SocketBlock start <socket>" << std::endl;
+			exit(EXIT_FAILURE);
+		}
 	}
 }
 

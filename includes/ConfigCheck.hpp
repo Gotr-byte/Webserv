@@ -5,6 +5,7 @@
 #include <fstream>
 #include <stdexcept>
 #include <stdlib.h>
+#include <cstdlib>
 
 class ConfigCheck
 {
