@@ -33,7 +33,7 @@ EOC		=	"\033[0;0m"
 FILES	=	\
 			Cgi \
 			Client \
-			configCheck \
+			ConfigCheck \
 			main \
 			Response \
 			SocketConfig \
