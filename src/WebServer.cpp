@@ -59,8 +59,11 @@ void WebServer::loopPollEvents()
 					}
 					fds_clients.at(it->fd).setRequest(request_chunk, recieved_size);
 					// mapping request header and deleting request header
-					if (fds_clients.at(it->fd).request_header.empty() && fds_clients.at(it->fd).mapRequestHeader())
+					if (fds_clients.at(it->fd).request_header.empty())
+					{
+						fds_clients.at(it->fd).mapRequestHeader();
 						fds_clients.at(it->fd).checkRequest();
+					}
 					if (fds_clients.at(it->fd).cancel_recv)
 						it->events = POLLOUT;
 					if (!fds_clients.at(it->fd).request_processed && fds_clients.at(it->fd).request_complete)
