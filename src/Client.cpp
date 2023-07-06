@@ -35,25 +35,19 @@ void	Client::setRequest(char *chunk, size_t buffer_length)
         request.push_back(chunk[size]);
 }
 
-bool    Client::mapRequestHeader()
+void    Client::mapRequestHeader()
 {
-	std::size_t headerEnd = request.find("\r\n\r\n") + 2;
-    if (headerEnd == std::string::npos)
-	{
-		std::cerr << "no correct header format" << std::endl;
-		setError("400");
-		return false;
-	}
+	std::size_t headerEnd = request.find("\r\n\r\n") + 4;
 
-	std::string header = request.substr(0, headerEnd);
-	request = request.substr(headerEnd + 2);
-	request_size -= headerEnd + 2;
+	this->header_raw = request.substr(0, headerEnd);
+	request = request.substr(headerEnd);
+	request_size -= headerEnd;
 
     std::size_t lineStart = 0;
     std::size_t lineEnd;
 
-    lineEnd = header.find("\r\n", lineStart);
-	std::string line = header.substr(lineStart, lineEnd - lineStart);
+    lineEnd = this->header_raw.find("\r\n", lineStart);
+	std::string line = header_raw.substr(lineStart, lineEnd - lineStart);
 	lineStart = lineEnd + 2;
 
     if (!line.empty())
@@ -72,17 +66,16 @@ bool    Client::mapRequestHeader()
         else
             request_header["HTTP_version:"] = std::strtok(NULL, " ");
     }
-	while ((lineEnd = header.find("\r\n", lineStart)) != std::string::npos)
+	while ((lineEnd = header_raw.find("\r\n", lineStart)) != std::string::npos)
     {
-		std::string line = header.substr(lineStart, lineEnd - lineStart);
+		std::string line = header_raw.substr(lineStart, lineEnd - lineStart);
         tokenizeRequestHeader(request_header, line);
 		lineStart = lineEnd + 2;
     }
-	if (!isHeaderValid())
-	{
-		setError("400");
-		return false;
-	}
+	if (this->request_header.at("method:") == "POST" && \
+		this->request_header.find("Content-Type:") == request_header.end() && \
+		this->request_header.find("Content-Length:") == request_header.end())
+		return;
     size_t v;
     if (this->request_header.at("method:") == "POST" && (v = request_header["Content-Type:"].find("boundary=")) != std::string::npos)
     {
@@ -91,7 +84,7 @@ bool    Client::mapRequestHeader()
         request_header[key] = value;
         request_header["Content-Type:"] = request_header["Content-Type:"].substr(0, request_header["Content-Type:"].find(";"));
     }
-	return true;
+	return;
 }
 
 void    Client::checkRequest()
@@ -100,11 +93,11 @@ void    Client::checkRequest()
 	this->parseClientPath();
 	this->assignLocation();
 	response.server_name = server_config.getConfProps("server_name:");
+	if (!this->checkHeader())
+		return;
 
 	if (this->is_redirect)
-	{
 		prepareRedirect();
-	}
 	else if (this->checkMethod() && checkExistance())
 	{
 		if (method == "GET")
@@ -116,11 +109,30 @@ void    Client::checkRequest()
 	}
 }
 
+bool	Client::checkHeader()
+{
+	size_t headerEnd = header_raw.find("\r\n\r\n");
+
+    if (headerEnd == std::string::npos)
+	{
+		std::cerr << "no correct header format" << std::endl;
+		setError("400");
+		return false;
+	}
+	if (!isHeaderValid())
+		return false;
+	return true;
+}
+
+
 void	Client::setError(std::string status)
 {
 	this->resetProperties();
 
-	path_on_server =  server_config.getConfProps("error_page:") + status + ".html";
+	if (status == "500")
+		path_on_server = "www/error_pages/500.html";
+	else
+		path_on_server =  server_config.getConfProps("error_page:") + status + ".html";
 	obtainFileLength();
 	
 	this->request_processed = true;
@@ -133,9 +145,13 @@ void	Client::setError(std::string status)
 	else if (status == "405")
 		response.generateErrorResponse("405", "Method Not Allowed");
 	else if (status == "409")
-		response.generateErrorResponse("409", "Conflict");
+		response.generateErrorResponse("409", "Length Required");
+	else if (status == "411")
+		response.generateErrorResponse("411", "Conflict");
 	else if (status == "413")
 		response.generateErrorResponse("413", "Payload Too Large");
+	else if (status == "415")
+		response.generateErrorResponse("415", "Unsupported Media Type");
 	else if (status == "500")
 		response.generateErrorResponse("500", "Internal Server Error");
 }
@@ -344,10 +360,25 @@ void	Client::resetProperties()
 
 bool	Client::isHeaderValid()
 {
-	if (this->request_header.at("method:") == "POST" && \
-		this->request_header.find("Content-Type:") == request_header.end() && \
-		this->request_header.find("Content-Length:") == request_header.end())
-		return false;
+	if (this->request_header.at("method:") == "POST")
+	{
+		if (this->request_header.find("Content-Type:") == request_header.end())
+		{
+			setError("403");
+			return false;
+		}
+		else if (this->request_header.at("Content-Type:").find("application/x-www-form-urlencoded") == std::string::npos && \
+					this->request_header.at("Content-Type:").find("multipart/form-data") == std::string::npos)
+		{
+			setError("415");
+			return false;
+		}
+		if (this->request_header.find("Content-Length:") == request_header.end())
+		{
+			setError("411");
+			return false;
+		}
+	}
 	return true;
 }
 

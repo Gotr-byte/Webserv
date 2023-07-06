@@ -21,7 +21,7 @@ class Client
 		~Client();
 
 		void	setRequest(char *chunk, size_t buffer_length);
-		bool	mapRequestHeader();
+		void	mapRequestHeader();
 		void	checkRequest();
 		void	setError(std::string code);
 		bool	obtainFileLength();
@@ -38,6 +38,7 @@ class Client
 
 		std::string                         cgi_path;
 		std::string                         client_ip;
+		std::string							header_raw;
 		std::string							id;
 		std::string                         location;
 		std::string                         method;
@@ -71,6 +72,7 @@ class Client
 		void	parseClientPath();
 		void	assignServer();
 		void	assignLocation();
+		bool	checkHeader();
 		bool	checkMethod();
 		bool	checkExistance();
 		bool	isDirectory();
